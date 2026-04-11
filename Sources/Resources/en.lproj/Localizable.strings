@@ -1,0 +1,48 @@
+/* Launcher */
+"search.placeholder" = "Search for apps and commands...";
+"filter.all" = "All";
+"category.application" = "Application";
+
+/* Language */
+"lang.system" = "Follow System";
+"prefs.language.title" = "Language";
+"prefs.language.subtitle" = "Choose the app display language";
+
+/* Preferences window */
+"prefs.title" = "Meow Preferences";
+"prefs.subtitle" = "System behavior and launcher visibility";
+"prefs.section.general" = "General";
+"prefs.section.appearance" = "Appearance";
+
+"prefs.autolaunch.title" = "Launch at Login";
+"prefs.autolaunch.subtitle" = "Start Meow automatically when you sign in";
+
+"prefs.hotkey.title" = "Launcher Hotkey";
+"prefs.hotkey.subtitle" = "Click record, then press the shortcut";
+"prefs.hotkey.recording" = "Recording...";
+"prefs.hotkey.recording.hint" = "Press shortcut now (Esc to cancel)";
+
+"prefs.dock.title" = "Show Dock Icon";
+"prefs.dock.subtitle" = "Display Meow in Dock for quick access";
+
+"prefs.menubar.title" = "Show Menu Bar Icon";
+"prefs.menubar.subtitle" = "Keep the paw icon visible in the menu bar";
+
+"quit.meow" = "Quit Meow";
+
+/* Status bar menu */
+"menu.open" = "Open Meow";
+"menu.preferences" = "Preferences...";
+"menu.autolaunch" = "Launch at Login";
+"menu.dock" = "Show Dock Icon";
+"menu.menubar" = "Show Menu Bar Icon";
+"menu.quit" = "Quit Meow";
+
+/* Built-in commands */
+"cmd.preferences.title" = "Meow Preferences";
+"cmd.preferences.subtitle" = "Settings";
+"cmd.quit.title" = "Quit Meow";
+"cmd.quit.subtitle" = "Exit Application";
+
+/* Window */
+"window.prefs.title" = "Meow Preferences";

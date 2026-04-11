@@ -1,0 +1,54 @@
+# Build artifacts
+.build/
+build/
+dist/
+*.app
+*.dmg
+
+# Xcode
+*.xcworkspace/
+*.xcodeproj/
+xcuserdata/
+*.xcconfig
+
+# Swift Package Manager
+.swiftpm/
+Package.resolved
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Build outputs
+*.o
+*.a
+*.so
+*.dylib
+*.dSYM
+*.su
+*.gch
+*.pch
+
+# Generated icon sets
+AppIcon.iconset/
+AppIcon.icns
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/
+
+# macOS specific
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Resources cache
+.resources.cache

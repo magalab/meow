@@ -1,0 +1,530 @@
+import AppKit
+import Carbon
+import SwiftUI
+
+struct LauncherView: View {
+    @ObservedObject var viewModel: LauncherViewModel
+    @ObservedObject private var lang = LanguageManager.shared
+    var onDismiss: () -> Void
+    @State private var selectedID: SearchItem.ID?
+
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    Color(red: 0.96, green: 0.97, blue: 0.99),
+                    Color(red: 0.92, green: 0.94, blue: 0.97),
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+
+            VStack(spacing: 12) {
+                HStack(spacing: 10) {
+                    Image(systemName: "pawprint.fill")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(Color(red: 0.22, green: 0.3, blue: 0.54))
+
+                    TextField(L10n.searchPlaceholder, text: $viewModel.query)
+                        .textFieldStyle(.plain)
+                        .font(.system(.title3, design: .rounded, weight: .semibold))
+                        .onSubmit {
+                            activateCurrentSelection()
+                        }
+
+                    Spacer()
+
+                    Text(L10n.filterAll)
+                        .font(.system(.subheadline, design: .rounded, weight: .bold))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(.white.opacity(0.75), in: Capsule())
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background(.white.opacity(0.72), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(.white.opacity(0.8), lineWidth: 1)
+                )
+
+                ScrollView {
+                    LazyVStack(spacing: 8) {
+                        ForEach(viewModel.results) { item in
+                            Button {
+                                selectedID = item.id
+                                viewModel.activate(item)
+                            } label: {
+                                HStack(spacing: 12) {
+                                    SearchItemIcon(item: item)
+
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(item.primaryText)
+                                            .font(.system(size: 17, weight: .semibold, design: .rounded))
+                                            .foregroundStyle(.primary)
+                                            .lineLimit(1)
+
+                                        Text(item.secondaryText)
+                                            .font(.system(size: 13, weight: .medium, design: .rounded))
+                                            .foregroundStyle(.secondary)
+                                    }
+
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 10)
+                                .background(
+                                    selectedID == item.id ? Color.white.opacity(0.9) : Color.white.opacity(0.62),
+                                    in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .stroke(selectedID == item.id ? Color.white : Color.white.opacity(0.55), lineWidth: 1)
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(2)
+                }
+                .scrollIndicators(.hidden)
+            }
+            .padding(14)
+        }
+        .frame(minWidth: 760, minHeight: 480)
+        .id(lang.refreshToken)
+        .onAppear {
+            selectedID = viewModel.results.first?.id
+        }
+        .onChange(of: viewModel.results) { _, newValue in
+            if selectedID == nil || !newValue.contains(where: { $0.id == selectedID }) {
+                selectedID = newValue.first?.id
+            }
+        }
+        .onExitCommand {
+            onDismiss()
+        }
+    }
+
+    private func activateCurrentSelection() {
+        guard !viewModel.results.isEmpty else { return }
+        if let selectedID,
+           let selected = viewModel.results.first(where: { $0.id == selectedID }) {
+            viewModel.activate(selected)
+            return
+        }
+        let first = viewModel.results[0]
+        selectedID = first.id
+        viewModel.activate(first)
+    }
+}
+
+private struct SearchItemIcon: View {
+    let item: SearchItem
+
+    var body: some View {
+        Group {
+            switch item {
+            case .app(let app):
+                let nsImage = NSWorkspace.shared.icon(forFile: app.url.path)
+                Image(nsImage: nsImage)
+                    .resizable()
+                    .interpolation(.high)
+                    .antialiased(true)
+                    .scaledToFit()
+                    .padding(2)
+            case .command:
+                Image(systemName: item.symbolName)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Color(red: 0.22, green: 0.3, blue: 0.54))
+            }
+        }
+        .frame(width: 32, height: 32)
+        .background(.white.opacity(0.9), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+}
+
+struct PreferencesView: View {
+    private enum Section: String, CaseIterable, Identifiable {
+        case general
+        case appearance
+
+        var id: String { rawValue }
+
+        var localizedTitle: String {
+            switch self {
+            case .general: return L10n.prefsSectionGeneral
+            case .appearance: return L10n.prefsSectionAppearance
+            }
+        }
+    }
+
+    @ObservedObject var viewModel: LauncherViewModel
+    @ObservedObject private var lang = LanguageManager.shared
+    @State private var selectedSection: Section = .general
+
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    Color(red: 0.97, green: 0.98, blue: 0.99),
+                    Color(red: 0.93, green: 0.95, blue: 0.98),
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(spacing: 12) {
+                    Image(systemName: "pawprint.fill")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(Color(red: 0.22, green: 0.3, blue: 0.54))
+                        .frame(width: 36, height: 36)
+                        .background(.white.opacity(0.9), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(L10n.prefsTitle)
+                            .font(.system(size: 29, weight: .bold, design: .rounded))
+                        Text(L10n.prefsSubtitle)
+                            .font(.system(size: 13, weight: .medium, design: .rounded))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Picker("", selection: $selectedSection) {
+                    ForEach(Section.allCases) { section in
+                        Text(section.localizedTitle).tag(section)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                VStack(spacing: 10) {
+                    if selectedSection == .general {
+                        PreferenceToggleRow(
+                            title: L10n.prefsAutoLaunchTitle,
+                            subtitle: L10n.prefsAutoLaunchSubtitle,
+                            symbol: "power.circle",
+                            isOn: animatedBinding(
+                                get: { viewModel.settings.autoLaunch },
+                                set: { viewModel.settings.autoLaunch = $0 }
+                            )
+                        )
+                        .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .opacity))
+
+                        PreferenceHotkeyRecorderRow(
+                            title: L10n.prefsHotkeyTitle,
+                            subtitle: L10n.prefsHotkeySubtitle,
+                            symbol: "keyboard",
+                            keyCode: viewModel.settings.hotkeyKeyCode,
+                            modifiers: viewModel.settings.hotkeyModifiers
+                        ) { keyCode, modifiers in
+                            viewModel.settings.hotkeyKeyCode = keyCode
+                            viewModel.settings.hotkeyModifiers = modifiers
+                        }
+                        .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .opacity))
+
+                        PreferenceLanguageRow(
+                            language: Binding(
+                                get: { viewModel.settings.language },
+                                set: { viewModel.settings.language = $0 }
+                            )
+                        )
+                        .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .opacity))
+                    }
+
+                    if selectedSection == .appearance {
+                        PreferenceToggleRow(
+                            title: L10n.prefsDockTitle,
+                            subtitle: L10n.prefsDockSubtitle,
+                            symbol: "dock.rectangle",
+                            isOn: animatedBinding(
+                                get: { viewModel.settings.showDockIcon },
+                                set: { viewModel.settings.showDockIcon = $0 }
+                            )
+                        )
+                        .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+
+                        PreferenceToggleRow(
+                            title: L10n.prefsMenuBarTitle,
+                            subtitle: L10n.prefsMenuBarSubtitle,
+                            symbol: "menubar.rectangle",
+                            isOn: animatedBinding(
+                                get: { viewModel.settings.showStatusItem },
+                                set: { viewModel.settings.showStatusItem = $0 }
+                            )
+                        )
+                        .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+                    }
+                }
+                .frame(minHeight: 196, alignment: .top)
+                .padding(12)
+                .background(.white.opacity(0.85), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(.white.opacity(0.9), lineWidth: 1)
+                )
+                .animation(.snappy(duration: 0.28), value: selectedSection)
+
+                HStack {
+                    Spacer()
+                    Button(L10n.quitMeow) {
+                        NSApp.terminate(nil)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(Color(red: 0.86, green: 0.21, blue: 0.2))
+                    .controlSize(.large)
+                }
+            }
+            .padding(22)
+        }
+        .frame(width: 560)
+        .id(lang.refreshToken)
+    }
+
+    private func animatedBinding(get: @escaping () -> Bool, set: @escaping (Bool) -> Void) -> Binding<Bool> {
+        Binding(
+            get: get,
+            set: { newValue in
+                withAnimation(.snappy(duration: 0.22, extraBounce: 0.08)) {
+                    set(newValue)
+                }
+            }
+        )
+    }
+}
+
+private struct PreferenceHotkeyRecorderRow: View {
+    let title: String
+    let subtitle: String
+    let symbol: String
+    let keyCode: UInt32
+    let modifiers: UInt32
+    let onSave: (UInt32, UInt32) -> Void
+
+    @State private var isRecording = false
+    @State private var keyMonitor: Any?
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: symbol)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Color(red: 0.22, green: 0.3, blue: 0.54))
+                .frame(width: 30, height: 30)
+                .background(.white.opacity(0.95), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.primary)
+                Text(isRecording ? L10n.prefsHotkeyRecordingHint : subtitle)
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Button(isRecording ? L10n.prefsHotkeyRecording : hotkeyLabel(keyCode: keyCode, modifiers: modifiers)) {
+                startRecording()
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.small)
+            .tint(isRecording ? .orange : Color(red: 0.22, green: 0.3, blue: 0.54))
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(.white.opacity(0.6), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(.white.opacity(0.9), lineWidth: 1)
+        )
+        .onDisappear {
+            stopRecording()
+        }
+    }
+
+    private func startRecording() {
+        stopRecording()
+        isRecording = true
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            let keyCode = UInt32(event.keyCode)
+
+            if keyCode == 53 {
+                // Esc cancels recording.
+                isRecording = false
+                stopRecording()
+                return nil
+            }
+
+            if isModifierOnlyKey(keyCode) {
+                return nil
+            }
+
+            let modifiers = carbonModifiers(from: event.modifierFlags)
+            if modifiers == 0 {
+                return nil
+            }
+
+            onSave(keyCode, modifiers)
+            isRecording = false
+            stopRecording()
+            return nil
+        }
+    }
+
+    private func stopRecording() {
+        if let keyMonitor {
+            NSEvent.removeMonitor(keyMonitor)
+            self.keyMonitor = nil
+        }
+    }
+
+    private func carbonModifiers(from flags: NSEvent.ModifierFlags) -> UInt32 {
+        var result: UInt32 = 0
+        if flags.contains(.command) { result |= UInt32(cmdKey) }
+        if flags.contains(.option) { result |= UInt32(optionKey) }
+        if flags.contains(.shift) { result |= UInt32(shiftKey) }
+        if flags.contains(.control) { result |= UInt32(controlKey) }
+        return result
+    }
+
+    private func hotkeyLabel(keyCode: UInt32, modifiers: UInt32) -> String {
+        var parts: [String] = []
+        if modifiers & UInt32(controlKey) != 0 { parts.append("⌃") }
+        if modifiers & UInt32(optionKey) != 0 { parts.append("⌥") }
+        if modifiers & UInt32(shiftKey) != 0 { parts.append("⇧") }
+        if modifiers & UInt32(cmdKey) != 0 { parts.append("⌘") }
+        parts.append(keyName(for: keyCode))
+        return parts.joined(separator: " ")
+    }
+
+    private func keyName(for keyCode: UInt32) -> String {
+        switch keyCode {
+        case 49: return "Space"
+        case 36: return "Return"
+        case 48: return "Tab"
+        case 123: return "←"
+        case 124: return "→"
+        case 125: return "↓"
+        case 126: return "↑"
+        case 0: return "A"
+        case 1: return "S"
+        case 2: return "D"
+        case 3: return "F"
+        case 4: return "H"
+        case 5: return "G"
+        case 6: return "Z"
+        case 7: return "X"
+        case 8: return "C"
+        case 9: return "V"
+        case 11: return "B"
+        case 12: return "Q"
+        case 13: return "W"
+        case 14: return "E"
+        case 15: return "R"
+        case 16: return "Y"
+        case 17: return "T"
+        case 31: return "O"
+        case 32: return "U"
+        case 34: return "I"
+        case 35: return "P"
+        case 37: return "L"
+        case 38: return "J"
+        case 40: return "K"
+        case 45: return "N"
+        case 46: return "M"
+        default: return "Key \(keyCode)"
+        }
+    }
+
+    private func isModifierOnlyKey(_ keyCode: UInt32) -> Bool {
+        switch keyCode {
+        case 54, 55, 56, 57, 58, 59, 60, 61, 62, 63:
+            return true
+        default:
+            return false
+        }
+    }
+}
+
+private struct PreferenceToggleRow: View {
+    let title: String
+    let subtitle: String
+    let symbol: String
+    @Binding var isOn: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: symbol)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Color(red: 0.22, green: 0.3, blue: 0.54))
+                .frame(width: 30, height: 30)
+                .background(.white.opacity(0.95), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.primary)
+                Text(subtitle)
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Toggle("", isOn: $isOn)
+                .labelsHidden()
+        }
+        .toggleStyle(.switch)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(.white.opacity(0.6), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(.white.opacity(0.9), lineWidth: 1)
+        )
+    }
+}
+
+private struct PreferenceLanguageRow: View {
+    @Binding var language: AppLanguage
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "globe")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Color(red: 0.22, green: 0.3, blue: 0.54))
+                .frame(width: 30, height: 30)
+                .background(.white.opacity(0.95), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(L10n.prefsLanguageTitle)
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.primary)
+                Text(L10n.prefsLanguageSubtitle)
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Picker("", selection: $language) {
+                ForEach(AppLanguage.allCases) { lang in
+                    Text(lang.displayName).tag(lang)
+                }
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+            .frame(width: 150)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(.white.opacity(0.6), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(.white.opacity(0.9), lineWidth: 1)
+        )
+    }
+}

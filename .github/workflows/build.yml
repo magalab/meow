@@ -1,0 +1,43 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Swift
+        uses: swift-actions/setup-swift@v1
+        with:
+          swift-version: '5.9.2'
+      
+      - name: Build Debug
+        working-directory: .
+        run: swift build -v
+      
+      - name: Build Release
+        working-directory: .
+        run: swift build -c release -v
+      
+      - name: Check code formatting
+        working-directory: .
+        run: |
+          set -euo pipefail
+          echo "Checking trailing whitespace..."
+          if grep -RInE "[[:blank:]]+$" Sources/ Package.swift; then
+            echo "Error: trailing whitespace found"
+            exit 1
+          fi
+
+          echo "Checking tab indentation in Swift files..."
+          if grep -RInP "^\t+" Sources/ --include='*.swift'; then
+            echo "Error: tab indentation found in Swift source"
+            exit 1
+          fi

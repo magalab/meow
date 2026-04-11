@@ -1,0 +1,54 @@
+name: Lint
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'Sources/**'
+      - 'Package.swift'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'Sources/**'
+      - 'Package.swift'
+
+jobs:
+  lint:
+    runs-on: macos-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Swift
+        uses: swift-actions/setup-swift@v1
+        with:
+          swift-version: '5.9.2'
+      
+      - name: Check compilation warnings
+        working-directory: .
+        run: |
+          set -euo pipefail
+          echo "Checking for compilation warnings..."
+          BUILD_LOG="$(mktemp)"
+          swift build -v 2>&1 | tee "$BUILD_LOG"
+          if grep -i "warning:" "$BUILD_LOG"; then
+            echo "Error: compilation warnings found"
+            exit 1
+          fi
+      
+      - name: Validate Package.swift
+        working-directory: .
+        run: |
+          set -euo pipefail
+          echo "Verifying Package.swift structure..."
+          swift package describe > /dev/null
+      
+      - name: Check for TODO comments
+        working-directory: .
+        run: |
+          set -euo pipefail
+          echo "Checking for TODO/FIXME comments..."
+          if grep -RInE "TODO|FIXME" Sources/; then
+            echo "Error: TODO/FIXME comments found"
+            exit 1
+          fi

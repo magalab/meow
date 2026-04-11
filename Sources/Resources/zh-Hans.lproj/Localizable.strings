@@ -1,0 +1,48 @@
+/* 启动器 */
+"search.placeholder" = "搜索应用和命令…";
+"filter.all" = "全部";
+"category.application" = "应用程序";
+
+/* 语言 */
+"lang.system" = "跟随系统";
+"prefs.language.title" = "语言";
+"prefs.language.subtitle" = "选择应用显示语言";
+
+/* 偏好设置窗口 */
+"prefs.title" = "Meow 偏好设置";
+"prefs.subtitle" = "系统行为与启动器显示";
+"prefs.section.general" = "通用";
+"prefs.section.appearance" = "外观";
+
+"prefs.autolaunch.title" = "登录时启动";
+"prefs.autolaunch.subtitle" = "登录时自动启动 Meow";
+
+"prefs.hotkey.title" = "启动快捷键";
+"prefs.hotkey.subtitle" = "点击录制，然后按下快捷键";
+"prefs.hotkey.recording" = "录制中…";
+"prefs.hotkey.recording.hint" = "请按下快捷键（Esc 取消）";
+
+"prefs.dock.title" = "显示 Dock 图标";
+"prefs.dock.subtitle" = "在 Dock 中显示 Meow 以便快速访问";
+
+"prefs.menubar.title" = "显示菜单栏图标";
+"prefs.menubar.subtitle" = "在菜单栏保持爪子图标可见";
+
+"quit.meow" = "退出 Meow";
+
+/* 状态栏菜单 */
+"menu.open" = "打开 Meow";
+"menu.preferences" = "偏好设置…";
+"menu.autolaunch" = "登录时启动";
+"menu.dock" = "显示 Dock 图标";
+"menu.menubar" = "显示菜单栏图标";
+"menu.quit" = "退出 Meow";
+
+/* 内置命令 */
+"cmd.preferences.title" = "Meow 偏好设置";
+"cmd.preferences.subtitle" = "设置";
+"cmd.quit.title" = "退出 Meow";
+"cmd.quit.subtitle" = "退出应用";
+
+/* 窗口 */
+"window.prefs.title" = "Meow 偏好设置";
