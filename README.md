@@ -2,9 +2,6 @@
 
 A native SwiftUI + AppKit launcher for macOS, with global hotkeys, menu bar integration, runtime language switching, and quick app/command search.
 
-[![Build and Test](https://github.com/lurenyang/meow/actions/workflows/build.yml/badge.svg)](https://github.com/lurenyang/meow/actions/workflows/build.yml)
-[![Release DMG](https://github.com/lurenyang/meow/actions/workflows/release.yml/badge.svg)](https://github.com/lurenyang/meow/actions/workflows/release.yml)
-
 ## Features
 
 - Fast app and command search with ranking
