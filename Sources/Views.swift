@@ -52,6 +52,7 @@ struct LauncherView: View {
                 endPoint: .bottomTrailing
             )
             .ignoresSafeArea()
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
 
             VStack(spacing: 12) {
                 HStack(spacing: 10) {
