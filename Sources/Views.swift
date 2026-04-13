@@ -25,6 +25,10 @@ struct LauncherView: View {
             if case .app = $0 { return true }
             return false
         }
+        let clipboard = viewModel.results.filter {
+            if case .clipboard = $0 { return true }
+            return false
+        }
 
         var sections: [(title: String, items: [SearchItem])] = []
         if !commands.isEmpty {
@@ -32,6 +36,9 @@ struct LauncherView: View {
         }
         if !apps.isEmpty {
             sections.append((L10n.launcherSectionApplications, apps))
+        }
+        if !clipboard.isEmpty {
+            sections.append((L10n.launcherSectionClipboard, clipboard))
         }
         return sections
     }
@@ -139,6 +146,7 @@ struct LauncherView: View {
                                         }
                                         .buttonStyle(.plain)
                                         .id(item.id)
+                                        .modifier(ClipboardContextMenu(item: item, onDelete: { viewModel.deleteClipboardItem(item) }))
                                     }
                                 }
                             }
@@ -280,6 +288,14 @@ private struct SearchItemIcon: View {
                 Image(systemName: item.symbolName)
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(palette.launcherAccent)
+            case .clipboard(let entry):
+                if case .image(let imageContent) = entry.content {
+                    LazyClipboardImageView(path: imageContent.thumbnailPath)
+                } else {
+                    Image(systemName: item.symbolName)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(palette.launcherAccent)
+                }
             }
         }
         .frame(width: 32, height: 32)
@@ -311,6 +327,51 @@ private struct LazyAppIconView: View {
         }
         .onDisappear {
             nsImage = nil
+        }
+    }
+}
+
+private struct LazyClipboardImageView: View {
+    let path: String
+    @State private var nsImage: NSImage?
+
+    var body: some View {
+        Group {
+            if let nsImage {
+                Image(nsImage: nsImage)
+                    .resizable()
+                    .scaledToFit()
+                    .padding(2)
+            } else {
+                Image(systemName: "photo")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(2)
+            }
+        }
+        .onAppear {
+            guard nsImage == nil else { return }
+            nsImage = NSImage(contentsOfFile: path)
+        }
+        .onDisappear {
+            nsImage = nil
+        }
+    }
+}
+
+private struct ClipboardContextMenu: ViewModifier {
+    let item: SearchItem
+    let onDelete: () -> Void
+
+    func body(content: Content) -> some View {
+        if case .clipboard = item {
+            content.contextMenu {
+                Button(L10n.clipboardDelete) {
+                    onDelete()
+                }
+            }
+        } else {
+            content
         }
     }
 }

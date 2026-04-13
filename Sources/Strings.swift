@@ -106,8 +106,16 @@ enum L10n {
     static var searchPlaceholder: String { loc("search.placeholder") }
     static var filterAll: String { loc("filter.all") }
     static var categoryApplication: String { loc("category.application") }
+    static var categoryClipboard: String { loc("category.clipboard") }
     static var launcherSectionCommands: String { loc("launcher.section.commands") }
     static var launcherSectionApplications: String { loc("launcher.section.applications") }
+    static var launcherSectionClipboard: String { loc("launcher.section.clipboard") }
+    static var clipboardDelete: String { loc("clipboard.delete") }
+    static var clipboardTypeText: String { loc("clipboard.type.text") }
+    static var clipboardTypeImage: String { loc("clipboard.type.image") }
+    static var clipboardTypeFile: String { loc("clipboard.type.file") }
+    static var clipboardTypeURL: String { loc("clipboard.type.url") }
+    static var clipboardTypeAudio: String { loc("clipboard.type.audio") }
 
     // MARK: - Preferences
     static var prefsTitle: String { loc("prefs.title") }

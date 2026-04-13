@@ -2,8 +2,16 @@
 "search.placeholder" = "搜索应用和命令…";
 "filter.all" = "全部";
 "category.application" = "应用程序";
+"category.clipboard" = "剪贴板";
 "launcher.section.commands" = "命令";
 "launcher.section.applications" = "应用";
+"launcher.section.clipboard" = "剪贴板历史";
+"clipboard.delete" = "删除";
+"clipboard.type.text" = "文本";
+"clipboard.type.image" = "图片";
+"clipboard.type.file" = "文件";
+"clipboard.type.url" = "链接";
+"clipboard.type.audio" = "音频";
 
 /* 语言 */
 "lang.system" = "跟随系统";

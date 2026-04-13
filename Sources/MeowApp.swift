@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import ApplicationServices
 
 final class LauncherPanel: NSPanel {
     override var canBecomeKey: Bool { true }
@@ -33,6 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let launchHistoryStore = LaunchHistoryStore()
     private let autoLaunchService = AutoLaunchService()
     private let hotkeyService = HotkeyService()
+    private let clipboardStore = ClipboardStore()
 
     private var launcherWindow: LauncherPanel?
     private var launcherHostingController: NSHostingController<LauncherView>?
@@ -47,13 +49,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         viewModel = LauncherViewModel(
             settingsStore: settingsStore,
             discoveryService: discoveryService,
-            launchHistoryStore: launchHistoryStore
+            launchHistoryStore: launchHistoryStore,
+            clipboardStore: clipboardStore
         )
         viewModel.onOpenPreferences = { [weak self] in
             self?.showPreferences()
         }
         viewModel.onSettingsChanged = { [weak self] settings in
             self?.apply(settings: settings)
+        }
+        viewModel.onPasteClipboard = { [weak self] entry in
+            guard let self else { return }
+            // Hide launcher first so target app becomes frontmost
+            self.hideLauncher()
+            // Small delay to let hide complete
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                self.clipboardStore.writeToPasteboard(entry)
+                self.simulatePaste()
+            }
         }
         viewModel.load()
 
@@ -63,10 +76,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setupStatusItem()
         createLauncherWindow()
         setupOutsideClickDismissMonitor()
+
+        clipboardStore.startMonitoring { [weak self] in
+            self?.viewModel.refresh()
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         hotkeyService.unregister()
+        clipboardStore.stopMonitoring()
         if let globalMouseMonitor {
             NSEvent.removeMonitor(globalMouseMonitor)
             self.globalMouseMonitor = nil
@@ -207,6 +225,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             showLauncher()
         }
+    }
+
+    /// Simulates Cmd+V to paste the clipboard content into the frontmost app.
+    private func simulatePaste() {
+        // Check accessibility permissions
+        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
+        let trusted = AXIsProcessTrustedWithOptions(options)
+
+        guard trusted else {
+            // If not trusted, the system will show a prompt for permission
+            // Try anyway - if the user approved in the prompt, it might work
+            NSLog("[Meow] Accessibility permission not granted, paste may not work")
+            return
+        }
+
+        let source = CGEventSource(stateID: .hidSystemState)
+
+        let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true) // V key
+        keyDown?.flags = .maskCommand
+
+        let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false) // V key
+        keyUp?.flags = .maskCommand
+
+        keyDown?.post(tap: .cghidEventTap)
+        keyUp?.post(tap: .cghidEventTap)
     }
 
     private func setupOutsideClickDismissMonitor() {

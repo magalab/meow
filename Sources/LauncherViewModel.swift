@@ -19,10 +19,12 @@ final class LauncherViewModel: ObservableObject {
 
     var onOpenPreferences: (() -> Void)?
     var onSettingsChanged: ((AppSettings) -> Void)?
+    var onPasteClipboard: ((ClipboardEntry) -> Void)?
 
     private let settingsStore: SettingsStore
     private let discoveryService: AppDiscoveryService
     private let launchHistoryStore: LaunchHistoryStore
+    private let clipboardStore: ClipboardStore
     private let currentBundleID = Bundle.main.bundleIdentifier?.lowercased()
     private let discoveryRefreshInterval: TimeInterval = 8
 
@@ -50,11 +52,13 @@ final class LauncherViewModel: ObservableObject {
     init(
         settingsStore: SettingsStore,
         discoveryService: AppDiscoveryService,
-        launchHistoryStore: LaunchHistoryStore
+        launchHistoryStore: LaunchHistoryStore,
+        clipboardStore: ClipboardStore
     ) {
         self.settingsStore = settingsStore
         self.discoveryService = discoveryService
         self.launchHistoryStore = launchHistoryStore
+        self.clipboardStore = clipboardStore
         self.settings = settingsStore.load()
     }
 
@@ -87,6 +91,11 @@ final class LauncherViewModel: ObservableObject {
         results = []
     }
 
+    func deleteClipboardItem(_ item: SearchItem) {
+        guard case .clipboard(let entry) = item else { return }
+        clipboardStore.delete(entry)
+    }
+
     func activate(_ item: SearchItem) {
         switch item {
         case .app(let app):
@@ -96,6 +105,9 @@ final class LauncherViewModel: ObservableObject {
             results = []
         case .command(let command):
             run(command)
+        case .clipboard(let entry):
+            onPasteClipboard?(entry)
+            results = []
         }
     }
 
@@ -132,7 +144,12 @@ final class LauncherViewModel: ObservableObject {
             return (.app(app), base + history)
         }
 
-        results = (matchedCommands + matchedApps)
+        let matchedClipboard = clipboardStore.getEntries().compactMap { entry -> (SearchItem, Int)? in
+            guard entry.preview.lowercased().contains(q) else { return nil }
+            return (.clipboard(entry), 5)
+        }
+
+        results = (matchedCommands + matchedApps + matchedClipboard)
             .sorted { lhs, rhs in
                 if lhs.1 != rhs.1 { return lhs.1 > rhs.1 }
                 return lhs.0.primaryText.localizedCaseInsensitiveCompare(rhs.0.primaryText) == .orderedAscending

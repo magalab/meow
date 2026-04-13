@@ -2,8 +2,16 @@
 "search.placeholder" = "Search for apps and commands...";
 "filter.all" = "All";
 "category.application" = "Application";
+"category.clipboard" = "Clipboard";
 "launcher.section.commands" = "Commands";
 "launcher.section.applications" = "Applications";
+"launcher.section.clipboard" = "Clipboard History";
+"clipboard.delete" = "Delete";
+"clipboard.type.text" = "Text";
+"clipboard.type.image" = "Image";
+"clipboard.type.file" = "File";
+"clipboard.type.url" = "URL";
+"clipboard.type.audio" = "Audio";
 
 /* Language */
 "lang.system" = "Follow System";
