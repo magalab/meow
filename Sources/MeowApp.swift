@@ -160,12 +160,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         dockService.apply(showDockIcon: settings.showDockIcon)
         statusItemService.setVisible(settings.showStatusItem)
         statusItemService.updateToggleStates(settings)
-        autoLaunchService.apply(enabled: settings.autoLaunch)
+        let actualAutoLaunchEnabled = autoLaunchService.apply(enabled: settings.autoLaunch)
         hotkeyService.registerToggleHotkey(
             keyCode: settings.hotkeyKeyCode,
             modifiers: settings.hotkeyModifiers
         ) { [weak self] in
             self?.toggleLauncher()
+        }
+
+        if actualAutoLaunchEnabled != settings.autoLaunch {
+            DispatchQueue.main.async { [weak self] in
+                guard let self, self.viewModel.settings.autoLaunch != actualAutoLaunchEnabled else { return }
+                self.viewModel.settings.autoLaunch = actualAutoLaunchEnabled
+            }
         }
 
         // Reopen preferences window after recreating it.

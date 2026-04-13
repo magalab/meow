@@ -99,6 +99,11 @@ cat > "$APP_DIR/Contents/Info.plist" <<EOF
 </plist>
 EOF
 
+if [ -n "${MACOS_SIGN_IDENTITY:-}" ]; then
+    echo "Signing app bundle with identity: ${MACOS_SIGN_IDENTITY}"
+    codesign --force --deep --sign "${MACOS_SIGN_IDENTITY}" "$APP_DIR"
+fi
+
 rm -f "$DMG_PATH"
 
 # Build a standard installer layout: app bundle + Applications symlink.
@@ -108,6 +113,11 @@ cp -R "$APP_DIR" "$DMG_STAGING_DIR/"
 ln -s /Applications "$DMG_STAGING_DIR/Applications"
 
 hdiutil create -volname "$APP_NAME" -srcfolder "$DMG_STAGING_DIR" -ov -format UDZO "$DMG_PATH"
+
+if [ -n "${MACOS_SIGN_IDENTITY:-}" ]; then
+    echo "Signing DMG with identity: ${MACOS_SIGN_IDENTITY}"
+    codesign --force --sign "${MACOS_SIGN_IDENTITY}" "$DMG_PATH"
+fi
 
 rm -rf "$DMG_STAGING_DIR"
 
