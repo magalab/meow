@@ -1,37 +1,41 @@
-name: Build and Test
+name: CI
 
 on:
-  push:
-    branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
+    paths:
+      - 'Sources/**'
+      - 'scripts/**'
+      - 'Package.swift'
+      - '.github/workflows/build.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build:
+  build-and-lint:
     runs-on: macos-latest
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Swift
         uses: swift-actions/setup-swift@v1
         with:
           swift-version: '5.9.2'
-      
-      - name: Build Debug
-        working-directory: .
-        run: swift build -v
-      
-      - name: Build Release
-        working-directory: .
-        run: swift build -c release -v
-      
-      - name: Check code formatting
-        working-directory: .
+
+      - name: Quick validation
+        run: |
+          swift package describe > /dev/null
+          echo "✓ Package.swift valid"
+
+      - name: Check formatting hygiene
         run: |
           set -euo pipefail
           echo "Checking trailing whitespace..."
-          if grep -RInE "[[:blank:]]+$" Sources/ Package.swift; then
+          if grep -RInE "[[:blank:]]+$" Sources/ Package.swift scripts/ .github/workflows/build.yml; then
             echo "Error: trailing whitespace found"
             exit 1
           fi
@@ -41,3 +45,25 @@ jobs:
             echo "Error: tab indentation found in Swift source"
             exit 1
           fi
+
+      - name: Check for TODO comments
+        run: |
+          set -euo pipefail
+          echo "Checking for TODO/FIXME comments..."
+          if grep -RInE "TODO|FIXME" Sources/; then
+            echo "Error: TODO/FIXME comments found"
+            exit 1
+          fi
+
+      - name: Build Debug and capture warnings
+        run: |
+          set -euo pipefail
+          BUILD_LOG="$(mktemp)"
+          swift build -v 2>&1 | tee "$BUILD_LOG"
+          if grep -i "warning:" "$BUILD_LOG"; then
+            echo "Error: compilation warnings found"
+            exit 1
+          fi
+
+      - name: Build Release
+        run: swift build -c release -v
