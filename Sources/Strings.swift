@@ -125,10 +125,16 @@ enum L10n {
     static var prefsDockSubtitle: String { loc("prefs.dock.subtitle") }
     static var prefsMenuBarTitle: String { loc("prefs.menubar.title") }
     static var prefsMenuBarSubtitle: String { loc("prefs.menubar.subtitle") }
+    static var prefsThemeTitle: String { loc("prefs.theme.title") }
+    static var prefsThemeSubtitle: String { loc("prefs.theme.subtitle") }
     static var prefsLanguageTitle: String { loc("prefs.language.title") }
     static var prefsLanguageSubtitle: String { loc("prefs.language.subtitle") }
     static var quitMeow: String { loc("quit.meow") }
     static var langSystem: String { loc("lang.system") }
+    static var themeGingerCat: String { loc("theme.ginger-cat") }
+    static var themeMistBlue: String { loc("theme.mist-blue") }
+    static var themeGraphiteAmber: String { loc("theme.graphite-amber") }
+    static var themeMossInk: String { loc("theme.moss-ink") }
 
     // MARK: - Status bar menu
     static var menuOpen: String { loc("menu.open") }

@@ -30,7 +30,15 @@
 "prefs.menubar.title" = "Show Menu Bar Icon";
 "prefs.menubar.subtitle" = "Keep the paw icon visible in the menu bar";
 
+"prefs.theme.title" = "Theme";
+"prefs.theme.subtitle" = "Choose the launcher and preferences color palette";
+
 "quit.meow" = "Quit Meow";
+
+"theme.ginger-cat" = "Ginger Cat";
+"theme.mist-blue" = "Mist Blue";
+"theme.graphite-amber" = "Graphite Amber";
+"theme.moss-ink" = "Moss Ink";
 
 /* Status bar menu */
 "menu.open" = "Open Meow";

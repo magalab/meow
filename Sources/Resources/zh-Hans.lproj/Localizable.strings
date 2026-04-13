@@ -30,7 +30,15 @@
 "prefs.menubar.title" = "显示菜单栏图标";
 "prefs.menubar.subtitle" = "在菜单栏保持爪子图标可见";
 
+"prefs.theme.title" = "主题";
+"prefs.theme.subtitle" = "选择启动器与偏好设置的配色方案";
+
 "quit.meow" = "退出 Meow";
+
+"theme.ginger-cat" = "调皮猫猫";
+"theme.mist-blue" = "雾蓝";
+"theme.graphite-amber" = "石墨琥珀";
+"theme.moss-ink" = "苔墨";
 
 /* 状态栏菜单 */
 "menu.open" = "打开 Meow";

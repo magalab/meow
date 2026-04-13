@@ -6,60 +6,6 @@ extension Notification.Name {
     static let meowLauncherDidHide = Notification.Name("meow.launcher.didHide")
 }
 
-private enum MeowPalette {
-    static let accent = Color(red: 0.22, green: 0.3, blue: 0.54)
-    static let danger = Color(red: 0.86, green: 0.21, blue: 0.2)
-
-    static func launcherGradient(for scheme: ColorScheme) -> [Color] {
-        if scheme == .dark {
-            return [
-                Color(red: 0.12, green: 0.14, blue: 0.19),
-                Color(red: 0.08, green: 0.1, blue: 0.14),
-            ]
-        }
-
-        return [
-            Color(red: 0.96, green: 0.97, blue: 0.99),
-            Color(red: 0.92, green: 0.94, blue: 0.97),
-        ]
-    }
-
-    static func preferencesGradient(for scheme: ColorScheme) -> [Color] {
-        if scheme == .dark {
-            return [
-                Color(red: 0.13, green: 0.15, blue: 0.2),
-                Color(red: 0.09, green: 0.11, blue: 0.16),
-            ]
-        }
-
-        return [
-            Color(red: 0.97, green: 0.98, blue: 0.99),
-            Color(red: 0.93, green: 0.95, blue: 0.98),
-        ]
-    }
-
-    static func cardBackground(for scheme: ColorScheme, emphasized: Bool = false) -> Color {
-        if emphasized { return accent }
-        return scheme == .dark ? Color.white.opacity(0.1) : Color.white.opacity(0.72)
-    }
-
-    static func stroke(for scheme: ColorScheme, emphasized: Bool = false) -> Color {
-        if emphasized { return Color.clear }
-        if scheme == .dark {
-            return Color.white.opacity(0.14)
-        }
-        return Color.white.opacity(0.8)
-    }
-
-    static func iconChipBackground(for scheme: ColorScheme) -> Color {
-        scheme == .dark ? Color.white.opacity(0.14) : Color.white.opacity(0.9)
-    }
-
-    static func capsuleBackground(for scheme: ColorScheme) -> Color {
-        scheme == .dark ? Color.white.opacity(0.12) : Color.white.opacity(0.75)
-    }
-}
-
 struct LauncherView: View {
     @ObservedObject var viewModel: LauncherViewModel
     @ObservedObject private var lang = LanguageManager.shared
@@ -94,10 +40,14 @@ struct LauncherView: View {
         groupedResults.flatMap(\ .items)
     }
 
+    private var palette: ThemePalette {
+        MeowTheme.palette(theme: viewModel.settings.theme, scheme: colorScheme)
+    }
+
     var body: some View {
         ZStack {
             LinearGradient(
-                colors: MeowPalette.launcherGradient(for: colorScheme),
+                colors: palette.launcherGradient,
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
@@ -107,7 +57,7 @@ struct LauncherView: View {
                 HStack(spacing: 10) {
                     Image(systemName: "pawprint.fill")
                         .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(MeowPalette.accent)
+                        .foregroundStyle(palette.launcherAccent)
 
                     TextField(L10n.searchPlaceholder, text: $viewModel.query)
                         .textFieldStyle(.plain)
@@ -124,14 +74,14 @@ struct LauncherView: View {
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 5)
-                        .background(MeowPalette.capsuleBackground(for: colorScheme), in: Capsule())
+                        .background(palette.filterCapsuleBackground, in: Capsule())
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
-                .background(MeowPalette.cardBackground(for: colorScheme), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .background(palette.surfaceBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(MeowPalette.stroke(for: colorScheme), lineWidth: 1)
+                        .stroke(palette.surfaceStroke, lineWidth: 1)
                 )
 
                 ScrollViewReader { proxy in
@@ -152,18 +102,18 @@ struct LauncherView: View {
                                             viewModel.activate(item)
                                         } label: {
                                             HStack(spacing: 12) {
-                                                SearchItemIcon(item: item)
+                                                SearchItemIcon(item: item, theme: viewModel.settings.theme)
 
                                                 VStack(alignment: .leading, spacing: 2) {
                                                     let isSelected = selectedID == item.id
                                                     Text(item.primaryText)
                                                         .font(.system(size: 17, weight: .semibold, design: .rounded))
-                                                        .foregroundStyle(isSelected ? Color.white : Color.primary)
+                                                        .foregroundStyle(Color.primary)
                                                         .lineLimit(1)
 
                                                     Text(item.secondaryText)
                                                         .font(.system(size: 13, weight: .medium, design: .rounded))
-                                                        .foregroundStyle(isSelected ? Color.white.opacity(0.82) : Color.secondary)
+                                                        .foregroundStyle(isSelected ? Color.primary.opacity(0.82) : Color.secondary)
                                                 }
 
                                                 Spacer()
@@ -171,12 +121,19 @@ struct LauncherView: View {
                                             .padding(.horizontal, 12)
                                             .padding(.vertical, 10)
                                             .background(
-                                                MeowPalette.cardBackground(for: colorScheme, emphasized: selectedID == item.id),
+                                                (selectedID == item.id
+                                                    ? palette.selectionBackground
+                                                    : palette.surfaceBackground),
                                                 in: RoundedRectangle(cornerRadius: 14, style: .continuous)
                                             )
                                             .overlay(
                                                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                                    .stroke(MeowPalette.stroke(for: colorScheme, emphasized: selectedID == item.id), lineWidth: 1)
+                                                    .stroke(
+                                                        selectedID == item.id
+                                                            ? palette.selectionStroke
+                                                            : palette.surfaceStroke,
+                                                        lineWidth: 1
+                                                    )
                                             )
                                         }
                                         .buttonStyle(.plain)
@@ -286,7 +243,12 @@ struct LauncherView: View {
 
 private struct SearchItemIcon: View {
     let item: SearchItem
+    let theme: AppTheme
     @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: ThemePalette {
+        MeowTheme.palette(theme: theme, scheme: colorScheme)
+    }
 
     var body: some View {
         Group {
@@ -302,11 +264,11 @@ private struct SearchItemIcon: View {
             case .command:
                 Image(systemName: item.symbolName)
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(MeowPalette.accent)
+                    .foregroundStyle(palette.launcherAccent)
             }
         }
         .frame(width: 32, height: 32)
-        .background(MeowPalette.iconChipBackground(for: colorScheme), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .background(palette.iconChipBackground, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
 
@@ -330,10 +292,14 @@ struct PreferencesView: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var selectedSection: Section = .general
 
+    private var palette: ThemePalette {
+        MeowTheme.palette(theme: viewModel.settings.theme, scheme: colorScheme)
+    }
+
     var body: some View {
         ZStack {
             LinearGradient(
-                colors: MeowPalette.preferencesGradient(for: colorScheme),
+                colors: palette.preferencesGradient,
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
@@ -343,9 +309,9 @@ struct PreferencesView: View {
                 HStack(spacing: 12) {
                     Image(systemName: "pawprint.fill")
                         .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(MeowPalette.accent)
+                        .foregroundStyle(palette.preferencesAccent)
                         .frame(width: 36, height: 36)
-                        .background(MeowPalette.iconChipBackground(for: colorScheme), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        .background(palette.iconChipBackground, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text(L10n.prefsTitle)
@@ -369,6 +335,7 @@ struct PreferencesView: View {
                             title: L10n.prefsAutoLaunchTitle,
                             subtitle: L10n.prefsAutoLaunchSubtitle,
                             symbol: "power.circle",
+                            theme: viewModel.settings.theme,
                             isOn: animatedBinding(
                                 get: { viewModel.settings.autoLaunch },
                                 set: { viewModel.settings.autoLaunch = $0 }
@@ -380,6 +347,7 @@ struct PreferencesView: View {
                             title: L10n.prefsHotkeyTitle,
                             subtitle: L10n.prefsHotkeySubtitle,
                             symbol: "keyboard",
+                            theme: viewModel.settings.theme,
                             keyCode: viewModel.settings.hotkeyKeyCode,
                             modifiers: viewModel.settings.hotkeyModifiers
                         ) { keyCode, modifiers in
@@ -389,6 +357,7 @@ struct PreferencesView: View {
                         .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .opacity))
 
                         PreferenceLanguageRow(
+                            theme: viewModel.settings.theme,
                             language: Binding(
                                 get: { viewModel.settings.language },
                                 set: { viewModel.settings.language = $0 }
@@ -398,10 +367,19 @@ struct PreferencesView: View {
                     }
 
                     if selectedSection == .appearance {
+                        PreferenceThemeRow(
+                            theme: Binding(
+                                get: { viewModel.settings.theme },
+                                set: { viewModel.settings.theme = $0 }
+                            )
+                        )
+                        .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+
                         PreferenceToggleRow(
                             title: L10n.prefsDockTitle,
                             subtitle: L10n.prefsDockSubtitle,
                             symbol: "dock.rectangle",
+                            theme: viewModel.settings.theme,
                             isOn: animatedBinding(
                                 get: { viewModel.settings.showDockIcon },
                                 set: { viewModel.settings.showDockIcon = $0 }
@@ -413,6 +391,7 @@ struct PreferencesView: View {
                             title: L10n.prefsMenuBarTitle,
                             subtitle: L10n.prefsMenuBarSubtitle,
                             symbol: "menubar.rectangle",
+                            theme: viewModel.settings.theme,
                             isOn: animatedBinding(
                                 get: { viewModel.settings.showStatusItem },
                                 set: { viewModel.settings.showStatusItem = $0 }
@@ -423,10 +402,10 @@ struct PreferencesView: View {
                 }
                 .frame(minHeight: 196, alignment: .top)
                 .padding(12)
-                .background(MeowPalette.cardBackground(for: colorScheme, emphasized: true), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .background(palette.preferencesPanelBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(MeowPalette.stroke(for: colorScheme, emphasized: true), lineWidth: 1)
+                    .stroke(palette.preferencesPanelStroke, lineWidth: 1)
                 )
                 .animation(.snappy(duration: 0.28), value: selectedSection)
 
@@ -436,7 +415,7 @@ struct PreferencesView: View {
                         NSApp.terminate(nil)
                     }
                     .buttonStyle(.borderedProminent)
-                    .tint(MeowPalette.danger)
+                    .tint(palette.danger)
                     .controlSize(.large)
                 }
             }
@@ -462,6 +441,7 @@ private struct PreferenceHotkeyRecorderRow: View {
     let title: String
     let subtitle: String
     let symbol: String
+    let theme: AppTheme
     let keyCode: UInt32
     let modifiers: UInt32
     let onSave: (UInt32, UInt32) -> Void
@@ -470,13 +450,17 @@ private struct PreferenceHotkeyRecorderRow: View {
     @State private var keyMonitor: Any?
     @Environment(\.colorScheme) private var colorScheme
 
+    private var palette: ThemePalette {
+        MeowTheme.palette(theme: theme, scheme: colorScheme)
+    }
+
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: symbol)
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(MeowPalette.accent)
+                .foregroundStyle(palette.preferencesAccent)
                 .frame(width: 30, height: 30)
-                .background(MeowPalette.iconChipBackground(for: colorScheme), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                .background(palette.iconChipBackground, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
@@ -494,14 +478,14 @@ private struct PreferenceHotkeyRecorderRow: View {
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.small)
-            .tint(isRecording ? .orange : MeowPalette.accent)
+            .tint(isRecording ? .orange : palette.preferencesAccent)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
-        .background(MeowPalette.cardBackground(for: colorScheme), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(palette.surfaceBackground, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(MeowPalette.stroke(for: colorScheme), lineWidth: 1)
+                .stroke(palette.surfaceStroke, lineWidth: 1)
         )
         .onDisappear {
             stopRecording()
@@ -616,16 +600,21 @@ private struct PreferenceToggleRow: View {
     let title: String
     let subtitle: String
     let symbol: String
+    let theme: AppTheme
     @Binding var isOn: Bool
     @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: ThemePalette {
+        MeowTheme.palette(theme: theme, scheme: colorScheme)
+    }
 
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: symbol)
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(MeowPalette.accent)
+                .foregroundStyle(palette.preferencesAccent)
                 .frame(width: 30, height: 30)
-                .background(MeowPalette.iconChipBackground(for: colorScheme), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                .background(palette.iconChipBackground, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
@@ -644,25 +633,84 @@ private struct PreferenceToggleRow: View {
         .toggleStyle(.switch)
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
-        .background(MeowPalette.cardBackground(for: colorScheme), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(palette.surfaceBackground, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(MeowPalette.stroke(for: colorScheme), lineWidth: 1)
+                .stroke(palette.surfaceStroke, lineWidth: 1)
+        )
+    }
+}
+
+private struct PreferenceThemeRow: View {
+    @Binding var theme: AppTheme
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: ThemePalette {
+        MeowTheme.palette(theme: theme, scheme: colorScheme)
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "paintpalette")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(palette.preferencesAccent)
+                .frame(width: 30, height: 30)
+                .background(palette.iconChipBackground, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(L10n.prefsThemeTitle)
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.primary)
+                Text(L10n.prefsThemeSubtitle)
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(palette.launcherAccent)
+                Circle()
+                    .fill(palette.preferencesAccent)
+            }
+            .frame(width: 28, height: 12)
+
+            Picker("", selection: $theme) {
+                ForEach(AppTheme.allCases) { option in
+                    Text(option.displayName).tag(option)
+                }
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+            .frame(width: 150)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(palette.surfaceBackground, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(palette.surfaceStroke, lineWidth: 1)
         )
     }
 }
 
 private struct PreferenceLanguageRow: View {
+    let theme: AppTheme
     @Binding var language: AppLanguage
     @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: ThemePalette {
+        MeowTheme.palette(theme: theme, scheme: colorScheme)
+    }
 
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: "globe")
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(MeowPalette.accent)
+                .foregroundStyle(palette.preferencesAccent)
                 .frame(width: 30, height: 30)
-                .background(MeowPalette.iconChipBackground(for: colorScheme), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                .background(palette.iconChipBackground, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(L10n.prefsLanguageTitle)
@@ -686,10 +734,10 @@ private struct PreferenceLanguageRow: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
-        .background(MeowPalette.cardBackground(for: colorScheme), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(palette.surfaceBackground, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(MeowPalette.stroke(for: colorScheme), lineWidth: 1)
+                .stroke(palette.surfaceStroke, lineWidth: 1)
         )
     }
 }
