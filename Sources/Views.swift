@@ -65,6 +65,8 @@ struct LauncherView: View {
     @Environment(\.colorScheme) private var colorScheme
     var onDismiss: () -> Void
     @State private var selectedID: SearchItem.ID?
+    @FocusState private var isSearchFieldFocused: Bool
+    @State private var keyMonitor: Any?
 
     var body: some View {
         ZStack {
@@ -84,6 +86,7 @@ struct LauncherView: View {
                     TextField(L10n.searchPlaceholder, text: $viewModel.query)
                         .textFieldStyle(.plain)
                         .font(.system(.title3, design: .rounded, weight: .semibold))
+                        .focused($isSearchFieldFocused)
                         .onSubmit {
                             activateCurrentSelection()
                         }
@@ -105,46 +108,55 @@ struct LauncherView: View {
                         .stroke(MeowPalette.stroke(for: colorScheme), lineWidth: 1)
                 )
 
-                ScrollView {
-                    LazyVStack(spacing: 8) {
-                        ForEach(viewModel.results) { item in
-                            Button {
-                                selectedID = item.id
-                                viewModel.activate(item)
-                            } label: {
-                                HStack(spacing: 12) {
-                                    SearchItemIcon(item: item)
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(spacing: 8) {
+                            ForEach(viewModel.results) { item in
+                                Button {
+                                    selectedID = item.id
+                                    viewModel.activate(item)
+                                } label: {
+                                    HStack(spacing: 12) {
+                                        SearchItemIcon(item: item)
 
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(item.primaryText)
-                                            .font(.system(size: 17, weight: .semibold, design: .rounded))
-                                            .foregroundStyle(.primary)
-                                            .lineLimit(1)
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(item.primaryText)
+                                                .font(.system(size: 17, weight: .semibold, design: .rounded))
+                                                .foregroundStyle(.primary)
+                                                .lineLimit(1)
 
-                                        Text(item.secondaryText)
-                                            .font(.system(size: 13, weight: .medium, design: .rounded))
-                                            .foregroundStyle(.secondary)
+                                            Text(item.secondaryText)
+                                                .font(.system(size: 13, weight: .medium, design: .rounded))
+                                                .foregroundStyle(.secondary)
+                                        }
+
+                                        Spacer()
                                     }
-
-                                    Spacer()
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 10)
+                                    .background(
+                                        MeowPalette.cardBackground(for: colorScheme, emphasized: selectedID == item.id),
+                                        in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    )
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                            .stroke(MeowPalette.stroke(for: colorScheme, emphasized: selectedID == item.id), lineWidth: 1)
+                                    )
                                 }
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 10)
-                                .background(
-                                    MeowPalette.cardBackground(for: colorScheme, emphasized: selectedID == item.id),
-                                    in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                )
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                        .stroke(MeowPalette.stroke(for: colorScheme, emphasized: selectedID == item.id), lineWidth: 1)
-                                )
+                                .buttonStyle(.plain)
+                                .id(item.id)
                             }
-                            .buttonStyle(.plain)
+                        }
+                        .padding(2)
+                    }
+                    .scrollIndicators(.hidden)
+                    .onChange(of: selectedID) { _, id in
+                        guard let id else { return }
+                        withAnimation(.snappy(duration: 0.12)) {
+                            proxy.scrollTo(id, anchor: .center)
                         }
                     }
-                    .padding(2)
                 }
-                .scrollIndicators(.hidden)
             }
             .padding(14)
         }
@@ -152,14 +164,44 @@ struct LauncherView: View {
         .id(lang.refreshToken)
         .onAppear {
             selectedID = viewModel.results.first?.id
+            DispatchQueue.main.async {
+                isSearchFieldFocused = true
+            }
+
+            keyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { event in
+                guard NSApp.keyWindow is LauncherPanel else { return event }
+
+                switch event.keyCode {
+                case 125: // Down arrow
+                    moveSelection(step: 1)
+                    return nil
+                case 126: // Up arrow
+                    moveSelection(step: -1)
+                    return nil
+                default:
+                    return event
+                }
+            }
         }
         .onChange(of: viewModel.results) { _, newValue in
             if selectedID == nil || !newValue.contains(where: { $0.id == selectedID }) {
                 selectedID = newValue.first?.id
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { notification in
+            guard notification.object is LauncherPanel else { return }
+            DispatchQueue.main.async {
+                isSearchFieldFocused = true
+            }
+        }
         .onExitCommand {
             onDismiss()
+        }
+        .onDisappear {
+            if let keyMonitor {
+                NSEvent.removeMonitor(keyMonitor)
+                self.keyMonitor = nil
+            }
         }
     }
 
@@ -173,6 +215,20 @@ struct LauncherView: View {
         let first = viewModel.results[0]
         selectedID = first.id
         viewModel.activate(first)
+    }
+
+    private func moveSelection(step: Int) {
+        guard !viewModel.results.isEmpty else { return }
+
+        guard let currentID = selectedID,
+              let currentIndex = viewModel.results.firstIndex(where: { $0.id == currentID }) else {
+            selectedID = viewModel.results[0].id
+            return
+        }
+
+        let count = viewModel.results.count
+        let nextIndex = (currentIndex + step + count) % count
+        selectedID = viewModel.results[nextIndex].id
     }
 }
 

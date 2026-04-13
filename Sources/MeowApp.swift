@@ -19,7 +19,6 @@ struct MeowApp: App {
                 Button(L10n.menuPreferences) {
                     (NSApp.delegate as? AppDelegate)?.openPreferencesFromCommand()
                 }
-                .keyboardShortcut(",", modifiers: [.command])
             }
         }
     }
@@ -40,6 +39,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var viewModel: LauncherViewModel!
     private var globalMouseMonitor: Any?
     private var localMouseMonitor: Any?
+    private var localKeyMonitor: Any?
+    private var appliedLanguage: AppLanguage?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         viewModel = LauncherViewModel(
@@ -74,6 +75,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSEvent.removeMonitor(localMouseMonitor)
             self.localMouseMonitor = nil
         }
+        if let localKeyMonitor {
+            NSEvent.removeMonitor(localKeyMonitor)
+            self.localKeyMonitor = nil
+        }
     }
 
     private func createLauncherWindow() {
@@ -88,7 +93,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             backing: .buffered,
             defer: false
         )
-        window.center()
+        centerWindowOnScreen(window)
         window.isMovableByWindowBackground = true
         window.isFloatingPanel = true
         window.level = .floating
@@ -135,26 +140,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func apply(settings: AppSettings) {
-        // Apply language first so all subsequent L10n calls use the correct bundle.
-        LanguageManager.shared.apply(settings.language)
-        statusItemService.updateL10n()
-        viewModel?.refresh()
-
-        let wasLauncherVisible = launcherWindow?.isVisible == true
-        let wasPreferencesVisible = preferencesWindow?.isVisible == true
-        
-        // Recreate launcher window to reflect language changes in NSHostingController.
-        if wasLauncherVisible {
-            launcherWindow?.orderOut(nil)
-            launcherWindow = nil
-            createLauncherWindow()
-            showLauncher()
-        }
-        
-        // Close and recreate preferences window when language changes to reflect new strings.
-        if wasPreferencesVisible {
-            preferencesWindow?.close()
-            preferencesWindow = nil
+        let languageChanged = appliedLanguage != settings.language
+        if languageChanged {
+            LanguageManager.shared.apply(settings.language)
+            statusItemService.updateL10n()
+            viewModel?.refresh()
+            preferencesWindow?.title = L10n.windowPrefsTitle
+            appliedLanguage = settings.language
         }
 
         dockService.apply(showDockIcon: settings.showDockIcon)
@@ -174,13 +166,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self.viewModel.settings.autoLaunch = actualAutoLaunchEnabled
             }
         }
-
-        // Reopen preferences window after recreating it.
-        if wasPreferencesVisible {
-            DispatchQueue.main.async { [weak self] in
-                self?.showPreferences(animated: false)
-            }
-        }
     }
 
     private func showLauncher() {
@@ -190,6 +175,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func hideLauncher() {
         launcherWindow?.orderOut(nil)
+        if !viewModel.query.isEmpty {
+            viewModel.query = ""
+        }
     }
 
     private func toggleLauncher() {
@@ -211,6 +199,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.dismissIfClickedOutsideLauncher()
             return event
         }
+
+        // Use a single app-level shortcut path for Cmd+, because command routing can
+        // be unreliable when the launcher is a nonactivating panel.
+        localKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
+            let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+            if flags.contains(.command), event.charactersIgnoringModifiers == "," {
+                self?.showPreferences(animated: true)
+                return nil
+            }
+            return event
+        }
     }
 
     private func dismissIfClickedOutsideLauncher() {
@@ -222,6 +221,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func showPreferences(animated: Bool = true) {
+        let isFirstPresentation = preferencesWindow == nil
         if preferencesWindow == nil {
             let prefs = PreferencesView(viewModel: viewModel)
             let hosting = NSHostingController(rootView: prefs)
@@ -232,16 +232,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 backing: .buffered,
                 defer: false
             )
-            window.center()
+            window.setContentSize(NSSize(width: 700, height: 520))
+            centerWindowOnScreen(window, on: activeScreen())
             window.title = L10n.windowPrefsTitle
             window.minSize = NSSize(width: 620, height: 420)
             window.contentViewController = hosting
             window.isReleasedWhenClosed = false
             window.isMovableByWindowBackground = true
+            window.level = .modalPanel
+            window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
             preferencesWindow = window
         }
 
         guard let window = preferencesWindow else { return }
+        hideLauncher()
         window.title = L10n.windowPrefsTitle
 
         if window.isVisible {
@@ -249,6 +253,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSApp.activate(ignoringOtherApps: true)
             return
         }
+
+        // Recenter when opening from hidden state so it doesn't stick near the top
+        // after display changes or previous system-driven position adjustments.
+        centerWindowOnScreen(window, on: activeScreen())
 
         if animated {
             window.alphaValue = 0
@@ -260,10 +268,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             window.makeKeyAndOrderFront(nil)
         }
+
+        if isFirstPresentation {
+            DispatchQueue.main.async { [weak self, weak window] in
+                guard let self, let window else { return }
+                self.centerWindowOnScreen(window, on: self.activeScreen())
+            }
+        }
+
         NSApp.activate(ignoringOtherApps: true)
     }
 
     func openPreferencesFromCommand() {
         showPreferences(animated: true)
+    }
+
+    private func activeScreen() -> NSScreen? {
+        let mouseLocation = NSEvent.mouseLocation
+        return NSScreen.screens.first(where: { $0.frame.contains(mouseLocation) })
+            ?? NSScreen.main
+            ?? NSScreen.screens.first
+    }
+
+    private func centerWindowOnScreen(_ window: NSWindow, on targetScreen: NSScreen? = nil) {
+        let targetScreen = targetScreen ?? activeScreen()
+        guard let screenFrame = targetScreen?.frame else {
+            window.center()
+            return
+        }
+
+        let x = screenFrame.origin.x + (screenFrame.width - window.frame.width) / 2
+        let y = screenFrame.origin.y + (screenFrame.height - window.frame.height) / 2
+        window.setFrameOrigin(NSPoint(x: x, y: y))
     }
 }
