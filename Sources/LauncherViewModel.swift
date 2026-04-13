@@ -3,6 +3,9 @@ import Foundation
 
 @MainActor
 final class LauncherViewModel: ObservableObject {
+    private let maxSearchResults = 80
+    private let maxIdleResults = 20
+
     @Published var query: String = "" {
         didSet { refreshResults() }
     }
@@ -21,8 +24,10 @@ final class LauncherViewModel: ObservableObject {
     private let discoveryService: AppDiscoveryService
     private let launchHistoryStore: LaunchHistoryStore
     private let currentBundleID = Bundle.main.bundleIdentifier?.lowercased()
+    private let discoveryRefreshInterval: TimeInterval = 8
 
     private var apps: [AppEntry] = []
+    private var lastDiscoveryAt: Date?
 
     private var commands: [CommandEntry] {
         [
@@ -54,8 +59,7 @@ final class LauncherViewModel: ObservableObject {
     }
 
     func load() {
-        apps = discoveryService.discoverApplications().filter { !isCurrentApp($0) }
-        refreshResults()
+        refreshInstalledApps(force: true)
     }
 
     /// Re-evaluates results with the current language bundle.
@@ -63,12 +67,33 @@ final class LauncherViewModel: ObservableObject {
         refreshResults()
     }
 
+    /// Refreshes installed app discovery; throttled by default to keep launcher opening snappy.
+    func refreshInstalledApps(force: Bool = false) {
+        let now = Date()
+        if !force,
+           let lastDiscoveryAt,
+           now.timeIntervalSince(lastDiscoveryAt) < discoveryRefreshInterval {
+            return
+        }
+
+        lastDiscoveryAt = now
+        let discovered = discoveryService.discoverApplications().filter { !isCurrentApp($0) }
+        apps = discovered
+        refreshResults()
+    }
+
+    /// Clears current rendered results when launcher is hidden to reduce memory retention.
+    func clearTransientResults() {
+        results = []
+    }
+
     func activate(_ item: SearchItem) {
         switch item {
         case .app(let app):
             launchHistoryStore.recordLaunch(id: app.id)
             NSWorkspace.shared.openApplication(at: app.url, configuration: NSWorkspace.OpenConfiguration()) { _, _ in }
-            refreshResults()
+            // Clear results directly to reduce retained memory without triggering a full search refresh.
+            results = []
         case .command(let command):
             run(command)
         }
@@ -89,7 +114,7 @@ final class LauncherViewModel: ObservableObject {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if q.isEmpty {
             // Keep the default launcher list app-focused; built-in commands appear when queried.
-            results = apps.prefix(30).map(SearchItem.app)
+            results = apps.prefix(maxIdleResults).map(SearchItem.app)
             return
         }
 
@@ -112,6 +137,7 @@ final class LauncherViewModel: ObservableObject {
                 if lhs.1 != rhs.1 { return lhs.1 > rhs.1 }
                 return lhs.0.primaryText.localizedCaseInsensitiveCompare(rhs.0.primaryText) == .orderedAscending
             }
+            .prefix(maxSearchResults)
             .map { $0.0 }
     }
 

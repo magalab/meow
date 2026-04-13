@@ -34,6 +34,9 @@ final class LaunchHistoryStore {
     private enum Key {
         static let launchHistory = "meow.launch-history"
     }
+    
+    /// Maximum number of launch history entries to keep in memory
+    private static let maxHistoryEntries = 500
 
     private let defaults = UserDefaults.standard
     private var cachedMap: [String: LaunchStat]?
@@ -85,9 +88,20 @@ final class LaunchHistoryStore {
     }
 
     private func saveMap(_ map: [String: LaunchStat]) {
-        guard let data = try? JSONEncoder().encode(map) else { return }
+        // Prune oldest entries if over limit to prevent unbounded growth
+        var prunedMap = map
+        if prunedMap.count > Self.maxHistoryEntries {
+            let sortedByRecency = prunedMap.sorted {
+                ($0.value.lastLaunchedAt, $0.value.launches) > 
+                ($1.value.lastLaunchedAt, $1.value.launches)
+            }
+            let kept = Array(sortedByRecency.prefix(Self.maxHistoryEntries))
+            prunedMap = Dictionary(uniqueKeysWithValues: kept.map { ($0.key, $0.value) })
+        }
+        
+        guard let data = try? JSONEncoder().encode(prunedMap) else { return }
         defaults.set(data, forKey: Key.launchHistory)
-        cachedMap = map
+        cachedMap = prunedMap
     }
 }
 

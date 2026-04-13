@@ -254,13 +254,7 @@ private struct SearchItemIcon: View {
         Group {
             switch item {
             case .app(let app):
-                let nsImage = NSWorkspace.shared.icon(forFile: app.url.path)
-                Image(nsImage: nsImage)
-                    .resizable()
-                    .interpolation(.high)
-                    .antialiased(true)
-                    .scaledToFit()
-                    .padding(2)
+                LazyAppIconView(path: app.url.path)
             case .command:
                 Image(systemName: item.symbolName)
                     .font(.system(size: 14, weight: .semibold))
@@ -269,6 +263,34 @@ private struct SearchItemIcon: View {
         }
         .frame(width: 32, height: 32)
         .background(palette.iconChipBackground, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+}
+
+private struct LazyAppIconView: View {
+    let path: String
+    @State private var nsImage: NSImage?
+
+    var body: some View {
+        Group {
+            if let nsImage {
+                Image(nsImage: nsImage)
+                    .resizable()
+                    .scaledToFit()
+                    .padding(2)
+            } else {
+                Image(systemName: "app.fill")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(2)
+            }
+        }
+        .onAppear {
+            guard nsImage == nil else { return }
+            nsImage = NSWorkspace.shared.icon(forFile: path)
+        }
+        .onDisappear {
+            nsImage = nil
+        }
     }
 }
 

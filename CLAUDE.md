@@ -48,9 +48,35 @@ Note: There is no automated test target. Use manual testing checklist in DEVELOP
 - `LaunchHistoryStore`: records launches, provides scoring boost
 - `DockService`: `TransformProcessType` to toggle dock icon visibility
 - `StatusItemService`: `NSStatusItem` menu bar controls
-- `AppDiscoveryService`: enumerates `/Applications`, `/System/Applications`, `~/Applications`
+- `AppDiscoveryService`: enumerates `/Applications`, `/System/Applications`, `~/Applications` (invoked by `LauncherViewModel`)
 - `AutoLaunchService`: `SMAppService.mainApp` register/unregister
 - `HotkeyService`: Carbon `RegisterEventHotKey` with `EventHotKeyID` signature `MEOW`
+
+## Common Tasks
+
+**Add a new built-in command:**
+1. Add `CommandEntry` to `LauncherViewModel.commands`
+2. Handle the command ID in `LauncherViewModel.run(_:)`
+3. Add localization keys in both `en.lproj/` and `zh-Hans.lproj/` `Localizable.strings`
+
+**Change preferences behavior:**
+1. Update `AppSettings` model in `Models.swift`
+2. Edit the corresponding view in `PreferencesView` (`Views.swift`)
+3. If system interaction is needed, implement in `AppDelegate.apply(settings:)` (`MeowApp.swift`)
+
+## Manual Testing Checklist
+
+After changes, verify via:
+```bash
+swift build -v && .build/debug/Meow
+```
+- [ ] App launches and shows launcher panel
+- [ ] Search finds and launches apps
+- [ ] Preferences window opens and saves settings
+- [ ] Language switching rebuilds UI
+- [ ] Custom hotkey recording works
+- [ ] Dock icon toggle works
+- [ ] Auto-launch at login toggles correctly
 
 ### Localization
 - [Strings.swift](Sources/Strings.swift): `LanguageManager` + `L10n` enum

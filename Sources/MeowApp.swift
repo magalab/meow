@@ -35,6 +35,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let hotkeyService = HotkeyService()
 
     private var launcherWindow: LauncherPanel?
+    private var launcherHostingController: NSHostingController<LauncherView>?
     private var preferencesWindow: NSWindow?
     private var viewModel: LauncherViewModel!
     private var globalMouseMonitor: Any?
@@ -81,10 +82,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func createLauncherWindow() {
-        let content = LauncherView(viewModel: viewModel) { [weak self] in
-            self?.hideLauncher()
-        }
-        let hosting = NSHostingController(rootView: content)
+        guard launcherWindow == nil else { return }
 
         let window = LauncherPanel(
             contentRect: NSRect(x: 0, y: 0, width: 820, height: 540),
@@ -101,7 +99,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.backgroundColor = .clear
         window.hasShadow = true
         window.hidesOnDeactivate = true
-        window.contentViewController = hosting
         window.isReleasedWhenClosed = false
         if let contentView = window.contentView {
             contentView.wantsLayer = true
@@ -109,6 +106,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             contentView.layer?.masksToBounds = true
         }
         launcherWindow = window
+        attachLauncherContentIfNeeded()
+    }
+
+    private func attachLauncherContentIfNeeded() {
+        guard launcherHostingController == nil else { return }
+        guard let launcherWindow else { return }
+
+        let content = LauncherView(viewModel: viewModel) { [weak self] in
+            self?.hideLauncher()
+        }
+        let hosting = NSHostingController(rootView: content)
+        launcherHostingController = hosting
+        launcherWindow.contentViewController = hosting
+    }
+
+    private func detachLauncherContent() {
+        launcherWindow?.contentViewController = nil
+        launcherHostingController = nil
     }
 
     private func setupStatusItem() {
@@ -168,6 +183,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func showLauncher() {
+        // Keep app list fresh so newly installed apps appear without restarting Meow.
+        viewModel.refreshInstalledApps()
+        viewModel.refresh()
+        attachLauncherContentIfNeeded()
         launcherWindow?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
@@ -177,6 +196,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if !viewModel.query.isEmpty {
             viewModel.query = ""
         }
+        viewModel.clearTransientResults()
+        detachLauncherContent()
         NotificationCenter.default.post(name: .meowLauncherDidHide, object: nil)
     }
 
