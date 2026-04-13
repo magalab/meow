@@ -39,19 +39,16 @@ private enum MeowPalette {
     }
 
     static func cardBackground(for scheme: ColorScheme, emphasized: Bool = false) -> Color {
-        if scheme == .dark {
-            return emphasized ? Color.white.opacity(0.16) : Color.white.opacity(0.1)
-        }
-
-        return emphasized ? Color.white.opacity(0.9) : Color.white.opacity(0.72)
+        if emphasized { return accent }
+        return scheme == .dark ? Color.white.opacity(0.1) : Color.white.opacity(0.72)
     }
 
     static func stroke(for scheme: ColorScheme, emphasized: Bool = false) -> Color {
+        if emphasized { return Color.clear }
         if scheme == .dark {
-            return emphasized ? Color.white.opacity(0.24) : Color.white.opacity(0.14)
+            return Color.white.opacity(0.14)
         }
-
-        return emphasized ? Color.white : Color.white.opacity(0.8)
+        return Color.white.opacity(0.8)
     }
 
     static func iconChipBackground(for scheme: ColorScheme) -> Color {
@@ -125,14 +122,15 @@ struct LauncherView: View {
                                         SearchItemIcon(item: item)
 
                                         VStack(alignment: .leading, spacing: 2) {
+                                            let isSelected = selectedID == item.id
                                             Text(item.primaryText)
                                                 .font(.system(size: 17, weight: .semibold, design: .rounded))
-                                                .foregroundStyle(.primary)
+                                                .foregroundStyle(isSelected ? Color.white : Color.primary)
                                                 .lineLimit(1)
 
                                             Text(item.secondaryText)
                                                 .font(.system(size: 13, weight: .medium, design: .rounded))
-                                                .foregroundStyle(.secondary)
+                                                .foregroundStyle(isSelected ? Color.white.opacity(0.82) : Color.secondary)
                                         }
 
                                         Spacer()
