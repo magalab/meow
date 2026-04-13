@@ -20,6 +20,7 @@ final class LauncherViewModel: ObservableObject {
     private let settingsStore: SettingsStore
     private let discoveryService: AppDiscoveryService
     private let launchHistoryStore: LaunchHistoryStore
+    private let currentBundleID = Bundle.main.bundleIdentifier?.lowercased()
 
     private var apps: [AppEntry] = []
 
@@ -53,7 +54,7 @@ final class LauncherViewModel: ObservableObject {
     }
 
     func load() {
-        apps = discoveryService.discoverApplications()
+        apps = discoveryService.discoverApplications().filter { !isCurrentApp($0) }
         refreshResults()
     }
 
@@ -87,7 +88,8 @@ final class LauncherViewModel: ObservableObject {
     private func refreshResults() {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if q.isEmpty {
-            results = commands.map(SearchItem.command) + apps.prefix(30).map(SearchItem.app)
+            // Keep the default launcher list app-focused; built-in commands appear when queried.
+            results = apps.prefix(30).map(SearchItem.app)
             return
         }
 
@@ -118,5 +120,15 @@ final class LauncherViewModel: ObservableObject {
         if text.hasPrefix(query) { return 90 }
         if text.contains(" \(query)") { return 70 }
         return 50
+    }
+
+    private func isCurrentApp(_ app: AppEntry) -> Bool {
+        if let currentBundleID,
+           let appBundleID = app.bundleId?.lowercased(),
+           appBundleID == currentBundleID {
+            return true
+        }
+
+        return false
     }
 }

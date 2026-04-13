@@ -2,6 +2,8 @@
 "search.placeholder" = "Search for apps and commands...";
 "filter.all" = "All";
 "category.application" = "Application";
+"launcher.section.commands" = "Commands";
+"launcher.section.applications" = "Applications";
 
 /* Language */
 "lang.system" = "Follow System";

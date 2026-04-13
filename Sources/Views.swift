@@ -70,6 +70,30 @@ struct LauncherView: View {
     @State private var keyMonitor: Any?
     @State private var scrollResetToken: Int = 0
 
+    private var groupedResults: [(title: String, items: [SearchItem])] {
+        let commands = viewModel.results.filter {
+            if case .command = $0 { return true }
+            return false
+        }
+        let apps = viewModel.results.filter {
+            if case .app = $0 { return true }
+            return false
+        }
+
+        var sections: [(title: String, items: [SearchItem])] = []
+        if !commands.isEmpty {
+            sections.append((L10n.launcherSectionCommands, commands))
+        }
+        if !apps.isEmpty {
+            sections.append((L10n.launcherSectionApplications, apps))
+        }
+        return sections
+    }
+
+    private var orderedResults: [SearchItem] {
+        groupedResults.flatMap(\ .items)
+    }
+
     var body: some View {
         ZStack {
             LinearGradient(
@@ -113,41 +137,52 @@ struct LauncherView: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(spacing: 8) {
-                            ForEach(viewModel.results) { item in
-                                Button {
-                                    selectedID = item.id
-                                    viewModel.activate(item)
-                                } label: {
-                                    HStack(spacing: 12) {
-                                        SearchItemIcon(item: item)
+                            ForEach(Array(groupedResults.enumerated()), id: \.offset) { sectionIndex, section in
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text(section.title)
+                                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                                        .foregroundStyle(.secondary)
+                                        .textCase(.uppercase)
+                                        .padding(.horizontal, 8)
+                                        .padding(.top, sectionIndex == 0 ? 0 : 6)
 
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            let isSelected = selectedID == item.id
-                                            Text(item.primaryText)
-                                                .font(.system(size: 17, weight: .semibold, design: .rounded))
-                                                .foregroundStyle(isSelected ? Color.white : Color.primary)
-                                                .lineLimit(1)
+                                    ForEach(section.items) { item in
+                                        Button {
+                                            selectedID = item.id
+                                            viewModel.activate(item)
+                                        } label: {
+                                            HStack(spacing: 12) {
+                                                SearchItemIcon(item: item)
 
-                                            Text(item.secondaryText)
-                                                .font(.system(size: 13, weight: .medium, design: .rounded))
-                                                .foregroundStyle(isSelected ? Color.white.opacity(0.82) : Color.secondary)
+                                                VStack(alignment: .leading, spacing: 2) {
+                                                    let isSelected = selectedID == item.id
+                                                    Text(item.primaryText)
+                                                        .font(.system(size: 17, weight: .semibold, design: .rounded))
+                                                        .foregroundStyle(isSelected ? Color.white : Color.primary)
+                                                        .lineLimit(1)
+
+                                                    Text(item.secondaryText)
+                                                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                                                        .foregroundStyle(isSelected ? Color.white.opacity(0.82) : Color.secondary)
+                                                }
+
+                                                Spacer()
+                                            }
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 10)
+                                            .background(
+                                                MeowPalette.cardBackground(for: colorScheme, emphasized: selectedID == item.id),
+                                                in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                            )
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                                    .stroke(MeowPalette.stroke(for: colorScheme, emphasized: selectedID == item.id), lineWidth: 1)
+                                            )
                                         }
-
-                                        Spacer()
+                                        .buttonStyle(.plain)
+                                        .id(item.id)
                                     }
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 10)
-                                    .background(
-                                        MeowPalette.cardBackground(for: colorScheme, emphasized: selectedID == item.id),
-                                        in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    )
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                            .stroke(MeowPalette.stroke(for: colorScheme, emphasized: selectedID == item.id), lineWidth: 1)
-                                    )
                                 }
-                                .buttonStyle(.plain)
-                                .id(item.id)
                             }
                         }
                         .padding(2)
@@ -160,7 +195,7 @@ struct LauncherView: View {
                         }
                     }
                     .onChange(of: scrollResetToken) { _, _ in
-                        guard let firstID = viewModel.results.first?.id else { return }
+                        guard let firstID = orderedResults.first?.id else { return }
                         var transaction = Transaction()
                         transaction.animation = nil
                         withTransaction(transaction) {
@@ -174,7 +209,7 @@ struct LauncherView: View {
         .frame(minWidth: 760, minHeight: 480)
         .id(lang.refreshToken)
         .onAppear {
-            selectedID = viewModel.results.first?.id
+            selectedID = orderedResults.first?.id
             DispatchQueue.main.async {
                 isSearchFieldFocused = true
             }
@@ -196,7 +231,7 @@ struct LauncherView: View {
         }
         .onChange(of: viewModel.results) { _, newValue in
             if selectedID == nil || !newValue.contains(where: { $0.id == selectedID }) {
-                selectedID = newValue.first?.id
+                selectedID = orderedResults.first?.id
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { notification in
@@ -207,7 +242,7 @@ struct LauncherView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .meowLauncherDidHide)) { _ in
             DispatchQueue.main.async {
-                selectedID = viewModel.results.first?.id
+                selectedID = orderedResults.first?.id
                 scrollResetToken += 1
             }
         }
@@ -223,29 +258,29 @@ struct LauncherView: View {
     }
 
     private func activateCurrentSelection() {
-        guard !viewModel.results.isEmpty else { return }
+        guard !orderedResults.isEmpty else { return }
         if let selectedID,
-           let selected = viewModel.results.first(where: { $0.id == selectedID }) {
+           let selected = orderedResults.first(where: { $0.id == selectedID }) {
             viewModel.activate(selected)
             return
         }
-        let first = viewModel.results[0]
+        let first = orderedResults[0]
         selectedID = first.id
         viewModel.activate(first)
     }
 
     private func moveSelection(step: Int) {
-        guard !viewModel.results.isEmpty else { return }
+        guard !orderedResults.isEmpty else { return }
 
         guard let currentID = selectedID,
-              let currentIndex = viewModel.results.firstIndex(where: { $0.id == currentID }) else {
-            selectedID = viewModel.results[0].id
+              let currentIndex = orderedResults.firstIndex(where: { $0.id == currentID }) else {
+            selectedID = orderedResults[0].id
             return
         }
 
-        let count = viewModel.results.count
+        let count = orderedResults.count
         let nextIndex = (currentIndex + step + count) % count
-        selectedID = viewModel.results[nextIndex].id
+        selectedID = orderedResults[nextIndex].id
     }
 }
 

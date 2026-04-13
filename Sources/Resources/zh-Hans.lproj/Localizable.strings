@@ -2,6 +2,8 @@
 "search.placeholder" = "搜索应用和命令…";
 "filter.all" = "全部";
 "category.application" = "应用程序";
+"launcher.section.commands" = "命令";
+"launcher.section.applications" = "应用";
 
 /* 语言 */
 "lang.system" = "跟随系统";

@@ -106,6 +106,8 @@ enum L10n {
     static var searchPlaceholder: String { loc("search.placeholder") }
     static var filterAll: String { loc("filter.all") }
     static var categoryApplication: String { loc("category.application") }
+    static var launcherSectionCommands: String { loc("launcher.section.commands") }
+    static var launcherSectionApplications: String { loc("launcher.section.applications") }
 
     // MARK: - Preferences
     static var prefsTitle: String { loc("prefs.title") }
