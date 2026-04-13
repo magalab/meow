@@ -176,6 +176,19 @@ struct LauncherView: View {
                 guard NSApp.keyWindow is LauncherPanel else { return event }
 
                 switch event.keyCode {
+                case 53: // Escape
+                    if !viewModel.query.isEmpty {
+                        viewModel.query = ""
+                    } else {
+                        onDismiss()
+                    }
+                    return nil
+                case 36: // Return/Enter
+                    if event.modifierFlags.contains(.command) {
+                        revealSelectedInFinder()
+                        return nil
+                    }
+                    return event
                 case 125: // Down arrow
                     moveSelection(step: 1)
                     return nil
@@ -239,6 +252,13 @@ struct LauncherView: View {
         let count = orderedResults.count
         let nextIndex = (currentIndex + step + count) % count
         selectedID = orderedResults[nextIndex].id
+    }
+
+    private func revealSelectedInFinder() {
+        guard let selectedID,
+              let selected = orderedResults.first(where: { $0.id == selectedID }),
+              case .app(let app) = selected else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([app.url])
     }
 }
 

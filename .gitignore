@@ -52,3 +52,16 @@ AppIcon.icns
 
 # Resources cache
 .resources.cache
+
+# Logs
+*.log
+logs/
+
+# Claude (version project defaults, ignore local overrides)
+.claude/settings.local.json
+
+# LLDB
+.lldb/
+
+# Swift Tracing (used by some profiling tools)
+*.trace
