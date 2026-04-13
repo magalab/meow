@@ -62,7 +62,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setupStatusItem()
         createLauncherWindow()
         setupOutsideClickDismissMonitor()
-        showLauncher()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -178,6 +177,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if !viewModel.query.isEmpty {
             viewModel.query = ""
         }
+        NotificationCenter.default.post(name: .meowLauncherDidHide, object: nil)
     }
 
     private func toggleLauncher() {

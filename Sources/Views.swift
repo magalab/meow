@@ -2,6 +2,10 @@ import AppKit
 import Carbon
 import SwiftUI
 
+extension Notification.Name {
+    static let meowLauncherDidHide = Notification.Name("meow.launcher.didHide")
+}
+
 private enum MeowPalette {
     static let accent = Color(red: 0.22, green: 0.3, blue: 0.54)
     static let danger = Color(red: 0.86, green: 0.21, blue: 0.2)
@@ -67,6 +71,7 @@ struct LauncherView: View {
     @State private var selectedID: SearchItem.ID?
     @FocusState private var isSearchFieldFocused: Bool
     @State private var keyMonitor: Any?
+    @State private var scrollResetToken: Int = 0
 
     var body: some View {
         ZStack {
@@ -156,6 +161,14 @@ struct LauncherView: View {
                             proxy.scrollTo(id, anchor: .center)
                         }
                     }
+                    .onChange(of: scrollResetToken) { _, _ in
+                        guard let firstID = viewModel.results.first?.id else { return }
+                        var transaction = Transaction()
+                        transaction.animation = nil
+                        withTransaction(transaction) {
+                            proxy.scrollTo(firstID, anchor: .top)
+                        }
+                    }
                 }
             }
             .padding(14)
@@ -192,6 +205,12 @@ struct LauncherView: View {
             guard notification.object is LauncherPanel else { return }
             DispatchQueue.main.async {
                 isSearchFieldFocused = true
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .meowLauncherDidHide)) { _ in
+            DispatchQueue.main.async {
+                selectedID = viewModel.results.first?.id
+                scrollResetToken += 1
             }
         }
         .onExitCommand {

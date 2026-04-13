@@ -35,6 +35,9 @@ swift build
 
 # Build release app + DMG
 bash scripts/build-dmg.sh
+
+# Override bundle identifier if needed
+APP_BUNDLE_ID=tech.lury.meow bash scripts/build-dmg.sh
 ```
 
 Build artifacts:

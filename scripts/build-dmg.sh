@@ -3,6 +3,7 @@ set -euo pipefail
 
 APP_NAME="${APP_NAME:-Meow}"
 BINARY_NAME="${BINARY_NAME:-Meow}"
+APP_BUNDLE_ID="${APP_BUNDLE_ID:-tech.lury.meow}"
 VERSION="${VERSION:-0.1.0}"
 TARGET="${TARGET:-}"
 
@@ -85,7 +86,7 @@ cat > "$APP_DIR/Contents/Info.plist" <<EOF
 <dict>
   <key>CFBundleName</key><string>${APP_NAME}</string>
   <key>CFBundleDisplayName</key><string>${APP_NAME}</string>
-  <key>CFBundleIdentifier</key><string>com.meow</string>
+    <key>CFBundleIdentifier</key><string>${APP_BUNDLE_ID}</string>
   <key>CFBundleExecutable</key><string>${BINARY_NAME}</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>

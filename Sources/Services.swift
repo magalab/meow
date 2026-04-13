@@ -36,6 +36,7 @@ final class LaunchHistoryStore {
     }
 
     private let defaults = UserDefaults.standard
+    private var cachedMap: [String: LaunchStat]?
 
     func recordLaunch(id: String) {
         var map = loadMap()
@@ -69,17 +70,24 @@ final class LaunchHistoryStore {
     }
 
     private func loadMap() -> [String: LaunchStat] {
+        if let cachedMap {
+            return cachedMap
+        }
+
         guard let data = defaults.data(forKey: Key.launchHistory),
               let decoded = try? JSONDecoder().decode([String: LaunchStat].self, from: data)
         else {
+            cachedMap = [:]
             return [:]
         }
+        cachedMap = decoded
         return decoded
     }
 
     private func saveMap(_ map: [String: LaunchStat]) {
         guard let data = try? JSONEncoder().encode(map) else { return }
         defaults.set(data, forKey: Key.launchHistory)
+        cachedMap = map
     }
 }
 
