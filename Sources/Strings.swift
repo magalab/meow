@@ -117,14 +117,26 @@ enum L10n {
     static var clipboardTypeURL: String { loc("clipboard.type.url") }
     static var clipboardTypeAudio: String { loc("clipboard.type.audio") }
 
+    // MARK: - Action Menu
+    static var actionMenuOpen: String { loc("action.menu.open") }
+    static var actionMenuShowInFinder: String { loc("action.menu.show.in.finder") }
+    static var actionMenuCopyPath: String { loc("action.menu.copy.path") }
+    static var actionMenuPaste: String { loc("action.menu.paste") }
+    static var actionMenuCopy: String { loc("action.menu.copy") }
+    static var actionMenuDelete: String { loc("action.menu.delete") }
+    static var actionMenuExecute: String { loc("action.menu.execute") }
+
     // MARK: - Preferences
     static var prefsTitle: String { loc("prefs.title") }
     static var prefsSubtitle: String { loc("prefs.subtitle") }
     static var prefsSectionGeneral: String { loc("prefs.section.general") }
     static var prefsSectionAppearance: String { loc("prefs.section.appearance") }
+    static var prefsSectionAbout: String { loc("prefs.section.about") }
 
     static var prefsAutoLaunchTitle: String { loc("prefs.autolaunch.title") }
     static var prefsAutoLaunchSubtitle: String { loc("prefs.autolaunch.subtitle") }
+    static var prefsClipboardTitle: String { loc("prefs.clipboard.title") }
+    static var prefsClipboardSubtitle: String { loc("prefs.clipboard.subtitle") }
     static var prefsHotkeyTitle: String { loc("prefs.hotkey.title") }
     static var prefsHotkeySubtitle: String { loc("prefs.hotkey.subtitle") }
     static var prefsHotkeyRecording: String { loc("prefs.hotkey.recording") }
@@ -137,6 +149,12 @@ enum L10n {
     static var prefsThemeSubtitle: String { loc("prefs.theme.subtitle") }
     static var prefsLanguageTitle: String { loc("prefs.language.title") }
     static var prefsLanguageSubtitle: String { loc("prefs.language.subtitle") }
+    static var prefsAboutVersion: String { loc("prefs.about.version") }
+    static var prefsAboutBuild: String { loc("prefs.about.build") }
+    static var prefsAboutPrivacy: String { loc("prefs.about.privacy") }
+    static var prefsAboutPrivacySubtitle: String { loc("prefs.about.privacy.subtitle") }
+    static var prefsAboutRepo: String { loc("prefs.about.repo") }
+    static var prefsAboutOpenRepo: String { loc("prefs.about.open.repo") }
     static var quitMeow: String { loc("quit.meow") }
     static var langSystem: String { loc("lang.system") }
     static var themeGingerCat: String { loc("theme.ginger-cat") }

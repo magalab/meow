@@ -92,8 +92,15 @@ final class LauncherViewModel: ObservableObject {
     }
 
     func deleteClipboardItem(_ item: SearchItem) {
+        guard settings.clipboardHistoryEnabled else { return }
         guard case .clipboard(let entry) = item else { return }
         clipboardStore.delete(entry)
+    }
+
+    func copyClipboardItem(_ item: SearchItem) {
+        guard settings.clipboardHistoryEnabled else { return }
+        guard case .clipboard(let entry) = item else { return }
+        clipboardStore.writeToPasteboard(entry)
     }
 
     func activate(_ item: SearchItem) {
@@ -144,9 +151,14 @@ final class LauncherViewModel: ObservableObject {
             return (.app(app), base + history)
         }
 
-        let matchedClipboard = clipboardStore.getEntries().compactMap { entry -> (SearchItem, Int)? in
-            guard entry.preview.lowercased().contains(q) else { return nil }
-            return (.clipboard(entry), 5)
+        let matchedClipboard: [(SearchItem, Int)]
+        if settings.clipboardHistoryEnabled {
+            matchedClipboard = clipboardStore.getEntries().compactMap { entry -> (SearchItem, Int)? in
+                guard entry.preview.lowercased().contains(q) else { return nil }
+                return (.clipboard(entry), 5)
+            }
+        } else {
+            matchedClipboard = []
         }
 
         results = (matchedCommands + matchedApps + matchedClipboard)

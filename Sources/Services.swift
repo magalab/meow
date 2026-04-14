@@ -172,6 +172,7 @@ final class ClipboardStore {
     private var onChange: (() -> Void)?
 
     func startMonitoring(onChange: @escaping () -> Void) {
+        stopMonitoring()
         self.onChange = onChange
         lastChangeCount = NSPasteboard.general.changeCount
 

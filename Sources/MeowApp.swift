@@ -44,6 +44,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var localMouseMonitor: Any?
     private var localKeyMonitor: Any?
     private var appliedLanguage: AppLanguage?
+    private var clipboardMonitoringEnabled = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         viewModel = LauncherViewModel(
@@ -76,10 +77,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setupStatusItem()
         createLauncherWindow()
         setupOutsideClickDismissMonitor()
-
-        clipboardStore.startMonitoring { [weak self] in
-            self?.viewModel.refresh()
-        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -192,6 +189,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.toggleLauncher()
         }
 
+        if settings.clipboardHistoryEnabled != clipboardMonitoringEnabled {
+            if settings.clipboardHistoryEnabled {
+                clipboardStore.startMonitoring { [weak self] in
+                    self?.viewModel.refresh()
+                }
+            } else {
+                clipboardStore.stopMonitoring()
+            }
+            clipboardMonitoringEnabled = settings.clipboardHistoryEnabled
+            viewModel.refresh()
+        }
+
         if actualAutoLaunchEnabled != settings.autoLaunch {
             DispatchQueue.main.async { [weak self] in
                 guard let self, self.viewModel.settings.autoLaunch != actualAutoLaunchEnabled else { return }
@@ -291,14 +300,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let hosting = NSHostingController(rootView: prefs)
 
             let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 700, height: 520),
-                styleMask: [.titled, .closable],
+                contentRect: NSRect(x: 0, y: 0, width: 620, height: 448),
+                styleMask: [.titled, .closable, .fullSizeContentView],
                 backing: .buffered,
                 defer: false
             )
-            window.setContentSize(NSSize(width: 700, height: 520))
+            window.setContentSize(NSSize(width: 620, height: 448))
             centerWindowOnScreen(window, on: activeScreen())
             window.title = L10n.windowPrefsTitle
+            window.titleVisibility = .hidden
+            window.titlebarAppearsTransparent = true
+            window.toolbarStyle = .preference
             window.minSize = NSSize(width: 620, height: 420)
             window.contentViewController = hosting
             window.isReleasedWhenClosed = false

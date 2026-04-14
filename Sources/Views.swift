@@ -15,6 +15,8 @@ struct LauncherView: View {
     @FocusState private var isSearchFieldFocused: Bool
     @State private var keyMonitor: Any?
     @State private var scrollResetToken: Int = 0
+    @State private var showActionMenu = false
+    @State private var actionMenuSelectionIndex = 0
 
     private var groupedResults: [(title: String, items: [SearchItem])] {
         let commands = viewModel.results.filter {
@@ -182,25 +184,75 @@ struct LauncherView: View {
 
             keyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { event in
                 guard NSApp.keyWindow is LauncherPanel else { return event }
+                let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+                let selectedItem = selectedSearchItem()
 
                 switch event.keyCode {
                 case 53: // Escape
-                    if !viewModel.query.isEmpty {
+                    if showActionMenu {
+                        showActionMenu = false
+                    } else if !viewModel.query.isEmpty {
                         viewModel.query = ""
                     } else {
                         onDismiss()
                     }
                     return nil
+                case 40: // K
+                    if flags.contains(.command) {
+                        toggleActionMenu()
+                        return nil
+                    }
+                    return event
                 case 36: // Return/Enter
-                    if event.modifierFlags.contains(.command) {
+                    if showActionMenu {
+                        if flags.contains(.command), canPerformAction(.showInFinder, on: selectedItem) {
+                            if let selectedItem {
+                                executeActionMenu(.showInFinder, selected: selectedItem)
+                            }
+                            return nil
+                        }
+                        executeHighlightedAction(selectedItem)
+                        return nil
+                    }
+                    if flags.contains(.command) {
                         revealSelectedInFinder()
                         return nil
                     }
                     return event
+                case 8: // C
+                    if showActionMenu, flags.contains(.command) {
+                        if flags.contains(.shift) {
+                            if canPerformAction(.copyPath, on: selectedItem), let selectedItem {
+                                executeActionMenu(.copyPath, selected: selectedItem)
+                            }
+                        } else {
+                            if canPerformAction(.copy, on: selectedItem), let selectedItem {
+                                executeActionMenu(.copy, selected: selectedItem)
+                            }
+                        }
+                        return nil
+                    }
+                    return event
+                case 51: // Delete / Backspace
+                    if showActionMenu, flags.contains(.command) {
+                        if canPerformAction(.delete, on: selectedItem), let selectedItem {
+                            executeActionMenu(.delete, selected: selectedItem)
+                        }
+                        return nil
+                    }
+                    return event
                 case 125: // Down arrow
+                    if showActionMenu {
+                        moveActionMenuSelection(step: 1, selectedItem)
+                        return nil
+                    }
                     moveSelection(step: 1)
                     return nil
                 case 126: // Up arrow
+                    if showActionMenu {
+                        moveActionMenuSelection(step: -1, selectedItem)
+                        return nil
+                    }
                     moveSelection(step: -1)
                     return nil
                 default:
@@ -232,6 +284,30 @@ struct LauncherView: View {
             if let keyMonitor {
                 NSEvent.removeMonitor(keyMonitor)
                 self.keyMonitor = nil
+            }
+        }
+        .overlay {
+            if showActionMenu {
+                Color.black.opacity(0.001)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        showActionMenu = false
+                    }
+            }
+        }
+        .overlay(alignment: .bottomTrailing) {
+            if showActionMenu, let selectedID, let selected = orderedResults.first(where: { $0.id == selectedID }) {
+                let actions = actionMenuActions(for: selected)
+                ActionMenu(
+                    selectedItem: selected,
+                    highlightedAction: actions.isEmpty ? nil : actions[actionMenuSelectionIndex.clamped(to: 0...(actions.count - 1))],
+                    onAction: { action in
+                        executeActionMenu(action, selected: selected)
+                    }
+                )
+                .frame(width: 290)
+                .padding(.trailing, 18)
+                .padding(.bottom, 18)
             }
         }
     }
@@ -267,6 +343,201 @@ struct LauncherView: View {
               let selected = orderedResults.first(where: { $0.id == selectedID }),
               case .app(let app) = selected else { return }
         NSWorkspace.shared.activateFileViewerSelecting([app.url])
+    }
+
+    private func showActionMenuForSelected() {
+        guard selectedID != nil else { return }
+        actionMenuSelectionIndex = 0
+        showActionMenu = true
+    }
+
+    private func toggleActionMenu() {
+        if showActionMenu {
+            showActionMenu = false
+        } else {
+            showActionMenuForSelected()
+        }
+    }
+
+    private func copySelectedPath() {
+        guard let selectedID,
+              let selected = orderedResults.first(where: { $0.id == selectedID }),
+              case .app(let app) = selected else { return }
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(app.url.path, forType: .string)
+    }
+
+    private func copyClipboardContent() {
+        guard let selectedID,
+              let selected = orderedResults.first(where: { $0.id == selectedID }) else { return }
+        viewModel.copyClipboardItem(selected)
+    }
+
+    private func deleteSelectedClipboardItem() {
+        guard let selectedID,
+              let selected = orderedResults.first(where: { $0.id == selectedID }) else { return }
+        viewModel.deleteClipboardItem(selected)
+    }
+
+    private func selectedSearchItem() -> SearchItem? {
+        guard let selectedID else { return nil }
+        return orderedResults.first(where: { $0.id == selectedID })
+    }
+
+    private func actionMenuActions(for item: SearchItem) -> [ActionMenuAction] {
+        switch item {
+        case .app:
+            return [.open, .showInFinder, .copyPath]
+        case .clipboard:
+            return [.paste, .copy, .delete]
+        case .command:
+            return [.execute]
+        }
+    }
+
+    private func moveActionMenuSelection(step: Int, _ selectedItem: SearchItem?) {
+        guard let selectedItem else { return }
+        let actions = actionMenuActions(for: selectedItem)
+        guard !actions.isEmpty else { return }
+        let count = actions.count
+        actionMenuSelectionIndex = (actionMenuSelectionIndex + step + count) % count
+    }
+
+    private func executeHighlightedAction(_ selectedItem: SearchItem?) {
+        guard let selectedItem else { return }
+        let actions = actionMenuActions(for: selectedItem)
+        guard !actions.isEmpty else { return }
+        let index = actionMenuSelectionIndex.clamped(to: 0...(actions.count - 1))
+        executeActionMenu(actions[index], selected: selectedItem)
+    }
+
+    private func canPerformAction(_ action: ActionMenuAction, on selectedItem: SearchItem?) -> Bool {
+        guard let selectedItem else { return false }
+        switch (selectedItem, action) {
+        case (.app, .open), (.app, .showInFinder), (.app, .copyPath):
+            return true
+        case (.clipboard, .paste), (.clipboard, .copy), (.clipboard, .delete):
+            return true
+        case (.command, .execute):
+            return true
+        default:
+            return false
+        }
+    }
+
+    private func executeActionMenu(_ action: ActionMenuAction, selected: SearchItem) {
+        switch action {
+        case .open, .execute, .paste:
+            viewModel.activate(selected)
+        case .showInFinder:
+            revealSelectedInFinder()
+        case .copyPath:
+            copySelectedPath()
+        case .copy:
+            copyClipboardContent()
+        case .delete:
+            viewModel.deleteClipboardItem(selected)
+        }
+        showActionMenu = false
+    }
+}
+
+private enum ActionMenuAction: String, Hashable {
+    case open
+    case showInFinder
+    case copyPath
+    case paste
+    case copy
+    case delete
+    case execute
+}
+
+private struct ActionMenu: View {
+    let selectedItem: SearchItem
+    let highlightedAction: ActionMenuAction?
+    let onAction: (ActionMenuAction) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            switch selectedItem {
+            case .app:
+                menuRow(action: .open, title: L10n.actionMenuOpen, systemImage: "app.fill", shortcuts: ["↩"])
+                menuRow(action: .showInFinder, title: L10n.actionMenuShowInFinder, systemImage: "folder", shortcuts: ["⌘", "↩"])
+                menuRow(action: .copyPath, title: L10n.actionMenuCopyPath, systemImage: "doc.on.clipboard", shortcuts: ["⌘", "⇧", "C"])
+
+            case .clipboard:
+                menuRow(action: .paste, title: L10n.actionMenuPaste, systemImage: "doc.on.clipboard", shortcuts: ["↩"])
+                menuRow(action: .copy, title: L10n.actionMenuCopy, systemImage: "doc.on.clipboard.fill", shortcuts: ["⌘", "C"])
+                menuRow(action: .delete, title: L10n.actionMenuDelete, systemImage: "trash", shortcuts: ["⌘", "⌫"], isDanger: true)
+
+            case .command:
+                menuRow(action: .execute, title: L10n.actionMenuExecute, systemImage: "terminal", shortcuts: ["↩"])
+            }
+        }
+        .padding(10)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.2), radius: 12, y: 6)
+    }
+
+    private func menuRow(
+        action: ActionMenuAction,
+        title: String,
+        systemImage: String,
+        shortcuts: [String],
+        isDanger: Bool = false,
+    ) -> some View {
+        let isHighlighted = highlightedAction == action
+
+        return Button(action: { onAction(action) }) {
+            HStack(spacing: 10) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 13, weight: .semibold))
+                    .frame(width: 16)
+
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+
+                Spacer(minLength: 8)
+
+                ShortcutKeycaps(keys: shortcuts)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(
+                (isHighlighted ? Color.primary.opacity(0.14) : Color.primary.opacity(0.06)),
+                in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+            )
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(isDanger ? Color.red : Color.primary)
+    }
+}
+
+private extension Comparable {
+    func clamped(to range: ClosedRange<Self>) -> Self {
+        min(max(self, range.lowerBound), range.upperBound)
+    }
+}
+
+private struct ShortcutKeycaps: View {
+    let keys: [String]
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(keys, id: \.self) { key in
+                Text(key)
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(Color.primary.opacity(0.09), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+            }
+        }
     }
 }
 
@@ -380,6 +651,7 @@ struct PreferencesView: View {
     private enum Section: String, CaseIterable, Identifiable {
         case general
         case appearance
+        case about
 
         var id: String { rawValue }
 
@@ -387,6 +659,15 @@ struct PreferencesView: View {
             switch self {
             case .general: return L10n.prefsSectionGeneral
             case .appearance: return L10n.prefsSectionAppearance
+            case .about: return L10n.prefsSectionAbout
+            }
+        }
+
+        var icon: String {
+            switch self {
+            case .general: return "gearshape"
+            case .appearance: return "paintpalette"
+            case .about: return "info.circle"
             }
         }
     }
@@ -401,38 +682,41 @@ struct PreferencesView: View {
     }
 
     var body: some View {
-        ZStack {
-            LinearGradient(
-                colors: palette.preferencesGradient,
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-
-            VStack(alignment: .leading, spacing: 16) {
-                HStack(spacing: 12) {
-                    Image(systemName: "pawprint.fill")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(palette.preferencesAccent)
-                        .frame(width: 36, height: 36)
-                        .background(palette.iconChipBackground, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(L10n.prefsTitle)
-                            .font(.system(size: 29, weight: .bold, design: .rounded))
-                        Text(L10n.prefsSubtitle)
-                            .font(.system(size: 13, weight: .medium, design: .rounded))
-                            .foregroundStyle(.secondary)
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                ForEach(Section.allCases) { section in
+                    Button {
+                        withAnimation(.snappy(duration: 0.22)) {
+                            selectedSection = section
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: section.icon)
+                                .font(.system(size: 12, weight: .semibold))
+                            Text(section.localizedTitle)
+                                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        }
+                        .foregroundStyle(selectedSection == section ? Color.primary : Color.secondary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(
+                            selectedSection == section
+                                ? Color.primary.opacity(0.08)
+                                : Color.clear,
+                            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        )
                     }
+                    .buttonStyle(.plain)
                 }
 
-                Picker("", selection: $selectedSection) {
-                    ForEach(Section.allCases) { section in
-                        Text(section.localizedTitle).tag(section)
-                    }
-                }
-                .pickerStyle(.segmented)
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
 
+            Divider()
+
+            ScrollView {
                 VStack(spacing: 10) {
                     if selectedSection == .general {
                         PreferenceToggleRow(
@@ -443,6 +727,18 @@ struct PreferencesView: View {
                             isOn: animatedBinding(
                                 get: { viewModel.settings.autoLaunch },
                                 set: { viewModel.settings.autoLaunch = $0 }
+                            )
+                        )
+                        .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .opacity))
+
+                        PreferenceToggleRow(
+                            title: L10n.prefsClipboardTitle,
+                            subtitle: L10n.prefsClipboardSubtitle,
+                            symbol: "clipboard",
+                            theme: viewModel.settings.theme,
+                            isOn: animatedBinding(
+                                get: { viewModel.settings.clipboardHistoryEnabled },
+                                set: { viewModel.settings.clipboardHistoryEnabled = $0 }
                             )
                         )
                         .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .opacity))
@@ -503,29 +799,18 @@ struct PreferencesView: View {
                         )
                         .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
                     }
-                }
-                .frame(minHeight: 196, alignment: .top)
-                .padding(12)
-                .background(palette.preferencesPanelBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(palette.preferencesPanelStroke, lineWidth: 1)
-                )
-                .animation(.snappy(duration: 0.28), value: selectedSection)
 
-                HStack {
-                    Spacer()
-                    Button(L10n.quitMeow) {
-                        NSApp.terminate(nil)
+                    if selectedSection == .about {
+                        PreferenceAboutSectionView()
+                            .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(palette.danger)
-                    .controlSize(.large)
                 }
+                .padding(16)
+                .animation(.snappy(duration: 0.28), value: selectedSection)
             }
-            .padding(22)
         }
-        .frame(width: 560)
+        .background(Color(nsColor: .windowBackgroundColor))
+        .frame(width: 620, height: 448)
         .id(lang.refreshToken)
     }
 
@@ -538,6 +823,79 @@ struct PreferencesView: View {
                 }
             }
         )
+    }
+}
+
+private struct PreferenceAboutSectionView: View {
+    private var version: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "-"
+    }
+
+    private var build: String {
+        Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "-"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Image(systemName: "pawprint.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .frame(width: 34, height: 34)
+                    .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Meow")
+                        .font(.system(size: 19, weight: .bold, design: .rounded))
+                    Text("v\(version) (\(build))")
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Divider()
+
+            aboutRow(title: L10n.prefsAboutVersion, value: version)
+            aboutRow(title: L10n.prefsAboutBuild, value: build)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(L10n.prefsAboutPrivacy)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                Text(L10n.prefsAboutPrivacySubtitle)
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.top, 4)
+
+            HStack {
+                Text(L10n.prefsAboutRepo)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                Spacer()
+                Button(L10n.prefsAboutOpenRepo) {
+                    if let url = URL(string: "https://github.com/magalab/meow") {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+        }
+        .padding(14)
+        .background(Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+        )
+    }
+
+    private func aboutRow(title: String, value: String) -> some View {
+        HStack {
+            Text(title)
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+            Spacer()
+            Text(value)
+                .font(.system(size: 13, weight: .medium, design: .rounded))
+                .foregroundStyle(.secondary)
+        }
     }
 }
 

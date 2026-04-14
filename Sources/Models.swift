@@ -36,6 +36,7 @@ enum AppTheme: String, Codable, CaseIterable, Identifiable {
 
 struct AppSettings: Codable {
     var autoLaunch: Bool
+    var clipboardHistoryEnabled: Bool
     var showStatusItem: Bool
     var showDockIcon: Bool
     var hotkeyKeyCode: UInt32
@@ -45,6 +46,7 @@ struct AppSettings: Codable {
 
     private enum CodingKeys: String, CodingKey {
         case autoLaunch
+        case clipboardHistoryEnabled
         case showStatusItem
         case showDockIcon
         case hotkeyKeyCode
@@ -55,6 +57,7 @@ struct AppSettings: Codable {
 
     init(
         autoLaunch: Bool,
+        clipboardHistoryEnabled: Bool,
         showStatusItem: Bool,
         showDockIcon: Bool,
         hotkeyKeyCode: UInt32,
@@ -63,6 +66,7 @@ struct AppSettings: Codable {
         theme: AppTheme
     ) {
         self.autoLaunch = autoLaunch
+        self.clipboardHistoryEnabled = clipboardHistoryEnabled
         self.showStatusItem = showStatusItem
         self.showDockIcon = showDockIcon
         self.hotkeyKeyCode = hotkeyKeyCode
@@ -74,6 +78,7 @@ struct AppSettings: Codable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         autoLaunch = try container.decodeIfPresent(Bool.self, forKey: .autoLaunch) ?? false
+        clipboardHistoryEnabled = try container.decodeIfPresent(Bool.self, forKey: .clipboardHistoryEnabled) ?? true
         showStatusItem = try container.decodeIfPresent(Bool.self, forKey: .showStatusItem) ?? true
         showDockIcon = try container.decodeIfPresent(Bool.self, forKey: .showDockIcon) ?? false
         hotkeyKeyCode = try container.decodeIfPresent(UInt32.self, forKey: .hotkeyKeyCode) ?? 49
@@ -85,6 +90,7 @@ struct AppSettings: Codable {
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(autoLaunch, forKey: .autoLaunch)
+        try container.encode(clipboardHistoryEnabled, forKey: .clipboardHistoryEnabled)
         try container.encode(showStatusItem, forKey: .showStatusItem)
         try container.encode(showDockIcon, forKey: .showDockIcon)
         try container.encode(hotkeyKeyCode, forKey: .hotkeyKeyCode)
@@ -95,6 +101,7 @@ struct AppSettings: Codable {
 
     static let `default` = AppSettings(
         autoLaunch: false,
+        clipboardHistoryEnabled: true,
         showStatusItem: true,
         showDockIcon: false,
         hotkeyKeyCode: 49,

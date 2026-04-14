@@ -13,6 +13,15 @@
 "clipboard.type.url" = "链接";
 "clipboard.type.audio" = "音频";
 
+/* 操作菜单 */
+"action.menu.open" = "打开";
+"action.menu.show.in.finder" = "在 Finder 中显示";
+"action.menu.copy.path" = "复制路径";
+"action.menu.paste" = "粘贴";
+"action.menu.copy" = "复制";
+"action.menu.delete" = "删除";
+"action.menu.execute" = "执行";
+
 /* 语言 */
 "lang.system" = "跟随系统";
 "prefs.language.title" = "语言";
@@ -23,9 +32,12 @@
 "prefs.subtitle" = "系统行为与启动器显示";
 "prefs.section.general" = "通用";
 "prefs.section.appearance" = "外观";
+"prefs.section.about" = "关于";
 
 "prefs.autolaunch.title" = "登录时启动";
 "prefs.autolaunch.subtitle" = "登录时自动启动 Meow";
+"prefs.clipboard.title" = "剪贴板历史";
+"prefs.clipboard.subtitle" = "启用剪贴板监控并在搜索结果中显示剪贴板内容";
 
 "prefs.hotkey.title" = "启动快捷键";
 "prefs.hotkey.subtitle" = "点击录制，然后按下快捷键";
@@ -40,6 +52,13 @@
 
 "prefs.theme.title" = "主题";
 "prefs.theme.subtitle" = "选择启动器与偏好设置的配色方案";
+
+"prefs.about.version" = "版本";
+"prefs.about.build" = "构建";
+"prefs.about.privacy" = "隐私";
+"prefs.about.privacy.subtitle" = "剪贴板历史仅保存在本机，且你可以随时关闭该功能。";
+"prefs.about.repo" = "项目仓库";
+"prefs.about.open.repo" = "在 GitHub 打开";
 
 "quit.meow" = "退出 Meow";
 
