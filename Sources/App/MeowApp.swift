@@ -76,10 +76,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         viewModel.load()
 
+        setupStatusItem()
         let initial = settingsStore.load()
         apply(settings: initial)
-
-        setupStatusItem()
         createLauncherWindow()
         setupOutsideClickDismissMonitor()
     }
