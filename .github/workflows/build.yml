@@ -59,11 +59,11 @@ jobs:
         run: |
           set -euo pipefail
           BUILD_LOG="$(mktemp)"
-          xcrun swift build -v 2>&1 | tee "$BUILD_LOG"
+          xcrun swift build 2>&1 | tee "$BUILD_LOG"
           if grep -i "warning:" "$BUILD_LOG"; then
             echo "Error: compilation warnings found"
             exit 1
           fi
 
       - name: Build Release
-        run: xcrun swift build -c release -v
+        run: xcrun swift build -c release
