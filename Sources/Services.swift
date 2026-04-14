@@ -89,10 +89,11 @@ final class ClipboardImageCache {
         let thumbnailSize = NSSize(width: 100, height: 100)
         let thumbnail = image.resized(to: thumbnailSize)
 
-        // Use source name directly, clean invalid characters
+        // Add timestamp to prevent overwriting same-name files
+        let timestamp = Int(Date().timeIntervalSince1970)
         let cleanName = sourceName.replacingOccurrences(of: "/", with: "_")
-        let originalPath = cacheDir.appendingPathComponent(cleanName)
-        let thumbnailPath = cacheDir.appendingPathComponent("\(cleanName)_thumb.png")
+        let originalPath = cacheDir.appendingPathComponent("\(cleanName)_\(timestamp)")
+        let thumbnailPath = cacheDir.appendingPathComponent("\(cleanName)_\(timestamp)_thumb.png")
 
         // Save thumbnail
         if let thumbnailData = thumbnail.pngData() {
@@ -248,7 +249,7 @@ final class ClipboardStore {
 
         case .url(let url):
             pasteboard.setString(url.absoluteString, forType: .string)
-            pasteboard.setString(url.absoluteString, forType: .URL)
+            pasteboard.writeObjects([url as NSURL])
 
         case .file(let fileContent):
             pasteboard.writeObjects([fileContent.url as NSURL])

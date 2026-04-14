@@ -132,8 +132,12 @@ final class LauncherViewModel: ObservableObject {
     private func refreshResults() {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if q.isEmpty {
-            // Keep the default launcher list app-focused; built-in commands appear when queried.
-            results = apps.prefix(maxIdleResults).map(SearchItem.app)
+            var idle: [SearchItem] = apps.prefix(maxIdleResults).map(SearchItem.app)
+            if settings.clipboardHistoryEnabled {
+                let recentClipboard = clipboardStore.getEntries().prefix(8).map(SearchItem.clipboard)
+                idle += recentClipboard
+            }
+            results = idle
             return
         }
 
