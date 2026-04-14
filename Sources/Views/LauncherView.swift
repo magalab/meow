@@ -130,9 +130,9 @@ struct LauncherView: View {
                                             .padding(.horizontal, 12)
                                             .padding(.vertical, 10)
                                             .background(
-                                                (selectedID == item.id
+                                                selectedID == item.id
                                                     ? palette.selectionBackground
-                                                    : palette.surfaceBackground),
+                                                    : palette.surfaceBackground,
                                                 in: RoundedRectangle(cornerRadius: 14, style: .continuous)
                                             )
                                             .overlay(
@@ -299,7 +299,7 @@ struct LauncherView: View {
                 let actions = actionMenuActions(for: selected)
                 ActionMenu(
                     selectedItem: selected,
-                    highlightedAction: actions.isEmpty ? nil : actions[actionMenuSelectionIndex.clamped(to: 0...(actions.count - 1))],
+                    highlightedAction: actions.isEmpty ? nil : actions[actionMenuSelectionIndex.clamped(to: 0 ... (actions.count - 1))],
                     onAction: { action in
                         executeActionMenu(action, selected: selected)
                     }
@@ -314,7 +314,8 @@ struct LauncherView: View {
     private func activateCurrentSelection() {
         guard !orderedResults.isEmpty else { return }
         if let selectedID,
-           let selected = orderedResults.first(where: { $0.id == selectedID }) {
+           let selected = orderedResults.first(where: { $0.id == selectedID })
+        {
             viewModel.activate(selected)
             return
         }
@@ -327,7 +328,8 @@ struct LauncherView: View {
         guard !orderedResults.isEmpty else { return }
 
         guard let currentID = selectedID,
-              let currentIndex = orderedResults.firstIndex(where: { $0.id == currentID }) else {
+              let currentIndex = orderedResults.firstIndex(where: { $0.id == currentID })
+        else {
             selectedID = orderedResults[0].id
             return
         }
@@ -340,7 +342,7 @@ struct LauncherView: View {
     private func revealSelectedInFinder() {
         guard let selectedID,
               let selected = orderedResults.first(where: { $0.id == selectedID }),
-              case .app(let app) = selected else { return }
+              case let .app(app) = selected else { return }
         NSWorkspace.shared.activateFileViewerSelecting([app.url])
     }
 
@@ -361,7 +363,7 @@ struct LauncherView: View {
     private func copySelectedPath() {
         guard let selectedID,
               let selected = orderedResults.first(where: { $0.id == selectedID }),
-              case .app(let app) = selected else { return }
+              case let .app(app) = selected else { return }
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setString(app.url.path, forType: .string)
@@ -407,7 +409,7 @@ struct LauncherView: View {
         guard let selectedItem else { return }
         let actions = actionMenuActions(for: selectedItem)
         guard !actions.isEmpty else { return }
-        let index = actionMenuSelectionIndex.clamped(to: 0...(actions.count - 1))
+        let index = actionMenuSelectionIndex.clamped(to: 0 ... (actions.count - 1))
         executeActionMenu(actions[index], selected: selectedItem)
     }
 

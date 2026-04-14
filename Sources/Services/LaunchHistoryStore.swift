@@ -68,7 +68,7 @@ final class LaunchHistoryStore {
         if prunedMap.count > Self.maxHistoryEntries {
             let sortedByRecency = prunedMap.sorted {
                 ($0.value.lastLaunchedAt, $0.value.launches) >
-                ($1.value.lastLaunchedAt, $1.value.launches)
+                    ($1.value.lastLaunchedAt, $1.value.launches)
             }
             let kept = Array(sortedByRecency.prefix(Self.maxHistoryEntries))
             prunedMap = Dictionary(uniqueKeysWithValues: kept.map { ($0.key, $0.value) })
