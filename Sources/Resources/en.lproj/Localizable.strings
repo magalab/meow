@@ -2,8 +2,25 @@
 "search.placeholder" = "Search for apps and commands...";
 "filter.all" = "All";
 "category.application" = "Application";
+"category.clipboard" = "Clipboard";
 "launcher.section.commands" = "Commands";
 "launcher.section.applications" = "Applications";
+"launcher.section.clipboard" = "Clipboard History";
+"clipboard.delete" = "Delete";
+"clipboard.type.text" = "Text";
+"clipboard.type.image" = "Image";
+"clipboard.type.file" = "File";
+"clipboard.type.url" = "URL";
+"clipboard.type.audio" = "Audio";
+
+/* Action Menu */
+"action.menu.open" = "Open";
+"action.menu.show.in.finder" = "Show in Finder";
+"action.menu.copy.path" = "Copy Path";
+"action.menu.paste" = "Paste";
+"action.menu.copy" = "Copy";
+"action.menu.delete" = "Delete";
+"action.menu.execute" = "Execute";
 
 /* Language */
 "lang.system" = "Follow System";
@@ -15,9 +32,12 @@
 "prefs.subtitle" = "System behavior and launcher visibility";
 "prefs.section.general" = "General";
 "prefs.section.appearance" = "Appearance";
+"prefs.section.about" = "About";
 
 "prefs.autolaunch.title" = "Launch at Login";
 "prefs.autolaunch.subtitle" = "Start Meow automatically when you sign in";
+"prefs.clipboard.title" = "Clipboard History";
+"prefs.clipboard.subtitle" = "Enable clipboard monitoring and clipboard search results";
 
 "prefs.hotkey.title" = "Launcher Hotkey";
 "prefs.hotkey.subtitle" = "Click record, then press the shortcut";
@@ -32,6 +52,13 @@
 
 "prefs.theme.title" = "Theme";
 "prefs.theme.subtitle" = "Choose the launcher and preferences color palette";
+
+"prefs.about.version" = "Version";
+"prefs.about.build" = "Build";
+"prefs.about.privacy" = "Privacy";
+"prefs.about.privacy.subtitle" = "Clipboard history stays local on your device and can be turned off anytime.";
+"prefs.about.repo" = "Project Repository";
+"prefs.about.open.repo" = "Open on GitHub";
 
 "quit.meow" = "Quit Meow";
 
