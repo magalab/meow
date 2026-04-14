@@ -21,14 +21,14 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Setup Swift
-        uses: swift-actions/setup-swift@v2
-        with:
-          swift-version: '5.9.2'
+      - name: Toolchain info
+        run: |
+          xcodebuild -version
+          xcrun swift --version
 
       - name: Quick validation
         run: |
-          swift package describe > /dev/null
+          xcrun swift package describe > /dev/null
           echo "✓ Package.swift valid"
 
       - name: Check formatting hygiene
@@ -59,11 +59,11 @@ jobs:
         run: |
           set -euo pipefail
           BUILD_LOG="$(mktemp)"
-          swift build -v 2>&1 | tee "$BUILD_LOG"
+          xcrun swift build -v 2>&1 | tee "$BUILD_LOG"
           if grep -i "warning:" "$BUILD_LOG"; then
             echo "Error: compilation warnings found"
             exit 1
           fi
 
       - name: Build Release
-        run: swift build -c release -v
+        run: xcrun swift build -c release -v

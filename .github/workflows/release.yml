@@ -16,11 +16,11 @@ jobs:
     
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Setup Swift
-        uses: swift-actions/setup-swift@v1
-        with:
-          swift-version: '5.9.2'
+
+      - name: Toolchain info
+        run: |
+          xcodebuild -version
+          xcrun swift --version
       
       - name: Get version
         id: version
