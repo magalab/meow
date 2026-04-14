@@ -9,6 +9,7 @@ final class LauncherViewModel: ObservableObject {
     @Published var query: String = "" {
         didSet { refreshResults() }
     }
+
     @Published private(set) var results: [SearchItem] = []
     @Published var settings: AppSettings {
         didSet {
@@ -59,7 +60,7 @@ final class LauncherViewModel: ObservableObject {
         self.discoveryService = discoveryService
         self.launchHistoryStore = launchHistoryStore
         self.clipboardStore = clipboardStore
-        self.settings = settingsStore.load()
+        settings = settingsStore.load()
     }
 
     func load() {
@@ -76,7 +77,8 @@ final class LauncherViewModel: ObservableObject {
         let now = Date()
         if !force,
            let lastDiscoveryAt,
-           now.timeIntervalSince(lastDiscoveryAt) < discoveryRefreshInterval {
+           now.timeIntervalSince(lastDiscoveryAt) < discoveryRefreshInterval
+        {
             return
         }
 
@@ -93,26 +95,26 @@ final class LauncherViewModel: ObservableObject {
 
     func deleteClipboardItem(_ item: SearchItem) {
         guard settings.clipboardHistoryEnabled else { return }
-        guard case .clipboard(let entry) = item else { return }
+        guard case let .clipboard(entry) = item else { return }
         clipboardStore.delete(entry)
     }
 
     func copyClipboardItem(_ item: SearchItem) {
         guard settings.clipboardHistoryEnabled else { return }
-        guard case .clipboard(let entry) = item else { return }
+        guard case let .clipboard(entry) = item else { return }
         clipboardStore.writeToPasteboard(entry)
     }
 
     func activate(_ item: SearchItem) {
         switch item {
-        case .app(let app):
+        case let .app(app):
             launchHistoryStore.recordLaunch(id: app.id)
             NSWorkspace.shared.openApplication(at: app.url, configuration: NSWorkspace.OpenConfiguration()) { _, _ in }
             // Clear results directly to reduce retained memory without triggering a full search refresh.
             results = []
-        case .command(let command):
+        case let .command(command):
             run(command)
-        case .clipboard(let entry):
+        case let .clipboard(entry):
             onPasteClipboard?(entry)
             results = []
         }
@@ -184,7 +186,8 @@ final class LauncherViewModel: ObservableObject {
     private func isCurrentApp(_ app: AppEntry) -> Bool {
         if let currentBundleID,
            let appBundleID = app.bundleId?.lowercased(),
-           appBundleID == currentBundleID {
+           appBundleID == currentBundleID
+        {
             return true
         }
 

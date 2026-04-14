@@ -46,7 +46,7 @@ struct ActionMenu: View {
         title: String,
         systemImage: String,
         shortcuts: [String],
-        isDanger: Bool = false,
+        isDanger: Bool = false
     ) -> some View {
         let isHighlighted = highlightedAction == action
 
@@ -66,7 +66,7 @@ struct ActionMenu: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
             .background(
-                (isHighlighted ? Color.primary.opacity(0.14) : Color.primary.opacity(0.06)),
+                isHighlighted ? Color.primary.opacity(0.14) : Color.primary.opacity(0.06),
                 in: RoundedRectangle(cornerRadius: 10, style: .continuous)
             )
         }
