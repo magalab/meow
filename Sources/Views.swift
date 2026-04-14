@@ -682,42 +682,56 @@ struct PreferencesView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 8) {
-                ForEach(Section.allCases) { section in
-                    Button {
-                        withAnimation(.snappy(duration: 0.22)) {
-                            selectedSection = section
+        ZStack {
+            LinearGradient(
+                colors: palette.preferencesGradient,
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                HStack(spacing: 8) {
+                    ForEach(Section.allCases) { section in
+                        Button {
+                            withAnimation(.snappy(duration: 0.22)) {
+                                selectedSection = section
+                            }
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: section.icon)
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(selectedSection == section ? palette.preferencesAccent : Color.secondary)
+                                Text(section.localizedTitle)
+                                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            }
+                            .foregroundStyle(selectedSection == section ? Color.primary : Color.secondary)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(
+                                selectedSection == section
+                                    ? palette.preferencesPanelBackground
+                                    : Color.clear,
+                                in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .stroke(selectedSection == section ? palette.preferencesPanelStroke : Color.clear, lineWidth: 1)
+                            )
                         }
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: section.icon)
-                                .font(.system(size: 12, weight: .semibold))
-                            Text(section.localizedTitle)
-                                .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        }
-                        .foregroundStyle(selectedSection == section ? Color.primary : Color.secondary)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(
-                            selectedSection == section
-                                ? Color.primary.opacity(0.08)
-                                : Color.clear,
-                            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        )
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
+
+                    Spacer()
                 }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(Color.white.opacity(colorScheme == .dark ? 0.02 : 0.42))
 
-                Spacer()
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
+                Divider()
 
-            Divider()
-
-            ScrollView {
-                VStack(spacing: 10) {
+                ScrollView {
+                    VStack(spacing: 10) {
                     if selectedSection == .general {
                         PreferenceToggleRow(
                             title: L10n.prefsAutoLaunchTitle,
@@ -801,15 +815,17 @@ struct PreferencesView: View {
                     }
 
                     if selectedSection == .about {
-                        PreferenceAboutSectionView()
+                        PreferenceAboutSectionView(theme: viewModel.settings.theme)
                             .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
                     }
                 }
-                .padding(16)
-                .animation(.snappy(duration: 0.28), value: selectedSection)
+                    .padding(16)
+                    .animation(.snappy(duration: 0.28), value: selectedSection)
+                }
+                .background(Color.white.opacity(colorScheme == .dark ? 0.01 : 0.16))
             }
+            .background(Color(nsColor: .windowBackgroundColor).opacity(colorScheme == .dark ? 0.76 : 0.84))
         }
-        .background(Color(nsColor: .windowBackgroundColor))
         .frame(width: 620, height: 448)
         .id(lang.refreshToken)
     }
@@ -827,6 +843,10 @@ struct PreferencesView: View {
 }
 
 private struct PreferenceAboutSectionView: View {
+    let theme: AppTheme
+
+    @Environment(\.colorScheme) private var colorScheme
+
     private var version: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "-"
     }
@@ -835,13 +855,18 @@ private struct PreferenceAboutSectionView: View {
         Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "-"
     }
 
+    private var palette: ThemePalette {
+        MeowTheme.palette(theme: theme, scheme: colorScheme)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
                 Image(systemName: "pawprint.fill")
                     .font(.system(size: 18, weight: .semibold))
                     .frame(width: 34, height: 34)
-                    .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .foregroundStyle(palette.preferencesAccent)
+                    .background(palette.iconChipBackground, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Meow")
@@ -880,10 +905,10 @@ private struct PreferenceAboutSectionView: View {
             }
         }
         .padding(14)
-        .background(Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(palette.preferencesPanelBackground, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+            .stroke(palette.preferencesPanelStroke, lineWidth: 1)
         )
     }
 
