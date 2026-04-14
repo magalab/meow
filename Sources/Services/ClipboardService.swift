@@ -37,7 +37,7 @@ final class ClipboardImageCache {
         try? thumbnailData.write(to: thumbnailPath)
 
         // Save original if not too large, as PNG (screenshots don't have original format)
-        if width <= Int(maxImageDimension) && height <= Int(maxImageDimension) {
+        if width <= Int(maxImageDimension), height <= Int(maxImageDimension) {
             if let originalData = image.pngData() {
                 try? originalData.write(to: originalPath)
             }
@@ -77,7 +77,7 @@ final class ClipboardImageCache {
         }
 
         // Save original with correct format
-        if width <= Int(maxImageDimension) && height <= Int(maxImageDimension) {
+        if width <= Int(maxImageDimension), height <= Int(maxImageDimension) {
             try? data.write(to: originalPath)
         }
 
@@ -174,19 +174,22 @@ final class ClipboardStore {
     private func getImageFromPasteboard(_ pasteboard: NSPasteboard) -> NSImage? {
         // Try TIFF data
         if let data = pasteboard.data(forType: .tiff),
-           let image = NSImage(data: data) {
+           let image = NSImage(data: data)
+        {
             return image
         }
 
         // Try PNG data
         if let data = pasteboard.data(forType: .png),
-           let image = NSImage(data: data) {
+           let image = NSImage(data: data)
+        {
             return image
         }
 
         // Try reading as file URL
         if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL],
-           let url = urls.first {
+           let url = urls.first
+        {
             let image = NSImage(contentsOf: url)
             if image != nil {
                 return image
@@ -203,12 +206,12 @@ final class ClipboardStore {
 
     func delete(_ entry: ClipboardEntry) {
         // Clean up disk cache for image/audio entries
-        if case .image(let imageContent) = entry.content {
+        if case let .image(imageContent) = entry.content {
             try? FileManager.default.removeItem(atPath: imageContent.thumbnailPath)
             if let originalPath = imageContent.originalPath {
                 try? FileManager.default.removeItem(atPath: originalPath)
             }
-        } else if case .audio(let audioContent) = entry.content {
+        } else if case let .audio(audioContent) = entry.content {
             try? FileManager.default.removeItem(atPath: audioContent.cachePath)
         }
         entries.removeAll { $0.id == entry.id }
@@ -220,30 +223,32 @@ final class ClipboardStore {
         pasteboard.clearContents()
 
         switch entry.content {
-        case .text(let string):
+        case let .text(string):
             pasteboard.setString(string, forType: .string)
 
-        case .url(let url):
+        case let .url(url):
             pasteboard.setString(url.absoluteString, forType: .string)
             pasteboard.writeObjects([url as NSURL])
 
-        case .file(let fileContent):
+        case let .file(fileContent):
             pasteboard.writeObjects([fileContent.url as NSURL])
 
-        case .image(let imageContent):
+        case let .image(imageContent):
             // Write image as TIFF data (most apps support this)
             if let originalPath = imageContent.originalPath,
                let image = NSImage(contentsOfFile: originalPath),
-               let tiffData = image.tiffRepresentation {
+               let tiffData = image.tiffRepresentation
+            {
                 pasteboard.setData(tiffData, forType: .tiff)
                 // Also write file URL for apps that prefer file promises
                 pasteboard.writeObjects([URL(fileURLWithPath: originalPath) as NSURL])
             } else if let image = NSImage(contentsOfFile: imageContent.thumbnailPath),
-                      let tiffData = image.tiffRepresentation {
+                      let tiffData = image.tiffRepresentation
+            {
                 pasteboard.setData(tiffData, forType: .tiff)
             }
 
-        case .audio(let audioContent):
+        case let .audio(audioContent):
             let url = URL(fileURLWithPath: audioContent.cachePath)
             pasteboard.writeObjects([url as NSURL])
         }
@@ -260,8 +265,8 @@ final class ClipboardStore {
 
         // Check for file URL first (from Finder file copy)
         if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [URL],
-           let firstURL = urls.first {
-
+           let firstURL = urls.first
+        {
             // Check if it's a URL (web URL)
             if firstURL.scheme == "http" || firstURL.scheme == "https" {
                 let entry = ClipboardEntry(
@@ -279,7 +284,8 @@ final class ClipboardStore {
             if imageExtensions.contains(ext) {
                 // Read original file data directly to preserve format
                 if let fileData = try? Data(contentsOf: firstURL),
-                   let image = NSImage(contentsOf: firstURL) {
+                   let image = NSImage(contentsOf: firstURL)
+                {
                     if let imageContent = ClipboardImageCache.shared.saveImageFromFile(
                         data: fileData,
                         sourceName: firstURL.lastPathComponent,
@@ -315,7 +321,8 @@ final class ClipboardStore {
                     let type = NSPasteboard.PasteboardType(typeString)
                     guard let data = item.data(forType: type),
                           let urlString = String(data: data, encoding: .utf8),
-                          let url = URL(string: urlString) else {
+                          let url = URL(string: urlString)
+                    else {
                         continue
                     }
 
@@ -323,7 +330,8 @@ final class ClipboardStore {
                     let ext = url.pathExtension.lowercased()
                     if imageExtensions.contains(ext),
                        let fileData = try? Data(contentsOf: url),
-                       let image = NSImage(contentsOf: url) {
+                       let image = NSImage(contentsOf: url)
+                    {
                         if let imageContent = ClipboardImageCache.shared.saveImageFromFile(
                             data: fileData,
                             sourceName: url.lastPathComponent,
@@ -370,8 +378,9 @@ final class ClipboardStore {
 
             // Avoid recording our own writes
             if let last = entries.first,
-               case .text(let lastText) = last.content,
-               lastText == trimmed {
+               case let .text(lastText) = last.content,
+               lastText == trimmed
+            {
                 return
             }
 
@@ -397,7 +406,7 @@ final class ClipboardStore {
         if entries.count > Self.maxEntries {
             let removed = entries.removeLast()
             // Clean up removed entry's disk cache
-            if case .image(let imageContent) = removed.content {
+            if case let .image(imageContent) = removed.content {
                 try? FileManager.default.removeItem(atPath: imageContent.thumbnailPath)
                 if let originalPath = imageContent.originalPath {
                     try? FileManager.default.removeItem(atPath: originalPath)

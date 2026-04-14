@@ -15,8 +15,8 @@ let package = Package(
             name: "Meow",
             path: "Sources",
             resources: [
-                .process("Resources")
+                .process("Resources"),
             ]
-        )
+        ),
     ]
 )

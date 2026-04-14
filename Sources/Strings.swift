@@ -31,7 +31,7 @@ final class LanguageManager: ObservableObject {
         // Find the app bundle and access its Resources directory
         let exePath = CommandLine.arguments[0]
         var searchPath = (exePath as NSString).deletingLastPathComponent
-        
+
         // Walk up to find .app bundle (e.g., MyApp.app/Contents/MacOS/Meow)
         let fileManager = FileManager.default
         repeat {
@@ -41,13 +41,13 @@ final class LanguageManager: ObservableObject {
                 let resourcesPath = (searchPath as NSString).appendingPathComponent("Contents/Resources")
                 if fileManager.fileExists(atPath: resourcesPath) {
                     // Try to load from app bundle resources
-                    if let path = self.findLprojPath(in: resourcesPath, for: code) {
+                    if let path = findLprojPath(in: resourcesPath, for: code) {
                         langBundle = Bundle(path: path)
                     }
                 }
                 break
             }
-            
+
             let parent = (searchPath as NSString).deletingLastPathComponent
             if parent == searchPath { break } // reached root
             searchPath = parent
@@ -58,7 +58,8 @@ final class LanguageManager: ObservableObject {
             let exeDir = (exePath as NSString).deletingLastPathComponent
             let resourceBundlePath = (exeDir as NSString).appendingPathComponent("Meow_Meow.bundle")
             if fileManager.fileExists(atPath: resourceBundlePath),
-               let path = self.findLprojPath(in: resourceBundlePath, for: code) {
+               let path = findLprojPath(in: resourceBundlePath, for: code)
+            {
                 langBundle = Bundle(path: path)
             }
         }
@@ -69,10 +70,10 @@ final class LanguageManager: ObservableObject {
         }
 
         if let langBundle = langBundle {
-            self.bundle = langBundle
+            bundle = langBundle
             NSLog("[Meow i18n] ✅ Loaded language bundle for: \(code)")
         } else {
-            self.bundle = Bundle.main
+            bundle = Bundle.main
             NSLog("[Meow i18n] ⚠ Could not load language bundle for \(code), using fallback")
         }
 
@@ -81,20 +82,20 @@ final class LanguageManager: ObservableObject {
 
     private func findLprojPath(in containerPath: String, for code: String) -> String? {
         let fileManager = FileManager.default
-        
+
         // Try exact code (e.g., zh-Hans)
         let exactPath = (containerPath as NSString).appendingPathComponent("\(code).lproj")
         if fileManager.fileExists(atPath: exactPath) {
             return exactPath
         }
-        
+
         // Try lowercase variant (e.g., zh-hans)
         let lowercaseCode = code.lowercased()
         let lowercasePath = (containerPath as NSString).appendingPathComponent("\(lowercaseCode).lproj")
         if fileManager.fileExists(atPath: lowercasePath) {
             return lowercasePath
         }
-        
+
         return nil
     }
 }
@@ -103,82 +104,271 @@ final class LanguageManager: ObservableObject {
 /// Properties are computed dynamically to support runtime language switching.
 enum L10n {
     // MARK: - Launcher
-    static var searchPlaceholder: String { loc("search.placeholder") }
-    static var filterAll: String { loc("filter.all") }
-    static var categoryApplication: String { loc("category.application") }
-    static var categoryClipboard: String { loc("category.clipboard") }
-    static var launcherSectionCommands: String { loc("launcher.section.commands") }
-    static var launcherSectionApplications: String { loc("launcher.section.applications") }
-    static var launcherSectionClipboard: String { loc("launcher.section.clipboard") }
-    static var clipboardDelete: String { loc("clipboard.delete") }
-    static var clipboardTypeText: String { loc("clipboard.type.text") }
-    static var clipboardTypeImage: String { loc("clipboard.type.image") }
-    static var clipboardTypeFile: String { loc("clipboard.type.file") }
-    static var clipboardTypeURL: String { loc("clipboard.type.url") }
-    static var clipboardTypeAudio: String { loc("clipboard.type.audio") }
+
+    static var searchPlaceholder: String {
+        loc("search.placeholder")
+    }
+
+    static var filterAll: String {
+        loc("filter.all")
+    }
+
+    static var categoryApplication: String {
+        loc("category.application")
+    }
+
+    static var categoryClipboard: String {
+        loc("category.clipboard")
+    }
+
+    static var launcherSectionCommands: String {
+        loc("launcher.section.commands")
+    }
+
+    static var launcherSectionApplications: String {
+        loc("launcher.section.applications")
+    }
+
+    static var launcherSectionClipboard: String {
+        loc("launcher.section.clipboard")
+    }
+
+    static var clipboardDelete: String {
+        loc("clipboard.delete")
+    }
+
+    static var clipboardTypeText: String {
+        loc("clipboard.type.text")
+    }
+
+    static var clipboardTypeImage: String {
+        loc("clipboard.type.image")
+    }
+
+    static var clipboardTypeFile: String {
+        loc("clipboard.type.file")
+    }
+
+    static var clipboardTypeURL: String {
+        loc("clipboard.type.url")
+    }
+
+    static var clipboardTypeAudio: String {
+        loc("clipboard.type.audio")
+    }
 
     // MARK: - Action Menu
-    static var actionMenuOpen: String { loc("action.menu.open") }
-    static var actionMenuShowInFinder: String { loc("action.menu.show.in.finder") }
-    static var actionMenuCopyPath: String { loc("action.menu.copy.path") }
-    static var actionMenuPaste: String { loc("action.menu.paste") }
-    static var actionMenuCopy: String { loc("action.menu.copy") }
-    static var actionMenuDelete: String { loc("action.menu.delete") }
-    static var actionMenuExecute: String { loc("action.menu.execute") }
+
+    static var actionMenuOpen: String {
+        loc("action.menu.open")
+    }
+
+    static var actionMenuShowInFinder: String {
+        loc("action.menu.show.in.finder")
+    }
+
+    static var actionMenuCopyPath: String {
+        loc("action.menu.copy.path")
+    }
+
+    static var actionMenuPaste: String {
+        loc("action.menu.paste")
+    }
+
+    static var actionMenuCopy: String {
+        loc("action.menu.copy")
+    }
+
+    static var actionMenuDelete: String {
+        loc("action.menu.delete")
+    }
+
+    static var actionMenuExecute: String {
+        loc("action.menu.execute")
+    }
 
     // MARK: - Preferences
-    static var prefsTitle: String { loc("prefs.title") }
-    static var prefsSubtitle: String { loc("prefs.subtitle") }
-    static var prefsSectionGeneral: String { loc("prefs.section.general") }
-    static var prefsSectionAppearance: String { loc("prefs.section.appearance") }
-    static var prefsSectionAbout: String { loc("prefs.section.about") }
 
-    static var prefsAutoLaunchTitle: String { loc("prefs.autolaunch.title") }
-    static var prefsAutoLaunchSubtitle: String { loc("prefs.autolaunch.subtitle") }
-    static var prefsClipboardTitle: String { loc("prefs.clipboard.title") }
-    static var prefsClipboardSubtitle: String { loc("prefs.clipboard.subtitle") }
-    static var prefsHotkeyTitle: String { loc("prefs.hotkey.title") }
-    static var prefsHotkeySubtitle: String { loc("prefs.hotkey.subtitle") }
-    static var prefsHotkeyRecording: String { loc("prefs.hotkey.recording") }
-    static var prefsHotkeyRecordingHint: String { loc("prefs.hotkey.recording.hint") }
-    static var prefsDockTitle: String { loc("prefs.dock.title") }
-    static var prefsDockSubtitle: String { loc("prefs.dock.subtitle") }
-    static var prefsMenuBarTitle: String { loc("prefs.menubar.title") }
-    static var prefsMenuBarSubtitle: String { loc("prefs.menubar.subtitle") }
-    static var prefsThemeTitle: String { loc("prefs.theme.title") }
-    static var prefsThemeSubtitle: String { loc("prefs.theme.subtitle") }
-    static var prefsLanguageTitle: String { loc("prefs.language.title") }
-    static var prefsLanguageSubtitle: String { loc("prefs.language.subtitle") }
-    static var prefsAboutVersion: String { loc("prefs.about.version") }
-    static var prefsAboutBuild: String { loc("prefs.about.build") }
-    static var prefsAboutPrivacy: String { loc("prefs.about.privacy") }
-    static var prefsAboutPrivacySubtitle: String { loc("prefs.about.privacy.subtitle") }
-    static var prefsAboutRepo: String { loc("prefs.about.repo") }
-    static var prefsAboutOpenRepo: String { loc("prefs.about.open.repo") }
-    static var quitMeow: String { loc("quit.meow") }
-    static var langSystem: String { loc("lang.system") }
-    static var themeGingerCat: String { loc("theme.ginger-cat") }
-    static var themeMistBlue: String { loc("theme.mist-blue") }
-    static var themeGraphiteAmber: String { loc("theme.graphite-amber") }
-    static var themeMossInk: String { loc("theme.moss-ink") }
+    static var prefsTitle: String {
+        loc("prefs.title")
+    }
+
+    static var prefsSubtitle: String {
+        loc("prefs.subtitle")
+    }
+
+    static var prefsSectionGeneral: String {
+        loc("prefs.section.general")
+    }
+
+    static var prefsSectionAppearance: String {
+        loc("prefs.section.appearance")
+    }
+
+    static var prefsSectionAbout: String {
+        loc("prefs.section.about")
+    }
+
+    static var prefsAutoLaunchTitle: String {
+        loc("prefs.autolaunch.title")
+    }
+
+    static var prefsAutoLaunchSubtitle: String {
+        loc("prefs.autolaunch.subtitle")
+    }
+
+    static var prefsClipboardTitle: String {
+        loc("prefs.clipboard.title")
+    }
+
+    static var prefsClipboardSubtitle: String {
+        loc("prefs.clipboard.subtitle")
+    }
+
+    static var prefsHotkeyTitle: String {
+        loc("prefs.hotkey.title")
+    }
+
+    static var prefsHotkeySubtitle: String {
+        loc("prefs.hotkey.subtitle")
+    }
+
+    static var prefsHotkeyRecording: String {
+        loc("prefs.hotkey.recording")
+    }
+
+    static var prefsHotkeyRecordingHint: String {
+        loc("prefs.hotkey.recording.hint")
+    }
+
+    static var prefsDockTitle: String {
+        loc("prefs.dock.title")
+    }
+
+    static var prefsDockSubtitle: String {
+        loc("prefs.dock.subtitle")
+    }
+
+    static var prefsMenuBarTitle: String {
+        loc("prefs.menubar.title")
+    }
+
+    static var prefsMenuBarSubtitle: String {
+        loc("prefs.menubar.subtitle")
+    }
+
+    static var prefsThemeTitle: String {
+        loc("prefs.theme.title")
+    }
+
+    static var prefsThemeSubtitle: String {
+        loc("prefs.theme.subtitle")
+    }
+
+    static var prefsLanguageTitle: String {
+        loc("prefs.language.title")
+    }
+
+    static var prefsLanguageSubtitle: String {
+        loc("prefs.language.subtitle")
+    }
+
+    static var prefsAboutVersion: String {
+        loc("prefs.about.version")
+    }
+
+    static var prefsAboutBuild: String {
+        loc("prefs.about.build")
+    }
+
+    static var prefsAboutPrivacy: String {
+        loc("prefs.about.privacy")
+    }
+
+    static var prefsAboutPrivacySubtitle: String {
+        loc("prefs.about.privacy.subtitle")
+    }
+
+    static var prefsAboutRepo: String {
+        loc("prefs.about.repo")
+    }
+
+    static var prefsAboutOpenRepo: String {
+        loc("prefs.about.open.repo")
+    }
+
+    static var quitMeow: String {
+        loc("quit.meow")
+    }
+
+    static var langSystem: String {
+        loc("lang.system")
+    }
+
+    static var themeGingerCat: String {
+        loc("theme.ginger-cat")
+    }
+
+    static var themeMistBlue: String {
+        loc("theme.mist-blue")
+    }
+
+    static var themeGraphiteAmber: String {
+        loc("theme.graphite-amber")
+    }
+
+    static var themeMossInk: String {
+        loc("theme.moss-ink")
+    }
 
     // MARK: - Status bar menu
-    static var menuOpen: String { loc("menu.open") }
-    static var menuPreferences: String { loc("menu.preferences") }
-    static var menuAutoLaunch: String { loc("menu.autolaunch") }
-    static var menuDock: String { loc("menu.dock") }
-    static var menuMenuBar: String { loc("menu.menubar") }
+
+    static var menuOpen: String {
+        loc("menu.open")
+    }
+
+    static var menuPreferences: String {
+        loc("menu.preferences")
+    }
+
+    static var menuAutoLaunch: String {
+        loc("menu.autolaunch")
+    }
+
+    static var menuDock: String {
+        loc("menu.dock")
+    }
+
+    static var menuMenuBar: String {
+        loc("menu.menubar")
+    }
 
     // MARK: - Built-in commands
-    static var cmdPreferencesTitle: String { loc("cmd.preferences.title") }
-    static var cmdPreferencesSubtitle: String { loc("cmd.preferences.subtitle") }
-    static var cmdQuitTitle: String { loc("cmd.quit.title") }
-    static var cmdQuitSubtitle: String { loc("cmd.quit.subtitle") }
+
+    static var cmdPreferencesTitle: String {
+        loc("cmd.preferences.title")
+    }
+
+    static var cmdPreferencesSubtitle: String {
+        loc("cmd.preferences.subtitle")
+    }
+
+    static var cmdQuitTitle: String {
+        loc("cmd.quit.title")
+    }
+
+    static var cmdQuitSubtitle: String {
+        loc("cmd.quit.subtitle")
+    }
 
     // MARK: - Window
-    static var windowPrefsTitle: String { loc("window.prefs.title") }
+
+    static var windowPrefsTitle: String {
+        loc("window.prefs.title")
+    }
 
     // MARK: - Private
+
     private static func loc(_ key: String) -> String {
         NSLocalizedString(key, bundle: LanguageManager.shared.bundle, comment: "")
     }
