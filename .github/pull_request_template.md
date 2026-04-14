@@ -20,7 +20,7 @@ Related to #
 ## Testing
 <!-- Describe testing you've done -->
 
-- [ ] Tested on macOS 12+
+- [ ] Tested on macOS 14+
 - [ ] Tested with different language settings
 - [ ] Tested keyboard shortcuts
 - [ ] No new warnings in build

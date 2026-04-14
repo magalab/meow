@@ -26,11 +26,10 @@ final class ClipboardImageCache {
         let thumbnailSize = NSSize(width: 100, height: 100)
         let thumbnail = image.resized(to: thumbnailSize)
 
-        // Add timestamp to prevent overwriting same-name screenshots
-        let timestamp = Int(Date().timeIntervalSince1970)
-        let cleanName = sourceName.replacingOccurrences(of: "/", with: "_")
-        let originalPath = cacheDir.appendingPathComponent("\(cleanName)_\(timestamp)")
-        let thumbnailPath = cacheDir.appendingPathComponent("\(cleanName)_\(timestamp)_thumb.png")
+        let originalFileName = resolvedFileName(sourceName, defaultName: "Screenshot")
+        let thumbnailFileName = resolvedThumbnailFileName(from: originalFileName)
+        let originalPath = cacheDir.appendingPathComponent(originalFileName)
+        let thumbnailPath = cacheDir.appendingPathComponent(thumbnailFileName)
 
         // Save thumbnail
         guard let thumbnailData = thumbnail.pngData() else { return nil }
@@ -65,11 +64,10 @@ final class ClipboardImageCache {
         let thumbnailSize = NSSize(width: 100, height: 100)
         let thumbnail = image.resized(to: thumbnailSize)
 
-        // Add timestamp to prevent overwriting same-name files
-        let timestamp = Int(Date().timeIntervalSince1970)
-        let cleanName = sourceName.replacingOccurrences(of: "/", with: "_")
-        let originalPath = cacheDir.appendingPathComponent("\(cleanName)_\(timestamp)")
-        let thumbnailPath = cacheDir.appendingPathComponent("\(cleanName)_\(timestamp)_thumb.png")
+        let originalFileName = resolvedFileName(sourceName, defaultName: "ClipboardImage")
+        let thumbnailFileName = resolvedThumbnailFileName(from: originalFileName)
+        let originalPath = cacheDir.appendingPathComponent(originalFileName)
+        let thumbnailPath = cacheDir.appendingPathComponent(thumbnailFileName)
 
         // Save thumbnail
         if let thumbnailData = thumbnail.pngData() {
@@ -107,6 +105,23 @@ final class ClipboardImageCache {
         for url in sorted.dropFirst(100) {
             try? FileManager.default.removeItem(at: url)
         }
+    }
+
+    private func resolvedFileName(_ sourceName: String, defaultName: String) -> String {
+        let sanitized = sanitizeFileName(sourceName)
+        return sanitized.isEmpty ? defaultName : sanitized
+    }
+
+    private func resolvedThumbnailFileName(from originalFileName: String) -> String {
+        let url = URL(fileURLWithPath: originalFileName)
+        let base = url.deletingPathExtension().lastPathComponent
+        return "\(base)_thumb.png"
+    }
+
+    private func sanitizeFileName(_ name: String) -> String {
+        let replaced = name.replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: ":", with: "_")
+        return replaced.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
 
