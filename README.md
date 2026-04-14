@@ -47,11 +47,12 @@ APP_BUNDLE_ID=tech.lury.meow bash scripts/build-dmg.sh
 
 ## Project Structure
 
-- `Sources/MeowApp.swift`: app lifecycle and window management
-- `Sources/LauncherViewModel.swift`: search and ranking logic
-- `Sources/Views.swift`: launcher and preferences UI
+- `Sources/App/MeowApp.swift`: app lifecycle and window management
+- `Sources/ViewModels/LauncherViewModel.swift`: search and ranking logic
+- `Sources/Views/`: launcher, preferences, and UI components
 - `Sources/Theme.swift`: theme palette system
-- `Sources/Services.swift`: hotkey, status item, auto-launch, persistence
+- `Sources/Services/`: hotkey, status item, auto-launch, persistence
+- `Sources/Models/`: app and clipboard models
 - `Sources/Resources/`: localization resources
 
 ## Notes

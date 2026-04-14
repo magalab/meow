@@ -156,6 +156,7 @@ final class AppDiscoveryService {
         let roots = [
             URL(fileURLWithPath: "/Applications", isDirectory: true),
             URL(fileURLWithPath: "/System/Applications", isDirectory: true),
+            URL(fileURLWithPath: "/System/Cryptexes/App/System/Applications", isDirectory: true),
             manager.homeDirectoryForCurrentUser.appendingPathComponent("Applications", isDirectory: true),
         ]
 
@@ -194,6 +195,23 @@ final class AppDiscoveryService {
                         name: displayName,
                         bundleId: bundle?.bundleIdentifier,
                         url: url
+                    )
+                )
+            }
+        }
+
+        // Some macOS builds expose Safari via system-managed symlink paths.
+        // Ensure Safari is discoverable even when directory enumeration misses it.
+        if let safariURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.Safari") {
+            let safariID = safariURL.path
+            if !seen.contains(safariID) {
+                seen.insert(safariID)
+                entries.append(
+                    AppEntry(
+                        id: safariID,
+                        name: "Safari",
+                        bundleId: "com.apple.Safari",
+                        url: safariURL
                     )
                 )
             }
