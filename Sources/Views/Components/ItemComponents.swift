@@ -13,14 +13,14 @@ struct SearchItemIcon: View {
     var body: some View {
         Group {
             switch item {
-            case .app(let app):
+            case let .app(app):
                 LazyAppIconView(path: app.url.path)
             case .command:
                 Image(systemName: item.symbolName)
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(palette.launcherAccent)
-            case .clipboard(let entry):
-                if case .image(let imageContent) = entry.content {
+            case let .clipboard(entry):
+                if case let .image(imageContent) = entry.content {
                     LazyClipboardImageView(path: imageContent.thumbnailPath)
                 } else {
                     Image(systemName: item.symbolName)

@@ -7,7 +7,9 @@ struct PreferencesView: View {
         case appearance
         case about
 
-        var id: String { rawValue }
+        var id: String {
+            rawValue
+        }
 
         var localizedTitle: String {
             switch self {
@@ -86,93 +88,93 @@ struct PreferencesView: View {
 
                 ScrollView {
                     VStack(spacing: 10) {
-                    if selectedSection == .general {
-                        PreferenceToggleRow(
-                            title: L10n.prefsAutoLaunchTitle,
-                            subtitle: L10n.prefsAutoLaunchSubtitle,
-                            symbol: "power.circle",
-                            theme: viewModel.settings.theme,
-                            isOn: animatedBinding(
-                                get: { viewModel.settings.autoLaunch },
-                                set: { viewModel.settings.autoLaunch = $0 }
+                        if selectedSection == .general {
+                            PreferenceToggleRow(
+                                title: L10n.prefsAutoLaunchTitle,
+                                subtitle: L10n.prefsAutoLaunchSubtitle,
+                                symbol: "power.circle",
+                                theme: viewModel.settings.theme,
+                                isOn: animatedBinding(
+                                    get: { viewModel.settings.autoLaunch },
+                                    set: { viewModel.settings.autoLaunch = $0 }
+                                )
                             )
-                        )
-                        .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .opacity))
+                            .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .opacity))
 
-                        PreferenceToggleRow(
-                            title: L10n.prefsClipboardTitle,
-                            subtitle: L10n.prefsClipboardSubtitle,
-                            symbol: "clipboard",
-                            theme: viewModel.settings.theme,
-                            isOn: animatedBinding(
-                                get: { viewModel.settings.clipboardHistoryEnabled },
-                                set: { viewModel.settings.clipboardHistoryEnabled = $0 }
+                            PreferenceToggleRow(
+                                title: L10n.prefsClipboardTitle,
+                                subtitle: L10n.prefsClipboardSubtitle,
+                                symbol: "clipboard",
+                                theme: viewModel.settings.theme,
+                                isOn: animatedBinding(
+                                    get: { viewModel.settings.clipboardHistoryEnabled },
+                                    set: { viewModel.settings.clipboardHistoryEnabled = $0 }
+                                )
                             )
-                        )
-                        .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .opacity))
+                            .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .opacity))
 
-                        PreferenceHotkeyRecorderRow(
-                            title: L10n.prefsHotkeyTitle,
-                            subtitle: L10n.prefsHotkeySubtitle,
-                            symbol: "keyboard",
-                            theme: viewModel.settings.theme,
-                            keyCode: viewModel.settings.hotkeyKeyCode,
-                            modifiers: viewModel.settings.hotkeyModifiers
-                        ) { keyCode, modifiers in
-                            viewModel.settings.hotkeyKeyCode = keyCode
-                            viewModel.settings.hotkeyModifiers = modifiers
+                            PreferenceHotkeyRecorderRow(
+                                title: L10n.prefsHotkeyTitle,
+                                subtitle: L10n.prefsHotkeySubtitle,
+                                symbol: "keyboard",
+                                theme: viewModel.settings.theme,
+                                keyCode: viewModel.settings.hotkeyKeyCode,
+                                modifiers: viewModel.settings.hotkeyModifiers
+                            ) { keyCode, modifiers in
+                                viewModel.settings.hotkeyKeyCode = keyCode
+                                viewModel.settings.hotkeyModifiers = modifiers
+                            }
+                            .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .opacity))
+
+                            PreferenceLanguageRow(
+                                theme: viewModel.settings.theme,
+                                language: Binding(
+                                    get: { viewModel.settings.language },
+                                    set: { viewModel.settings.language = $0 }
+                                )
+                            )
+                            .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .opacity))
                         }
-                        .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .opacity))
 
-                        PreferenceLanguageRow(
-                            theme: viewModel.settings.theme,
-                            language: Binding(
-                                get: { viewModel.settings.language },
-                                set: { viewModel.settings.language = $0 }
+                        if selectedSection == .appearance {
+                            PreferenceThemeRow(
+                                theme: Binding(
+                                    get: { viewModel.settings.theme },
+                                    set: { viewModel.settings.theme = $0 }
+                                )
                             )
-                        )
-                        .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .opacity))
-                    }
-
-                    if selectedSection == .appearance {
-                        PreferenceThemeRow(
-                            theme: Binding(
-                                get: { viewModel.settings.theme },
-                                set: { viewModel.settings.theme = $0 }
-                            )
-                        )
-                        .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
-
-                        PreferenceToggleRow(
-                            title: L10n.prefsDockTitle,
-                            subtitle: L10n.prefsDockSubtitle,
-                            symbol: "dock.rectangle",
-                            theme: viewModel.settings.theme,
-                            isOn: animatedBinding(
-                                get: { viewModel.settings.showDockIcon },
-                                set: { viewModel.settings.showDockIcon = $0 }
-                            )
-                        )
-                        .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
-
-                        PreferenceToggleRow(
-                            title: L10n.prefsMenuBarTitle,
-                            subtitle: L10n.prefsMenuBarSubtitle,
-                            symbol: "menubar.rectangle",
-                            theme: viewModel.settings.theme,
-                            isOn: animatedBinding(
-                                get: { viewModel.settings.showStatusItem },
-                                set: { viewModel.settings.showStatusItem = $0 }
-                            )
-                        )
-                        .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
-                    }
-
-                    if selectedSection == .about {
-                        PreferenceAboutSectionView(theme: viewModel.settings.theme)
                             .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+
+                            PreferenceToggleRow(
+                                title: L10n.prefsDockTitle,
+                                subtitle: L10n.prefsDockSubtitle,
+                                symbol: "dock.rectangle",
+                                theme: viewModel.settings.theme,
+                                isOn: animatedBinding(
+                                    get: { viewModel.settings.showDockIcon },
+                                    set: { viewModel.settings.showDockIcon = $0 }
+                                )
+                            )
+                            .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+
+                            PreferenceToggleRow(
+                                title: L10n.prefsMenuBarTitle,
+                                subtitle: L10n.prefsMenuBarSubtitle,
+                                symbol: "menubar.rectangle",
+                                theme: viewModel.settings.theme,
+                                isOn: animatedBinding(
+                                    get: { viewModel.settings.showStatusItem },
+                                    set: { viewModel.settings.showStatusItem = $0 }
+                                )
+                            )
+                            .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+                        }
+
+                        if selectedSection == .about {
+                            PreferenceAboutSectionView(theme: viewModel.settings.theme)
+                                .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+                        }
                     }
-                }
                     .padding(16)
                     .animation(.snappy(duration: 0.28), value: selectedSection)
                 }
@@ -262,7 +264,7 @@ private struct PreferenceAboutSectionView: View {
         .background(palette.preferencesPanelBackground, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-            .stroke(palette.preferencesPanelStroke, lineWidth: 1)
+                .stroke(palette.preferencesPanelStroke, lineWidth: 1)
         )
     }
 

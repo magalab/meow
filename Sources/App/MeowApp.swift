@@ -1,10 +1,15 @@
 import AppKit
-import SwiftUI
 import ApplicationServices
+import SwiftUI
 
 final class LauncherPanel: NSPanel {
-    override var canBecomeKey: Bool { true }
-    override var canBecomeMain: Bool { true }
+    override var canBecomeKey: Bool {
+        true
+    }
+
+    override var canBecomeMain: Bool {
+        true
+    }
 }
 
 @main
@@ -46,7 +51,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var appliedLanguage: AppLanguage?
     private var clipboardMonitoringEnabled = false
 
-    func applicationDidFinishLaunching(_ notification: Notification) {
+    func applicationDidFinishLaunching(_: Notification) {
         viewModel = LauncherViewModel(
             settingsStore: settingsStore,
             discoveryService: discoveryService,
@@ -79,7 +84,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setupOutsideClickDismissMonitor()
     }
 
-    func applicationWillTerminate(_ notification: Notification) {
+    func applicationWillTerminate(_: Notification) {
         hotkeyService.unregister()
         clipboardStore.stopMonitoring()
         if let globalMouseMonitor {

@@ -1,11 +1,13 @@
 import Foundation
 
 enum AppLanguage: String, Codable, CaseIterable, Identifiable {
-    case system = "system"
+    case system
     case english = "en"
     case chinese = "zh-Hans"
 
-    var id: String { rawValue }
+    var id: String {
+        rawValue
+    }
 
     var displayName: String {
         switch self {
@@ -22,7 +24,9 @@ enum AppTheme: String, Codable, CaseIterable, Identifiable {
     case graphiteAmber = "graphite-amber"
     case mossInk = "moss-ink"
 
-    var id: String { rawValue }
+    var id: String {
+        rawValue
+    }
 
     var displayName: String {
         switch self {
