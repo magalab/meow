@@ -74,6 +74,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self.simulatePaste()
             }
         }
+        viewModel.onLaunchApplication = { [weak self] app in
+            guard let self else { return }
+            self.hideLauncher()
+            DispatchQueue.main.async {
+                NSWorkspace.shared.openApplication(
+                    at: app.url,
+                    configuration: NSWorkspace.OpenConfiguration()
+                ) { _, _ in }
+            }
+        }
         viewModel.load()
 
         setupStatusItem()
@@ -138,11 +148,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let hosting = NSHostingController(rootView: content)
         launcherHostingController = hosting
         launcherWindow.contentViewController = hosting
-    }
-
-    private func detachLauncherContent() {
-        launcherWindow?.contentViewController = nil
-        launcherHostingController = nil
     }
 
     private func setupStatusItem() {
@@ -215,20 +220,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func showLauncher() {
         // Keep app list fresh so newly installed apps appear without restarting Meow.
-        viewModel.refreshInstalledApps()
-        viewModel.refresh()
-        attachLauncherContentIfNeeded()
+        if !viewModel.refreshInstalledApps() {
+            viewModel.refresh()
+        }
         launcherWindow?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
 
     private func hideLauncher() {
         launcherWindow?.orderOut(nil)
-        if !viewModel.query.isEmpty {
-            viewModel.query = ""
-        }
-        viewModel.clearTransientResults()
-        detachLauncherContent()
+        viewModel.resetForHide()
         NotificationCenter.default.post(name: .meowLauncherDidHide, object: nil)
     }
 
