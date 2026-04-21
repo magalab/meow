@@ -7,7 +7,10 @@ final class LauncherViewModel: ObservableObject {
     private let maxIdleResults = 20
 
     @Published var query: String = "" {
-        didSet { refreshResults() }
+        didSet {
+            guard !isResettingForHide else { return }
+            refreshResults()
+        }
     }
 
     @Published private(set) var results: [SearchItem] = []
@@ -21,6 +24,7 @@ final class LauncherViewModel: ObservableObject {
     var onOpenPreferences: (() -> Void)?
     var onSettingsChanged: ((AppSettings) -> Void)?
     var onPasteClipboard: ((ClipboardEntry) -> Void)?
+    var onLaunchApplication: ((AppEntry) -> Void)?
 
     private let settingsStore: SettingsStore
     private let discoveryService: AppDiscoveryService
@@ -31,6 +35,7 @@ final class LauncherViewModel: ObservableObject {
 
     private var apps: [AppEntry] = []
     private var lastDiscoveryAt: Date?
+    private var isResettingForHide = false
 
     private var commands: [CommandEntry] {
         [
@@ -64,7 +69,7 @@ final class LauncherViewModel: ObservableObject {
     }
 
     func load() {
-        refreshInstalledApps(force: true)
+        _ = refreshInstalledApps(force: true)
     }
 
     /// Re-evaluates results with the current language bundle.
@@ -73,23 +78,28 @@ final class LauncherViewModel: ObservableObject {
     }
 
     /// Refreshes installed app discovery; throttled by default to keep launcher opening snappy.
-    func refreshInstalledApps(force: Bool = false) {
+    @discardableResult
+    func refreshInstalledApps(force: Bool = false) -> Bool {
         let now = Date()
         if !force,
            let lastDiscoveryAt,
            now.timeIntervalSince(lastDiscoveryAt) < discoveryRefreshInterval
         {
-            return
+            return false
         }
 
         lastDiscoveryAt = now
         let discovered = discoveryService.discoverApplications().filter { !isCurrentApp($0) }
         apps = discovered
         refreshResults()
+        return true
     }
 
-    /// Clears current rendered results when launcher is hidden to reduce memory retention.
-    func clearTransientResults() {
+    /// Resets transient launcher state without triggering another search pass while hiding.
+    func resetForHide() {
+        isResettingForHide = true
+        query = ""
+        isResettingForHide = false
         results = []
     }
 
@@ -109,7 +119,11 @@ final class LauncherViewModel: ObservableObject {
         switch item {
         case let .app(app):
             launchHistoryStore.recordLaunch(id: app.id)
-            NSWorkspace.shared.openApplication(at: app.url, configuration: NSWorkspace.OpenConfiguration()) { _, _ in }
+            if let onLaunchApplication {
+                onLaunchApplication(app)
+            } else {
+                NSWorkspace.shared.openApplication(at: app.url, configuration: NSWorkspace.OpenConfiguration()) { _, _ in }
+            }
             // Clear results directly to reduce retained memory without triggering a full search refresh.
             results = []
         case let .command(command):

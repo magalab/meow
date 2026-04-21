@@ -272,6 +272,8 @@ struct LauncherView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .meowLauncherDidHide)) { _ in
             DispatchQueue.main.async {
+                showActionMenu = false
+                actionMenuSelectionIndex = 0
                 selectedID = orderedResults.first?.id
                 scrollResetToken += 1
             }
