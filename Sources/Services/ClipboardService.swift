@@ -26,10 +26,13 @@ final class ClipboardImageCache {
         let thumbnailSize = NSSize(width: 100, height: 100)
         let thumbnail = image.resized(to: thumbnailSize)
 
-        let originalFileName = resolvedFileName(sourceName, defaultName: "Screenshot")
-        let thumbnailFileName = resolvedThumbnailFileName(from: originalFileName)
-        let originalPath = cacheDir.appendingPathComponent(originalFileName)
-        let thumbnailPath = cacheDir.appendingPathComponent(thumbnailFileName)
+        let fileURLs = makeImageFileURLs(
+            sourceName: sourceName,
+            defaultName: "Screenshot",
+            fallbackExtension: "png"
+        )
+        let originalPath = fileURLs.original
+        let thumbnailPath = fileURLs.thumbnail
 
         // Save thumbnail
         guard let thumbnailData = thumbnail.pngData() else { return nil }
@@ -64,10 +67,12 @@ final class ClipboardImageCache {
         let thumbnailSize = NSSize(width: 100, height: 100)
         let thumbnail = image.resized(to: thumbnailSize)
 
-        let originalFileName = resolvedFileName(sourceName, defaultName: "ClipboardImage")
-        let thumbnailFileName = resolvedThumbnailFileName(from: originalFileName)
-        let originalPath = cacheDir.appendingPathComponent(originalFileName)
-        let thumbnailPath = cacheDir.appendingPathComponent(thumbnailFileName)
+        let fileURLs = makeImageFileURLs(
+            sourceName: sourceName,
+            defaultName: "ClipboardImage"
+        )
+        let originalPath = fileURLs.original
+        let thumbnailPath = fileURLs.thumbnail
 
         // Save thumbnail
         if let thumbnailData = thumbnail.pngData() {
@@ -107,21 +112,61 @@ final class ClipboardImageCache {
         }
     }
 
-    private func resolvedFileName(_ sourceName: String, defaultName: String) -> String {
-        let sanitized = sanitizeFileName(sourceName)
+    private func makeImageFileURLs(
+        sourceName: String,
+        defaultName: String,
+        fallbackExtension: String? = nil
+    ) -> (original: URL, thumbnail: URL) {
+        let sourceURL = URL(fileURLWithPath: sourceName)
+        let baseName = resolvedBaseName(sourceURL, defaultName: defaultName)
+        let originalExtension = resolvedExtension(sourceURL, fallback: fallbackExtension)
+        let uniqueSuffix = UUID().uuidString.lowercased()
+
+        let originalFileName: String
+        if let originalExtension {
+            originalFileName = "\(baseName)-\(uniqueSuffix).\(originalExtension)"
+        } else {
+            originalFileName = "\(baseName)-\(uniqueSuffix)"
+        }
+
+        let thumbnailFileName = "\(baseName)-\(uniqueSuffix)_thumb.png"
+        return (
+            cacheDir.appendingPathComponent(originalFileName),
+            cacheDir.appendingPathComponent(thumbnailFileName)
+        )
+    }
+
+    private func resolvedBaseName(_ sourceURL: URL, defaultName: String) -> String {
+        let candidate = sourceURL.deletingPathExtension().lastPathComponent
+        let sanitized = sanitizeFileName(candidate)
         return sanitized.isEmpty ? defaultName : sanitized
     }
 
-    private func resolvedThumbnailFileName(from originalFileName: String) -> String {
-        let url = URL(fileURLWithPath: originalFileName)
-        let base = url.deletingPathExtension().lastPathComponent
-        return "\(base)_thumb.png"
+    private func resolvedExtension(_ sourceURL: URL, fallback: String? = nil) -> String? {
+        let ext = sanitizeFileExtension(sourceURL.pathExtension)
+        if !ext.isEmpty {
+            return ext
+        }
+        if let fallback {
+            let sanitizedFallback = sanitizeFileExtension(fallback)
+            return sanitizedFallback.isEmpty ? nil : sanitizedFallback
+        }
+        return nil
     }
 
     private func sanitizeFileName(_ name: String) -> String {
         let replaced = name.replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: ":", with: "_")
         return replaced.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func sanitizeFileExtension(_ ext: String) -> String {
+        let sanitized = ext.replacingOccurrences(
+            of: "[^A-Za-z0-9]",
+            with: "",
+            options: .regularExpression
+        )
+        return sanitized.lowercased()
     }
 }
 

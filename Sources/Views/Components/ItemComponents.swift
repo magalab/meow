@@ -1,6 +1,20 @@
 import AppKit
 import SwiftUI
 
+private enum SearchItemImageCache {
+    static let appIcons: NSCache<NSString, NSImage> = {
+        let cache = NSCache<NSString, NSImage>()
+        cache.countLimit = 160
+        return cache
+    }()
+
+    static let clipboardImages: NSCache<NSString, NSImage> = {
+        let cache = NSCache<NSString, NSImage>()
+        cache.countLimit = 80
+        return cache
+    }()
+}
+
 struct SearchItemIcon: View {
     let item: SearchItem
     let theme: AppTheme
@@ -54,7 +68,15 @@ private struct LazyAppIconView: View {
         }
         .onAppear {
             guard nsImage == nil else { return }
-            nsImage = NSWorkspace.shared.icon(forFile: path)
+            let cacheKey = path as NSString
+            if let cachedImage = SearchItemImageCache.appIcons.object(forKey: cacheKey) {
+                nsImage = cachedImage
+                return
+            }
+
+            let image = NSWorkspace.shared.icon(forFile: path)
+            SearchItemImageCache.appIcons.setObject(image, forKey: cacheKey)
+            nsImage = image
         }
         .onDisappear {
             nsImage = nil
@@ -82,7 +104,15 @@ private struct LazyClipboardImageView: View {
         }
         .onAppear {
             guard nsImage == nil else { return }
-            nsImage = NSImage(contentsOfFile: path)
+            let cacheKey = path as NSString
+            if let cachedImage = SearchItemImageCache.clipboardImages.object(forKey: cacheKey) {
+                nsImage = cachedImage
+                return
+            }
+
+            guard let image = NSImage(contentsOfFile: path) else { return }
+            SearchItemImageCache.clipboardImages.setObject(image, forKey: cacheKey)
+            nsImage = image
         }
         .onDisappear {
             nsImage = nil
