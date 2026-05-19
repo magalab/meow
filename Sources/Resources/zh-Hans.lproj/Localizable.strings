@@ -7,6 +7,9 @@
 "launcher.section.applications" = "应用";
 "launcher.section.clipboard" = "剪贴板历史";
 "clipboard.delete" = "删除";
+"clipboard.clear.all" = "清除全部";
+"clipboard.clear.all.title" = "清除剪贴板历史？";
+"clipboard.clear.all.message" = "这会删除 Meow 保存的所有剪贴板历史，此操作不可撤销。";
 "clipboard.type.text" = "文本";
 "clipboard.type.image" = "图片";
 "clipboard.type.file" = "文件";
@@ -21,6 +24,7 @@
 "action.menu.copy" = "复制";
 "action.menu.delete" = "删除";
 "action.menu.execute" = "执行";
+"action.cancel" = "取消";
 
 /* 语言 */
 "lang.system" = "跟随系统";

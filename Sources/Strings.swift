@@ -137,6 +137,18 @@ enum L10n {
         loc("clipboard.delete")
     }
 
+    static var clipboardClearAll: String {
+        loc("clipboard.clear.all")
+    }
+
+    static var clipboardClearAllTitle: String {
+        loc("clipboard.clear.all.title")
+    }
+
+    static var clipboardClearAllMessage: String {
+        loc("clipboard.clear.all.message")
+    }
+
     static var clipboardTypeText: String {
         loc("clipboard.type.text")
     }
@@ -185,6 +197,10 @@ enum L10n {
 
     static var actionMenuExecute: String {
         loc("action.menu.execute")
+    }
+
+    static var actionCancel: String {
+        loc("action.cancel")
     }
 
     // MARK: - Preferences

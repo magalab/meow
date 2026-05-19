@@ -265,16 +265,14 @@ final class ClipboardStore {
     }
 
     func delete(_ entry: ClipboardEntry) {
-        // Clean up disk cache for image/audio entries
-        if case let .image(imageContent) = entry.content {
-            try? FileManager.default.removeItem(atPath: imageContent.thumbnailPath)
-            if let originalPath = imageContent.originalPath {
-                try? FileManager.default.removeItem(atPath: originalPath)
-            }
-        } else if case let .audio(audioContent) = entry.content {
-            try? FileManager.default.removeItem(atPath: audioContent.cachePath)
-        }
+        cleanupDiskCache(for: entry)
         entries.removeAll { $0.id == entry.id }
+        onChange?()
+    }
+
+    func clearAll() {
+        entries.forEach(cleanupDiskCache)
+        entries.removeAll()
         onChange?()
     }
 
@@ -465,15 +463,20 @@ final class ClipboardStore {
 
         if entries.count > Self.maxEntries {
             let removed = entries.removeLast()
-            // Clean up removed entry's disk cache
-            if case let .image(imageContent) = removed.content {
-                try? FileManager.default.removeItem(atPath: imageContent.thumbnailPath)
-                if let originalPath = imageContent.originalPath {
-                    try? FileManager.default.removeItem(atPath: originalPath)
-                }
-            }
+            cleanupDiskCache(for: removed)
         }
 
         onChange?()
+    }
+
+    private func cleanupDiskCache(for entry: ClipboardEntry) {
+        if case let .image(imageContent) = entry.content {
+            try? FileManager.default.removeItem(atPath: imageContent.thumbnailPath)
+            if let originalPath = imageContent.originalPath {
+                try? FileManager.default.removeItem(atPath: originalPath)
+            }
+        } else if case let .audio(audioContent) = entry.content {
+            try? FileManager.default.removeItem(atPath: audioContent.cachePath)
+        }
     }
 }

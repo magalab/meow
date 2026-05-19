@@ -7,6 +7,9 @@
 "launcher.section.applications" = "Applications";
 "launcher.section.clipboard" = "Clipboard History";
 "clipboard.delete" = "Delete";
+"clipboard.clear.all" = "Clear All";
+"clipboard.clear.all.title" = "Clear clipboard history?";
+"clipboard.clear.all.message" = "This will delete all clipboard history stored by Meow. This action cannot be undone.";
 "clipboard.type.text" = "Text";
 "clipboard.type.image" = "Image";
 "clipboard.type.file" = "File";
@@ -21,6 +24,7 @@
 "action.menu.copy" = "Copy";
 "action.menu.delete" = "Delete";
 "action.menu.execute" = "Execute";
+"action.cancel" = "Cancel";
 
 /* Language */
 "lang.system" = "Follow System";
