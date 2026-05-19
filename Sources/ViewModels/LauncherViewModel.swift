@@ -109,6 +109,11 @@ final class LauncherViewModel: ObservableObject {
         clipboardStore.delete(entry)
     }
 
+    func clearClipboardItems() {
+        guard settings.clipboardHistoryEnabled else { return }
+        clipboardStore.clearAll()
+    }
+
     func copyClipboardItem(_ item: SearchItem) {
         guard settings.clipboardHistoryEnabled else { return }
         guard case let .clipboard(entry) = item else { return }

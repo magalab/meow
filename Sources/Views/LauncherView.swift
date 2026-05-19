@@ -16,6 +16,7 @@ struct LauncherView: View {
     @State private var scrollResetToken: Int = 0
     @State private var showActionMenu = false
     @State private var actionMenuSelectionIndex = 0
+    @State private var showClearClipboardConfirmation = false
 
     private var groupedResults: [(title: String, items: [SearchItem])] {
         let commands = viewModel.results.filter {
@@ -98,12 +99,29 @@ struct LauncherView: View {
                         LazyVStack(spacing: 8) {
                             ForEach(Array(groupedResults.enumerated()), id: \.offset) { sectionIndex, section in
                                 VStack(alignment: .leading, spacing: 6) {
-                                    Text(section.title)
-                                        .font(.system(size: 11, weight: .bold, design: .rounded))
-                                        .foregroundStyle(.secondary)
-                                        .textCase(.uppercase)
-                                        .padding(.horizontal, 8)
-                                        .padding(.top, sectionIndex == 0 ? 0 : 6)
+                                    HStack(spacing: 8) {
+                                        Text(section.title)
+                                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                                            .foregroundStyle(.secondary)
+                                            .textCase(.uppercase)
+
+                                        Spacer(minLength: 8)
+
+                                        if containsClipboardItems(section.items) {
+                                            Button {
+                                                showClearClipboardConfirmation = true
+                                            } label: {
+                                                Image(systemName: "trash")
+                                                    .font(.system(size: 11, weight: .bold))
+                                            }
+                                            .buttonStyle(.plain)
+                                            .foregroundStyle(.secondary)
+                                            .help(L10n.clipboardClearAll)
+                                            .accessibilityLabel(L10n.clipboardClearAll)
+                                        }
+                                    }
+                                    .padding(.horizontal, 8)
+                                    .padding(.top, sectionIndex == 0 ? 0 : 6)
 
                                     ForEach(section.items) { item in
                                         Button {
@@ -311,6 +329,14 @@ struct LauncherView: View {
                 .padding(.bottom, 18)
             }
         }
+        .alert(L10n.clipboardClearAllTitle, isPresented: $showClearClipboardConfirmation) {
+            Button(L10n.actionCancel, role: .cancel) {}
+            Button(L10n.clipboardClearAll, role: .destructive) {
+                clearClipboardItems()
+            }
+        } message: {
+            Text(L10n.clipboardClearAllMessage)
+        }
     }
 
     private func activateCurrentSelection() {
@@ -381,6 +407,21 @@ struct LauncherView: View {
         guard let selectedID,
               let selected = orderedResults.first(where: { $0.id == selectedID }) else { return }
         viewModel.deleteClipboardItem(selected)
+    }
+
+    private func clearClipboardItems() {
+        viewModel.clearClipboardItems()
+        showActionMenu = false
+        selectedID = orderedResults.first?.id
+    }
+
+    private func containsClipboardItems(_ items: [SearchItem]) -> Bool {
+        items.contains {
+            if case .clipboard = $0 {
+                return true
+            }
+            return false
+        }
     }
 
     private func selectedSearchItem() -> SearchItem? {
