@@ -48,6 +48,9 @@
 "prefs.hotkey.recording" = "录制中…";
 "prefs.hotkey.recording.hint" = "请按下快捷键（Esc 取消）";
 
+"prefs.translate.hotkey.title" = "翻译快捷键";
+"prefs.translate.hotkey.subtitle" = "选中文字后按下快捷键即可翻译";
+
 "prefs.dock.title" = "显示 Dock 图标";
 "prefs.dock.subtitle" = "在 Dock 中显示 Meow 以便快速访问";
 
@@ -87,3 +90,11 @@
 
 /* 窗口 */
 "window.prefs.title" = "Meow 偏好设置";
+
+/* 翻译面板 */
+"translate.title" = "翻译";
+"translate.translating" = "翻译中…";
+"translate.no.selection" = "在任意应用中选中文字，然后按下翻译快捷键。";
+"translate.dismiss" = "关闭";
+"translate.need.accessibility" = "Meow 需要辅助功能权限才能读取选中文字。\n请在系统设置中授权，然后重试。";
+"translate.open.privacy" = "打开隐私设置";

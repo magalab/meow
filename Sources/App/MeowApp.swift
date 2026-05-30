@@ -1,5 +1,5 @@
 import AppKit
-import ApplicationServices
+@preconcurrency import ApplicationServices
 import SwiftUI
 
 final class LauncherPanel: NSPanel {
@@ -41,8 +41,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let hotkeyService = HotkeyService()
     private let clipboardStore = ClipboardStore()
 
+    private let translationService = TranslationService()
+
     private var launcherWindow: LauncherPanel?
     private var launcherHostingController: NSHostingController<LauncherView>?
+    private var translationWindow: LauncherPanel?
+    private var translationHostingController: NSHostingController<AnyView>?
     private var preferencesWindow: NSWindow?
     private var viewModel: LauncherViewModel!
     private var globalMouseMonitor: Any?
@@ -90,6 +94,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let initial = settingsStore.load()
         apply(settings: initial)
         createLauncherWindow()
+        createTranslationWindow()
         setupOutsideClickDismissMonitor()
     }
 
@@ -197,6 +202,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ) { [weak self] in
             self?.toggleLauncher()
         }
+        hotkeyService.registerTranslateHotkey(
+            keyCode: settings.translateHotkeyKeyCode,
+            modifiers: settings.translateHotkeyModifiers
+        ) { [weak self] in
+            self?.triggerTranslation()
+        }
 
         if settings.clipboardHistoryEnabled != clipboardMonitoringEnabled {
             if settings.clipboardHistoryEnabled {
@@ -270,11 +281,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         globalMouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) {
             [weak self] _ in
             self?.dismissIfClickedOutsideLauncher()
+            self?.dismissIfClickedOutsideTranslation()
         }
 
         localMouseMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) {
             [weak self] event in
             self?.dismissIfClickedOutsideLauncher()
+            self?.dismissIfClickedOutsideTranslation()
             return event
         }
 
@@ -296,6 +309,91 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if !launcherWindow.frame.contains(mouseLocation) {
             hideLauncher()
         }
+    }
+
+    private func dismissIfClickedOutsideTranslation() {
+        guard let translationWindow, translationWindow.isVisible else { return }
+        let mouseLocation = NSEvent.mouseLocation
+        if !translationWindow.frame.contains(mouseLocation) {
+            hideTranslationPanel()
+        }
+    }
+
+    // MARK: - Translation panel
+
+    private func createTranslationWindow() {
+        guard translationWindow == nil else { return }
+
+        let panel = LauncherPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 420, height: 300),
+            styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered,
+            defer: false
+        )
+        panel.isMovableByWindowBackground = true
+        panel.isFloatingPanel = true
+        panel.level = .floating
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
+        panel.isOpaque = false
+        panel.backgroundColor = NSColor.windowBackgroundColor
+        panel.hasShadow = true
+        panel.hidesOnDeactivate = false
+        panel.isReleasedWhenClosed = false
+        if let contentView = panel.contentView {
+            contentView.wantsLayer = true
+            contentView.layer?.cornerRadius = 14
+            contentView.layer?.masksToBounds = true
+        }
+        translationWindow = panel
+    }
+
+    private func triggerTranslation() {
+        // Capture text while the user's app still has Accessibility focus
+        // (the hotkey fires before Meow becomes active).
+        let text = translationService.capture()
+
+        let view = AnyView(
+            TranslationPanelView(
+                sourceText: text,
+                axPermissionDenied: translationService.axPermissionDenied
+            ) { [weak self] in
+                self?.hideTranslationPanel()
+            }
+            .background(Color(nsColor: .windowBackgroundColor))
+        )
+
+        // Always create a fresh hosting controller so SwiftUI @State is reset
+        // for every new translation (config must go nil → non-nil to re-trigger
+        // translationTask, which requires a fresh view lifecycle).
+        let hosting = NSHostingController(rootView: view)
+        translationHostingController = hosting
+
+        guard let panel = translationWindow else { return }
+        panel.contentViewController = hosting
+
+        panel.setContentSize(estimatedTranslationPanelSize(for: text))
+        centerWindowOnScreen(panel, on: activeScreen())
+        panel.orderFront(nil)   // non-activating — user's app keeps focus
+    }
+
+    private func hideTranslationPanel() {
+        translationWindow?.orderOut(nil)
+    }
+
+    private func estimatedTranslationPanelSize(for text: String) -> NSSize {
+        let width: CGFloat = 560
+
+        // Use both explicit newlines and rough wrapped-line estimation.
+        let newlineCount = text.split(separator: "\n", omittingEmptySubsequences: false).count
+        let wrappedLines = max(0, text.count / 48)
+        let estimatedLines = max(1, newlineCount + wrappedLines)
+
+        let minHeight: CGFloat = 310
+        let maxHeight: CGFloat = 560
+        let estimatedHeight = CGFloat(estimatedLines) * 24 + 250
+        let height = min(max(estimatedHeight, minHeight), maxHeight)
+
+        return NSSize(width: width, height: height)
     }
 
     private func showPreferences(animated: Bool = true) {

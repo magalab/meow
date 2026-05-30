@@ -5,8 +5,8 @@ Thank you for your interest in contributing to Meow! This document provides guid
 ## Development Setup
 
 ### Prerequisites
-- macOS 14+
-- Swift 5.9+
+- macOS 15+
+- Swift 6.0+
 - Xcode Command Line Tools
 
 ### Build & Run

@@ -2,7 +2,7 @@ import Foundation
 
 /// Manages the active language bundle for runtime language switching.
 final class LanguageManager: ObservableObject {
-    static let shared = LanguageManager()
+    nonisolated(unsafe) static let shared = LanguageManager()
 
     /// Incrementing token forces SwiftUI views with `.id(refreshToken)` to rebuild.
     @Published private(set) var refreshToken: Int = 0
@@ -381,6 +381,40 @@ enum L10n {
 
     static var windowPrefsTitle: String {
         loc("window.prefs.title")
+    }
+
+    // MARK: - Translation panel
+
+    static var translateTitle: String {
+        loc("translate.title")
+    }
+
+    static var translateTranslating: String {
+        loc("translate.translating")
+    }
+
+    static var translateNoSelection: String {
+        loc("translate.no.selection")
+    }
+
+    static var translateDismiss: String {
+        loc("translate.dismiss")
+    }
+
+    static var translateNeedAccessibility: String {
+        loc("translate.need.accessibility")
+    }
+
+    static var translateOpenPrivacy: String {
+        loc("translate.open.privacy")
+    }
+
+    static var prefsTranslateHotkeyTitle: String {
+        loc("prefs.translate.hotkey.title")
+    }
+
+    static var prefsTranslateHotkeySubtitle: String {
+        loc("prefs.translate.hotkey.subtitle")
     }
 
     // MARK: - Private

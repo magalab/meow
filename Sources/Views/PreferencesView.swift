@@ -94,10 +94,7 @@ struct PreferencesView: View {
                                 subtitle: L10n.prefsAutoLaunchSubtitle,
                                 symbol: "power.circle",
                                 theme: viewModel.settings.theme,
-                                isOn: animatedBinding(
-                                    get: { viewModel.settings.autoLaunch },
-                                    set: { viewModel.settings.autoLaunch = $0 }
-                                )
+                                isOn: animatedBinding(for: \.autoLaunch)
                             )
                             .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .opacity))
 
@@ -106,10 +103,7 @@ struct PreferencesView: View {
                                 subtitle: L10n.prefsClipboardSubtitle,
                                 symbol: "clipboard",
                                 theme: viewModel.settings.theme,
-                                isOn: animatedBinding(
-                                    get: { viewModel.settings.clipboardHistoryEnabled },
-                                    set: { viewModel.settings.clipboardHistoryEnabled = $0 }
-                                )
+                                isOn: animatedBinding(for: \.clipboardHistoryEnabled)
                             )
                             .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .opacity))
 
@@ -123,6 +117,19 @@ struct PreferencesView: View {
                             ) { keyCode, modifiers in
                                 viewModel.settings.hotkeyKeyCode = keyCode
                                 viewModel.settings.hotkeyModifiers = modifiers
+                            }
+                            .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .opacity))
+
+                            PreferenceHotkeyRecorderRow(
+                                title: L10n.prefsTranslateHotkeyTitle,
+                                subtitle: L10n.prefsTranslateHotkeySubtitle,
+                                symbol: "translate",
+                                theme: viewModel.settings.theme,
+                                keyCode: viewModel.settings.translateHotkeyKeyCode,
+                                modifiers: viewModel.settings.translateHotkeyModifiers
+                            ) { keyCode, modifiers in
+                                viewModel.settings.translateHotkeyKeyCode = keyCode
+                                viewModel.settings.translateHotkeyModifiers = modifiers
                             }
                             .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .opacity))
 
@@ -150,10 +157,7 @@ struct PreferencesView: View {
                                 subtitle: L10n.prefsDockSubtitle,
                                 symbol: "dock.rectangle",
                                 theme: viewModel.settings.theme,
-                                isOn: animatedBinding(
-                                    get: { viewModel.settings.showDockIcon },
-                                    set: { viewModel.settings.showDockIcon = $0 }
-                                )
+                                isOn: animatedBinding(for: \.showDockIcon)
                             )
                             .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
 
@@ -162,10 +166,7 @@ struct PreferencesView: View {
                                 subtitle: L10n.prefsMenuBarSubtitle,
                                 symbol: "menubar.rectangle",
                                 theme: viewModel.settings.theme,
-                                isOn: animatedBinding(
-                                    get: { viewModel.settings.showStatusItem },
-                                    set: { viewModel.settings.showStatusItem = $0 }
-                                )
+                                isOn: animatedBinding(for: \.showStatusItem)
                             )
                             .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
                         }
@@ -186,12 +187,14 @@ struct PreferencesView: View {
         .id(lang.refreshToken)
     }
 
-    private func animatedBinding(get: @escaping () -> Bool, set: @escaping (Bool) -> Void) -> Binding<Bool> {
+    private func animatedBinding(for keyPath: WritableKeyPath<AppSettings, Bool>) -> Binding<Bool> {
         Binding(
-            get: get,
+            get: {
+                viewModel.settings[keyPath: keyPath]
+            },
             set: { newValue in
                 withAnimation(.snappy(duration: 0.22, extraBounce: 0.08)) {
-                    set(newValue)
+                    viewModel.settings[keyPath: keyPath] = newValue
                 }
             }
         )

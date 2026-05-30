@@ -45,6 +45,10 @@ struct AppSettings: Codable {
     var showDockIcon: Bool
     var hotkeyKeyCode: UInt32
     var hotkeyModifiers: UInt32
+    /// Key code for the translate-selection hotkey (default: 2 = kVK_ANSI_D).
+    var translateHotkeyKeyCode: UInt32
+    /// Carbon modifier flags for the translate-selection hotkey (default: 2048 = optionKey = ⌥D).
+    var translateHotkeyModifiers: UInt32
     var language: AppLanguage
     var theme: AppTheme
 
@@ -55,6 +59,8 @@ struct AppSettings: Codable {
         case showDockIcon
         case hotkeyKeyCode
         case hotkeyModifiers
+        case translateHotkeyKeyCode
+        case translateHotkeyModifiers
         case language
         case theme
     }
@@ -66,6 +72,8 @@ struct AppSettings: Codable {
         showDockIcon: Bool,
         hotkeyKeyCode: UInt32,
         hotkeyModifiers: UInt32,
+        translateHotkeyKeyCode: UInt32,
+        translateHotkeyModifiers: UInt32,
         language: AppLanguage,
         theme: AppTheme
     ) {
@@ -75,6 +83,8 @@ struct AppSettings: Codable {
         self.showDockIcon = showDockIcon
         self.hotkeyKeyCode = hotkeyKeyCode
         self.hotkeyModifiers = hotkeyModifiers
+        self.translateHotkeyKeyCode = translateHotkeyKeyCode
+        self.translateHotkeyModifiers = translateHotkeyModifiers
         self.language = language
         self.theme = theme
     }
@@ -87,6 +97,9 @@ struct AppSettings: Codable {
         showDockIcon = try container.decodeIfPresent(Bool.self, forKey: .showDockIcon) ?? false
         hotkeyKeyCode = try container.decodeIfPresent(UInt32.self, forKey: .hotkeyKeyCode) ?? 49
         hotkeyModifiers = try container.decodeIfPresent(UInt32.self, forKey: .hotkeyModifiers) ?? 2048
+        // kVK_ANSI_D = 2, optionKey = 2048  →  ⌥D (matches MoePeek default)
+        translateHotkeyKeyCode = try container.decodeIfPresent(UInt32.self, forKey: .translateHotkeyKeyCode) ?? 2
+        translateHotkeyModifiers = try container.decodeIfPresent(UInt32.self, forKey: .translateHotkeyModifiers) ?? 2048
         language = try container.decodeIfPresent(AppLanguage.self, forKey: .language) ?? .system
         theme = try container.decodeIfPresent(AppTheme.self, forKey: .theme) ?? .gingerCat
     }
@@ -99,6 +112,8 @@ struct AppSettings: Codable {
         try container.encode(showDockIcon, forKey: .showDockIcon)
         try container.encode(hotkeyKeyCode, forKey: .hotkeyKeyCode)
         try container.encode(hotkeyModifiers, forKey: .hotkeyModifiers)
+        try container.encode(translateHotkeyKeyCode, forKey: .translateHotkeyKeyCode)
+        try container.encode(translateHotkeyModifiers, forKey: .translateHotkeyModifiers)
         try container.encode(language, forKey: .language)
         try container.encode(theme, forKey: .theme)
     }
@@ -110,6 +125,8 @@ struct AppSettings: Codable {
         showDockIcon: false,
         hotkeyKeyCode: 49,
         hotkeyModifiers: 2048,
+        translateHotkeyKeyCode: 2,
+        translateHotkeyModifiers: 2048,
         language: .system,
         theme: .gingerCat
     )

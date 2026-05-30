@@ -16,8 +16,8 @@ A lightweight macOS launcher built with SwiftUI + AppKit.
 
 ## Requirements
 
-- macOS 14+
-- Swift 5.9+
+- macOS 15+
+- Swift 6.0+
 
 ## Quick Start
 
