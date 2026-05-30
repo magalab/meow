@@ -3,6 +3,7 @@ import Carbon
 import Foundation
 import ServiceManagement
 
+@MainActor
 final class DockService {
     func apply(showDockIcon: Bool) {
         var psn = ProcessSerialNumber(highLongOfPSN: 0, lowLongOfPSN: UInt32(kCurrentProcess))
@@ -17,6 +18,7 @@ final class DockService {
     }
 }
 
+@MainActor
 final class StatusItemService {
     private var statusItem: NSStatusItem?
     private var actionTargets: [BlockActionTarget] = []
@@ -137,6 +139,7 @@ final class StatusItemService {
     }
 }
 
+@MainActor
 private final class BlockActionTarget: NSObject {
     private let action: () -> Void
 
@@ -250,60 +253,29 @@ final class AutoLaunchService {
     }
 }
 
-final class HotkeyService {
-    private var hotKeyRef: EventHotKeyRef?
+final class HotkeyService: @unchecked Sendable {
+    private var hotKeyRefs: [UInt32: EventHotKeyRef] = [:]
     private var eventHandlerRef: EventHandlerRef?
-    private var onToggle: (() -> Void)?
+    private var callbacks: [UInt32: () -> Void] = [:]
 
     deinit {
         unregister()
     }
 
+    /// Registers (or replaces) the launcher-toggle hotkey (id = 1).
     func registerToggleHotkey(keyCode: UInt32, modifiers: UInt32, action: @escaping () -> Void) {
-        onToggle = action
+        registerHotkey(id: 1, keyCode: keyCode, modifiers: modifiers, action: action)
+    }
 
-        if eventHandlerRef == nil {
-            var eventType = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
-            let status = InstallEventHandler(
-                GetApplicationEventTarget(),
-                hotkeyHandler,
-                1,
-                &eventType,
-                UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque()),
-                &eventHandlerRef
-            )
-
-            guard status == noErr else {
-                NSLog("[Meow] Failed to install hotkey event handler: \(status)")
-                return
-            }
-        }
-
-        if let hotKeyRef {
-            UnregisterEventHotKey(hotKeyRef)
-            self.hotKeyRef = nil
-        }
-
-        let hotKeyID = EventHotKeyID(signature: fourCharCode("MEOW"), id: 1)
-        let registerStatus = RegisterEventHotKey(
-            keyCode,
-            modifiers,
-            hotKeyID,
-            GetApplicationEventTarget(),
-            0,
-            &hotKeyRef
-        )
-
-        if registerStatus != noErr {
-            NSLog("[Meow] Failed to register hotkey: \(registerStatus)")
-        }
+    /// Registers (or replaces) the translate hotkey (id = 2).
+    func registerTranslateHotkey(keyCode: UInt32, modifiers: UInt32, action: @escaping () -> Void) {
+        registerHotkey(id: 2, keyCode: keyCode, modifiers: modifiers, action: action)
     }
 
     func unregister() {
-        if let hotKeyRef {
-            UnregisterEventHotKey(hotKeyRef)
-            self.hotKeyRef = nil
-        }
+        for ref in hotKeyRefs.values { UnregisterEventHotKey(ref) }
+        hotKeyRefs.removeAll()
+        callbacks.removeAll()
         if let eventHandlerRef {
             RemoveEventHandler(eventHandlerRef)
             self.eventHandlerRef = nil
@@ -323,11 +295,56 @@ final class HotkeyService {
             &hotKeyID
         )
 
-        guard status == noErr, hotKeyID.id == 1 else { return noErr }
+        guard status == noErr else { return noErr }
+        let callbackID = hotKeyID.id
         DispatchQueue.main.async { [weak self] in
-            self?.onToggle?()
+            self?.callbacks[callbackID]?()
         }
         return noErr
+    }
+
+    // MARK: - Private
+
+    private func registerHotkey(id: UInt32, keyCode: UInt32, modifiers: UInt32, action: @escaping () -> Void) {
+        callbacks[id] = action
+
+        if eventHandlerRef == nil {
+            var eventType = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
+            let status = InstallEventHandler(
+                GetApplicationEventTarget(),
+                hotkeyHandler,
+                1,
+                &eventType,
+                UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque()),
+                &eventHandlerRef
+            )
+            guard status == noErr else {
+                NSLog("[Meow] Failed to install hotkey event handler: \(status)")
+                return
+            }
+        }
+
+        if let existing = hotKeyRefs[id] {
+            UnregisterEventHotKey(existing)
+            hotKeyRefs[id] = nil
+        }
+
+        let hotKeyID = EventHotKeyID(signature: fourCharCode("MEOW"), id: id)
+        var hotKeyRef: EventHotKeyRef?
+        let registerStatus = RegisterEventHotKey(
+            keyCode,
+            modifiers,
+            hotKeyID,
+            GetApplicationEventTarget(),
+            0,
+            &hotKeyRef
+        )
+
+        if registerStatus == noErr, let ref = hotKeyRef {
+            hotKeyRefs[id] = ref
+        } else {
+            NSLog("[Meow] Failed to register hotkey id=\(id): \(registerStatus)")
+        }
     }
 }
 

@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 
+@MainActor
 final class ClipboardImageCache {
     static let shared = ClipboardImageCache()
 
@@ -199,6 +200,7 @@ extension NSImage {
     }
 }
 
+@MainActor
 final class ClipboardStore {
     private static let maxEntries = 50
     private static let maxTextLength = 100_000
@@ -217,7 +219,9 @@ final class ClipboardStore {
         ClipboardImageCache.shared.cleanupOldFiles()
 
         monitorTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
-            self?.checkClipboard()
+            Task { @MainActor in
+                self?.checkClipboard()
+            }
         }
     }
 

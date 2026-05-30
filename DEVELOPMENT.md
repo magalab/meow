@@ -81,7 +81,7 @@ This will:
 4. Create `.dmg` installer
 
 Notes:
-- Minimum supported macOS version is 14.0 (`Package.swift` and generated `Info.plist`).
+- Minimum supported macOS version is 15.0 (`Package.swift` and generated `Info.plist`).
 - If `logo.png` is missing and `AppIcon.icns` does not exist, icon generation will fail.
 
 ## Coding Guidelines

@@ -11,7 +11,7 @@ assignees: ''
 <!-- Clear and concise description of the bug -->
 
 ## Environment
-- macOS Version: <!-- e.g. macOS 14.2 -->
+- macOS Version: <!-- e.g. macOS 15.0 -->
 - Meow Version: <!-- e.g. v0.1.0 -->
 - Installation Method: <!-- DMG, homebrew, source build, etc. -->
 

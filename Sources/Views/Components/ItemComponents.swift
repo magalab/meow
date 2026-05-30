@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 
+@MainActor
 private enum SearchItemImageCache {
     static let appIcons: NSCache<NSString, NSImage> = {
         let cache = NSCache<NSString, NSImage>()

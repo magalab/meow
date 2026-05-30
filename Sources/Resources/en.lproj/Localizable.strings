@@ -48,6 +48,9 @@
 "prefs.hotkey.recording" = "Recording...";
 "prefs.hotkey.recording.hint" = "Press shortcut now (Esc to cancel)";
 
+"prefs.translate.hotkey.title" = "Translate Hotkey";
+"prefs.translate.hotkey.subtitle" = "Select text, then press to translate it";
+
 "prefs.dock.title" = "Show Dock Icon";
 "prefs.dock.subtitle" = "Display Meow in Dock for quick access";
 
@@ -87,3 +90,11 @@
 
 /* Window */
 "window.prefs.title" = "Meow Preferences";
+
+/* Translation panel */
+"translate.title" = "Translate";
+"translate.translating" = "Translating...";
+"translate.no.selection" = "Select text in any app, then press the translate hotkey.";
+"translate.dismiss" = "Dismiss";
+"translate.need.accessibility" = "Meow needs Accessibility permission to read selected text.\nGrant it in System Settings, then try again.";
+"translate.open.privacy" = "Open Privacy Settings";

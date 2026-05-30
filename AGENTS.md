@@ -1,11 +1,11 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-Meow is a Swift Package executable app (`Package.swift`) targeting macOS 14+.
+Meow is a Swift 6 Package executable app (`Package.swift`) targeting macOS 15+.
 - `Sources/App/`: app lifecycle and AppKit/SwiftUI startup (`MeowApp.swift`)
 - `Sources/ViewModels/`: launcher logic and ranking (`LauncherViewModel.swift`)
-- `Sources/Views/` and `Sources/Views/Components/`: UI screens and reusable view parts
-- `Sources/Services/`: system integrations (clipboard, settings, launch history)
+- `Sources/Views/` and `Sources/Views/Components/`: UI screens, translation panel, and reusable view parts
+- `Sources/Services/`: system integrations (clipboard, settings, launch history, translation capture)
 - `Sources/Models/`: app and clipboard models
 - `Sources/Resources/{en.lproj,zh-Hans.lproj}`: localization strings
 - `scripts/`: packaging helpers (`build-dmg.sh`, `create-icon.sh`)
@@ -23,14 +23,16 @@ Meow is a Swift Package executable app (`Package.swift`) targeting macOS 14+.
 - Indentation: 4 spaces for `*.swift` (`.editorconfig`); 2 spaces for YAML/JSON/shell.
 - Prefer `PascalCase` type/file names and one primary type per file.
 - Use `// MARK:` blocks for larger files.
+- Respect Swift 6 concurrency checks. AppKit/SwiftUI-facing services and UI caches should stay on `@MainActor` unless there is a clear thread-safety boundary.
 - Keep CI hygiene intact: no trailing whitespace, no tab-indented Swift lines, and no `TODO`/`FIXME` left in `Sources/`.
 
 ## Testing Guidelines
 There is currently no SwiftPM test target. Validate changes with:
 1. `swift build`
 2. `swift build -c release`
-3. Manual checks: launcher search, app launch, preferences changes, language switching, hotkey behavior, status bar and Dock toggles.
+3. Manual checks: launcher search, app launch, preferences changes, language switching, hotkey behavior, translation hotkey/selection capture, status bar and Dock toggles.
 For UI/localization changes, test both English and Simplified Chinese resources.
+For translation changes, test on macOS 15+ with Accessibility permission granted and denied; verify selected text capture and pasteboard restoration.
 
 ## Commit & Pull Request Guidelines
 Recent history follows Conventional Commit-style prefixes (`feat:`, `fix:`, `refactor:`, `chore:`). Use concise imperative subjects, e.g., `fix: prevent duplicate clipboard entries`.
