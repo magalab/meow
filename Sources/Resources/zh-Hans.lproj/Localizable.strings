@@ -98,3 +98,5 @@
 "translate.dismiss" = "关闭";
 "translate.need.accessibility" = "Meow 需要辅助功能权限才能读取选中文字。\n请在系统设置中授权，然后重试。";
 "translate.open.privacy" = "打开隐私设置";
+"translate.copy" = "复制译文";
+"translate.copied" = "已复制";

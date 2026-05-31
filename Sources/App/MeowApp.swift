@@ -51,6 +51,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var viewModel: LauncherViewModel!
     private var globalMouseMonitor: Any?
     private var localMouseMonitor: Any?
+    private var globalKeyMonitor: Any?
     private var localKeyMonitor: Any?
     private var appliedLanguage: AppLanguage?
     private var clipboardMonitoringEnabled = false
@@ -84,8 +85,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.async {
                 NSWorkspace.shared.openApplication(
                     at: app.url,
-                    configuration: NSWorkspace.OpenConfiguration()
-                ) { _, _ in }
+                    configuration: NSWorkspace.OpenConfiguration(),
+                    completionHandler: nil
+                )
             }
         }
         viewModel.load()
@@ -108,6 +110,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let localMouseMonitor {
             NSEvent.removeMonitor(localMouseMonitor)
             self.localMouseMonitor = nil
+        }
+        if let globalKeyMonitor {
+            NSEvent.removeMonitor(globalKeyMonitor)
+            self.globalKeyMonitor = nil
         }
         if let localKeyMonitor {
             NSEvent.removeMonitor(localKeyMonitor)
@@ -291,9 +297,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return event
         }
 
+        globalKeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
+            self?.dismissTranslationIfEscape(event)
+        }
+
         // Use a single app-level shortcut path for Cmd+, because command routing can
         // be unreliable when the launcher is a nonactivating panel.
         localKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
+            if self?.dismissTranslationIfEscape(event) == true {
+                return nil
+            }
+
             let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
             if flags.contains(.command), event.charactersIgnoringModifiers == "," {
                 self?.showPreferences(animated: true)
@@ -317,6 +331,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if !translationWindow.frame.contains(mouseLocation) {
             hideTranslationPanel()
         }
+    }
+
+    @discardableResult
+    private func dismissTranslationIfEscape(_ event: NSEvent) -> Bool {
+        guard event.keyCode == 53,
+              translationWindow?.isVisible == true
+        else { return false }
+
+        hideTranslationPanel()
+        return true
     }
 
     // MARK: - Translation panel
