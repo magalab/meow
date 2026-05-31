@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import NaturalLanguage
 @preconcurrency import Translation
@@ -78,6 +79,7 @@ private struct TranslationContentView: View {
     @State private var translatedText: String = ""
     @State private var isTranslating = true
     @State private var errorMessage: String?
+    @State private var didCopyTranslation = false
     // Start nil — set onAppear so the task fires exactly once per view lifetime.
     @State private var config: TranslationSession.Configuration? = nil
 
@@ -97,6 +99,7 @@ private struct TranslationContentView: View {
             isTranslating = true
             errorMessage = nil
             translatedText = ""
+            didCopyTranslation = false
             do {
                 let response = try await session.translate(sourceText)
                 translatedText = response.targetText
@@ -214,17 +217,39 @@ private struct TranslationContentView: View {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 14)
             } else {
-                ScrollView {
-                    Text(translatedText)
-                        .font(.system(size: 13))
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
+                ZStack(alignment: .topTrailing) {
+                    ScrollView {
+                        Text(translatedText)
+                            .font(.system(size: 13))
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.leading, 16)
+                            .padding(.trailing, 52)
+                            .padding(.vertical, 12)
+                    }
+                    copyTranslationButton
+                        .padding(.top, 8)
+                        .padding(.trailing, 10)
                 }
                 .frame(minHeight: translationSectionHeight, maxHeight: translationSectionHeight)
             }
         }
+    }
+
+    private var copyTranslationButton: some View {
+        Button {
+            copyTranslation()
+        } label: {
+            Image(systemName: didCopyTranslation ? "checkmark" : "doc.on.doc")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(didCopyTranslation ? .green : .secondary)
+                .frame(width: 28, height: 28)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(didCopyTranslation ? L10n.translateCopied : L10n.translateCopy)
+        .accessibilityLabel(didCopyTranslation ? L10n.translateCopied : L10n.translateCopy)
+        .disabled(translatedText.isEmpty)
     }
 
     private var sourceSectionHeight: CGFloat {
@@ -244,5 +269,18 @@ private struct TranslationContentView: View {
         let lines = max(1, newlineCount + wrappedLines)
         let estimated = CGFloat(lines) * 22 + 26
         return min(max(estimated, minHeight), maxHeight)
+    }
+
+    private func copyTranslation() {
+        guard !translatedText.isEmpty else { return }
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(translatedText, forType: .string)
+
+        didCopyTranslation = true
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 1_200_000_000)
+            didCopyTranslation = false
+        }
     }
 }

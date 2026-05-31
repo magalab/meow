@@ -98,3 +98,5 @@
 "translate.dismiss" = "Dismiss";
 "translate.need.accessibility" = "Meow needs Accessibility permission to read selected text.\nGrant it in System Settings, then try again.";
 "translate.open.privacy" = "Open Privacy Settings";
+"translate.copy" = "Copy Translation";
+"translate.copied" = "Copied";

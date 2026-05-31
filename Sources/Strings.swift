@@ -409,6 +409,14 @@ enum L10n {
         loc("translate.open.privacy")
     }
 
+    static var translateCopy: String {
+        loc("translate.copy")
+    }
+
+    static var translateCopied: String {
+        loc("translate.copied")
+    }
+
     static var prefsTranslateHotkeyTitle: String {
         loc("prefs.translate.hotkey.title")
     }
