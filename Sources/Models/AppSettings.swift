@@ -1,19 +1,35 @@
 import Foundation
 
 enum DateIconStyle: String, Codable, CaseIterable, Identifiable {
+    case outlinedDay
+    case roundedOutlineDay
     case pawPrint
     case dayOnly
     case monthDay
     case weekdayDay
+    case lunarDate
+
+    static let allCases: [DateIconStyle] = [
+        .pawPrint,
+        .outlinedDay,
+        .roundedOutlineDay,
+        .dayOnly,
+        .monthDay,
+        .weekdayDay,
+        .lunarDate,
+    ]
 
     var id: String { rawValue }
 
     var displayName: String {
         switch self {
+        case .outlinedDay: return L10n.dateIconOutlinedDay
+        case .roundedOutlineDay: return L10n.dateIconRoundedOutlineDay
         case .pawPrint: return L10n.dateIconPawPrint
         case .dayOnly: return L10n.dateIconDayOnly
         case .monthDay: return L10n.dateIconMonthDay
         case .weekdayDay: return L10n.dateIconWeekdayDay
+        case .lunarDate: return L10n.dateIconLunarDate
         }
     }
 }
@@ -88,21 +104,6 @@ struct AppSettings: Codable {
     var dateIconStyle: DateIconStyle
     var dockIconStyle: DockIconStyle
 
-    private enum CodingKeys: String, CodingKey {
-        case autoLaunch
-        case clipboardHistoryEnabled
-        case showStatusItem
-        case showDockIcon
-        case hotkeyKeyCode
-        case hotkeyModifiers
-        case translateHotkeyKeyCode
-        case translateHotkeyModifiers
-        case language
-        case theme
-        case dateIconStyle
-        case dockIconStyle
-    }
-
     init(
         autoLaunch: Bool,
         clipboardHistoryEnabled: Bool,
@@ -114,7 +115,7 @@ struct AppSettings: Codable {
         translateHotkeyModifiers: UInt32,
         language: AppLanguage,
         theme: AppTheme,
-        dateIconStyle: DateIconStyle = .monthDay,
+        dateIconStyle: DateIconStyle = .pawPrint,
         dockIconStyle: DockIconStyle = .calendar
     ) {
         self.autoLaunch = autoLaunch
@@ -129,39 +130,6 @@ struct AppSettings: Codable {
         self.theme = theme
         self.dateIconStyle = dateIconStyle
         self.dockIconStyle = dockIconStyle
-    }
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        autoLaunch = try container.decodeIfPresent(Bool.self, forKey: .autoLaunch) ?? false
-        clipboardHistoryEnabled = try container.decodeIfPresent(Bool.self, forKey: .clipboardHistoryEnabled) ?? true
-        showStatusItem = try container.decodeIfPresent(Bool.self, forKey: .showStatusItem) ?? true
-        showDockIcon = try container.decodeIfPresent(Bool.self, forKey: .showDockIcon) ?? false
-        hotkeyKeyCode = try container.decodeIfPresent(UInt32.self, forKey: .hotkeyKeyCode) ?? 49
-        hotkeyModifiers = try container.decodeIfPresent(UInt32.self, forKey: .hotkeyModifiers) ?? 2048
-        // kVK_ANSI_D = 2, optionKey = 2048  →  ⌥D (matches MoePeek default)
-        translateHotkeyKeyCode = try container.decodeIfPresent(UInt32.self, forKey: .translateHotkeyKeyCode) ?? 2
-        translateHotkeyModifiers = try container.decodeIfPresent(UInt32.self, forKey: .translateHotkeyModifiers) ?? 2048
-        language = try container.decodeIfPresent(AppLanguage.self, forKey: .language) ?? .system
-        theme = try container.decodeIfPresent(AppTheme.self, forKey: .theme) ?? .gingerCat
-        dateIconStyle = try container.decodeIfPresent(DateIconStyle.self, forKey: .dateIconStyle) ?? .monthDay
-        dockIconStyle = try container.decodeIfPresent(DockIconStyle.self, forKey: .dockIconStyle) ?? .calendar
-    }
-
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(autoLaunch, forKey: .autoLaunch)
-        try container.encode(clipboardHistoryEnabled, forKey: .clipboardHistoryEnabled)
-        try container.encode(showStatusItem, forKey: .showStatusItem)
-        try container.encode(showDockIcon, forKey: .showDockIcon)
-        try container.encode(hotkeyKeyCode, forKey: .hotkeyKeyCode)
-        try container.encode(hotkeyModifiers, forKey: .hotkeyModifiers)
-        try container.encode(translateHotkeyKeyCode, forKey: .translateHotkeyKeyCode)
-        try container.encode(translateHotkeyModifiers, forKey: .translateHotkeyModifiers)
-        try container.encode(language, forKey: .language)
-        try container.encode(theme, forKey: .theme)
-        try container.encode(dateIconStyle, forKey: .dateIconStyle)
-        try container.encode(dockIconStyle, forKey: .dockIconStyle)
     }
 
     static let `default` = AppSettings(
