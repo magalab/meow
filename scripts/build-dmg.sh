@@ -54,6 +54,7 @@ if [ ! -d "$BUILD_RELEASE_DIR" ]; then
     fi
 fi
 
+rm -rf "$APP_DIR"
 mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources"
 cp "$BUILD_RELEASE_DIR/$BINARY_NAME" "$APP_DIR/Contents/MacOS/$BINARY_NAME"
 
@@ -70,6 +71,11 @@ RESOURCE_BUNDLE="$BUILD_RELEASE_DIR/Meow_Meow.bundle"
 if [ -d "$RESOURCE_BUNDLE" ]; then
     echo "Copying SwiftPM resource bundle from $RESOURCE_BUNDLE..."
     cp -R "$RESOURCE_BUNDLE" "$APP_DIR/Contents/Resources/"
+    # SwiftPM's generated Bundle.module accessor for executable targets looks
+    # beside the .app bundle root, while macOS resources conventionally live in
+    # Contents/Resources. Keep both paths valid.
+    rm -rf "$APP_DIR/Meow_Meow.bundle"
+    cp -R "$RESOURCE_BUNDLE" "$APP_DIR/"
     # Keep .lproj directories at the app resource root for LanguageManager's
     # explicit app-bundle lookup path.
     find "$RESOURCE_BUNDLE" -maxdepth 1 -type d -name "*.lproj" -exec cp -R {} "$APP_DIR/Contents/Resources/" \;

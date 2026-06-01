@@ -184,14 +184,36 @@ final class CalendarService {
     }()
 
     private init() {
-        if let url = Bundle.module.url(forResource: "solar_terms", withExtension: "json"),
-           let data = try? Data(contentsOf: url),
-           let json = try? JSONSerialization.jsonObject(with: data) as? [String: [String]]
-        {
-            solarTerms = json
-        } else {
-            solarTerms = [:]
+        solarTerms = Self.loadSolarTerms()
+    }
+
+    private static func loadSolarTerms() -> [String: [String]] {
+        guard let url = solarTermsURL(),
+              let data = try? Data(contentsOf: url),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: [String]]
+        else {
+            NSLog("[Meow Calendar] Could not load solar_terms.json")
+            return [:]
         }
+        return json
+    }
+
+    private static func solarTermsURL() -> URL? {
+        let fileManager = FileManager.default
+        var candidates: [URL] = []
+
+        if let resourceURL = Bundle.main.resourceURL {
+            candidates.append(resourceURL.appendingPathComponent("solar_terms.json"))
+            candidates.append(resourceURL.appendingPathComponent("Meow_Meow.bundle/solar_terms.json"))
+        }
+
+        candidates.append(Bundle.main.bundleURL.appendingPathComponent("Meow_Meow.bundle/solar_terms.json"))
+
+        let executableDirectory = URL(fileURLWithPath: CommandLine.arguments[0])
+            .deletingLastPathComponent()
+        candidates.append(executableDirectory.appendingPathComponent("Meow_Meow.bundle/solar_terms.json"))
+
+        return candidates.first { fileManager.fileExists(atPath: $0.path) }
     }
 
     func monthDays(year: Int, month: Int) -> [MonthDayInfo] {
