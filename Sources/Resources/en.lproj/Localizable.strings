@@ -35,6 +35,7 @@
 "prefs.title" = "Meow Preferences";
 "prefs.subtitle" = "System behavior and launcher visibility";
 "prefs.section.general" = "General";
+"prefs.section.dock" = "Dock";
 "prefs.section.appearance" = "Appearance";
 "prefs.section.about" = "About";
 
@@ -57,6 +58,19 @@
 "prefs.menubar.title" = "Show Menu Bar Icon";
 "prefs.menubar.subtitle" = "Keep the paw icon visible in the menu bar";
 
+"prefs.dateicon.title" = "Date Icon Style";
+"prefs.dateicon.subtitle" = "How the date is displayed in the menu bar";
+"dateicon.pawprint" = "Paw Print";
+"dateicon.dayonly" = "Day Only";
+"dateicon.monthday" = "Month/Day";
+"dateicon.weekdayday" = "Weekday Day";
+
+"prefs.dockicon.title" = "Dock Icon Style";
+"prefs.dockicon.subtitle" = "Choose how the dock icon looks";
+"dockicon.default" = "Paw Print";
+"dockicon.calendar" = "Calendar";
+"dockicon.flat" = "Flat";
+
 "prefs.theme.title" = "Theme";
 "prefs.theme.subtitle" = "Choose the launcher and preferences color palette";
 
@@ -77,6 +91,8 @@
 /* Status bar menu */
 "menu.open" = "Open Meow";
 "menu.preferences" = "Preferences...";
+"menu.calendar" = "Calendar";
+"menu.iconstyle" = "Icon Style";
 "menu.autolaunch" = "Launch at Login";
 "menu.dock" = "Show Dock Icon";
 "menu.menubar" = "Show Menu Bar Icon";

@@ -17,6 +17,7 @@ struct LauncherView: View {
     @State private var showActionMenu = false
     @State private var actionMenuSelectionIndex = 0
     @State private var showClearClipboardConfirmation = false
+    private let calendarSectionID = "launcher.calendar.section"
 
     private var groupedResults: [(title: String, items: [SearchItem])] {
         let commands = viewModel.results.filter {
@@ -47,6 +48,10 @@ struct LauncherView: View {
 
     private var orderedResults: [SearchItem] {
         groupedResults.flatMap(\.items)
+    }
+
+    private var isShowingIdleContent: Bool {
+        viewModel.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private var palette: ThemePalette {
@@ -97,6 +102,12 @@ struct LauncherView: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(spacing: 8) {
+                            if isShowingIdleContent {
+                                LauncherCalendarSection(theme: viewModel.settings.theme)
+                                    .padding(.bottom, 4)
+                                    .id(calendarSectionID)
+                            }
+
                             ForEach(Array(groupedResults.enumerated()), id: \.offset) { sectionIndex, section in
                                 VStack(alignment: .leading, spacing: 6) {
                                     HStack(spacing: 8) {
@@ -180,11 +191,14 @@ struct LauncherView: View {
                         }
                     }
                     .onChange(of: scrollResetToken) { _, _ in
-                        guard let firstID = orderedResults.first?.id else { return }
                         var transaction = Transaction()
                         transaction.animation = nil
                         withTransaction(transaction) {
-                            proxy.scrollTo(firstID, anchor: .top)
+                            if isShowingIdleContent {
+                                proxy.scrollTo(calendarSectionID, anchor: .top)
+                            } else if let firstID = orderedResults.first?.id {
+                                proxy.scrollTo(firstID, anchor: .top)
+                            }
                         }
                     }
                 }

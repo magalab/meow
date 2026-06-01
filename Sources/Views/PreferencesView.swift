@@ -3,6 +3,7 @@ import SwiftUI
 
 struct PreferencesView: View {
     private enum Section: String, CaseIterable, Identifiable {
+        case dock
         case general
         case appearance
         case about
@@ -13,6 +14,7 @@ struct PreferencesView: View {
 
         var localizedTitle: String {
             switch self {
+            case .dock: return L10n.prefsSectionDock
             case .general: return L10n.prefsSectionGeneral
             case .appearance: return L10n.prefsSectionAppearance
             case .about: return L10n.prefsSectionAbout
@@ -21,6 +23,7 @@ struct PreferencesView: View {
 
         var icon: String {
             switch self {
+            case .dock: return "dock.rectangle"
             case .general: return "gearshape"
             case .appearance: return "paintpalette"
             case .about: return "info.circle"
@@ -88,6 +91,50 @@ struct PreferencesView: View {
 
                 ScrollView {
                     VStack(spacing: 10) {
+                        if selectedSection == .dock {
+                            PreferenceDockIconPreview(
+                                theme: viewModel.settings.theme,
+                                style: viewModel.settings.dockIconStyle
+                            )
+                            .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .opacity))
+
+                            PreferenceDockIconStyleRow(
+                                theme: viewModel.settings.theme,
+                                style: Binding(
+                                    get: { viewModel.settings.dockIconStyle },
+                                    set: { viewModel.settings.dockIconStyle = $0 }
+                                )
+                            )
+                            .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .opacity))
+
+                            PreferenceToggleRow(
+                                title: L10n.prefsDockTitle,
+                                subtitle: L10n.prefsDockSubtitle,
+                                symbol: "dock.rectangle",
+                                theme: viewModel.settings.theme,
+                                isOn: animatedBinding(for: \.showDockIcon)
+                            )
+                            .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .opacity))
+
+                            PreferenceToggleRow(
+                                title: L10n.prefsMenuBarTitle,
+                                subtitle: L10n.prefsMenuBarSubtitle,
+                                symbol: "menubar.rectangle",
+                                theme: viewModel.settings.theme,
+                                isOn: animatedBinding(for: \.showStatusItem)
+                            )
+                            .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .opacity))
+
+                            PreferenceDateIconRow(
+                                theme: viewModel.settings.theme,
+                                style: Binding(
+                                    get: { viewModel.settings.dateIconStyle },
+                                    set: { viewModel.settings.dateIconStyle = $0 }
+                                )
+                            )
+                            .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .opacity))
+                        }
+
                         if selectedSection == .general {
                             PreferenceToggleRow(
                                 title: L10n.prefsAutoLaunchTitle,
@@ -149,24 +196,6 @@ struct PreferencesView: View {
                                     get: { viewModel.settings.theme },
                                     set: { viewModel.settings.theme = $0 }
                                 )
-                            )
-                            .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
-
-                            PreferenceToggleRow(
-                                title: L10n.prefsDockTitle,
-                                subtitle: L10n.prefsDockSubtitle,
-                                symbol: "dock.rectangle",
-                                theme: viewModel.settings.theme,
-                                isOn: animatedBinding(for: \.showDockIcon)
-                            )
-                            .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
-
-                            PreferenceToggleRow(
-                                title: L10n.prefsMenuBarTitle,
-                                subtitle: L10n.prefsMenuBarSubtitle,
-                                symbol: "menubar.rectangle",
-                                theme: viewModel.settings.theme,
-                                isOn: animatedBinding(for: \.showStatusItem)
                             )
                             .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
                         }

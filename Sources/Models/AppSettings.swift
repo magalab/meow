@@ -1,5 +1,39 @@
 import Foundation
 
+enum DateIconStyle: String, Codable, CaseIterable, Identifiable {
+    case pawPrint
+    case dayOnly
+    case monthDay
+    case weekdayDay
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .pawPrint: return L10n.dateIconPawPrint
+        case .dayOnly: return L10n.dateIconDayOnly
+        case .monthDay: return L10n.dateIconMonthDay
+        case .weekdayDay: return L10n.dateIconWeekdayDay
+        }
+    }
+}
+
+enum DockIconStyle: String, Codable, CaseIterable, Identifiable {
+    case `default`
+    case calendar
+    case flat
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .default: return L10n.dockIconDefault
+        case .calendar: return L10n.dockIconCalendar
+        case .flat: return L10n.dockIconFlat
+        }
+    }
+}
+
 enum AppLanguage: String, Codable, CaseIterable, Identifiable {
     case system
     case english = "en"
@@ -51,6 +85,8 @@ struct AppSettings: Codable {
     var translateHotkeyModifiers: UInt32
     var language: AppLanguage
     var theme: AppTheme
+    var dateIconStyle: DateIconStyle
+    var dockIconStyle: DockIconStyle
 
     private enum CodingKeys: String, CodingKey {
         case autoLaunch
@@ -63,6 +99,8 @@ struct AppSettings: Codable {
         case translateHotkeyModifiers
         case language
         case theme
+        case dateIconStyle
+        case dockIconStyle
     }
 
     init(
@@ -75,7 +113,9 @@ struct AppSettings: Codable {
         translateHotkeyKeyCode: UInt32,
         translateHotkeyModifiers: UInt32,
         language: AppLanguage,
-        theme: AppTheme
+        theme: AppTheme,
+        dateIconStyle: DateIconStyle = .monthDay,
+        dockIconStyle: DockIconStyle = .calendar
     ) {
         self.autoLaunch = autoLaunch
         self.clipboardHistoryEnabled = clipboardHistoryEnabled
@@ -87,6 +127,8 @@ struct AppSettings: Codable {
         self.translateHotkeyModifiers = translateHotkeyModifiers
         self.language = language
         self.theme = theme
+        self.dateIconStyle = dateIconStyle
+        self.dockIconStyle = dockIconStyle
     }
 
     init(from decoder: Decoder) throws {
@@ -102,6 +144,8 @@ struct AppSettings: Codable {
         translateHotkeyModifiers = try container.decodeIfPresent(UInt32.self, forKey: .translateHotkeyModifiers) ?? 2048
         language = try container.decodeIfPresent(AppLanguage.self, forKey: .language) ?? .system
         theme = try container.decodeIfPresent(AppTheme.self, forKey: .theme) ?? .gingerCat
+        dateIconStyle = try container.decodeIfPresent(DateIconStyle.self, forKey: .dateIconStyle) ?? .monthDay
+        dockIconStyle = try container.decodeIfPresent(DockIconStyle.self, forKey: .dockIconStyle) ?? .calendar
     }
 
     func encode(to encoder: Encoder) throws {
@@ -116,6 +160,8 @@ struct AppSettings: Codable {
         try container.encode(translateHotkeyModifiers, forKey: .translateHotkeyModifiers)
         try container.encode(language, forKey: .language)
         try container.encode(theme, forKey: .theme)
+        try container.encode(dateIconStyle, forKey: .dateIconStyle)
+        try container.encode(dockIconStyle, forKey: .dockIconStyle)
     }
 
     static let `default` = AppSettings(
