@@ -68,8 +68,10 @@ fi
 # Copy localization resources from the build bundle
 RESOURCE_BUNDLE="$BUILD_RELEASE_DIR/Meow_Meow.bundle"
 if [ -d "$RESOURCE_BUNDLE" ]; then
-    echo "Copying localization resources from $RESOURCE_BUNDLE..."
-    # Find all .lproj directories and copy them
+    echo "Copying SwiftPM resource bundle from $RESOURCE_BUNDLE..."
+    cp -R "$RESOURCE_BUNDLE" "$APP_DIR/Contents/Resources/"
+    # Keep .lproj directories at the app resource root for LanguageManager's
+    # explicit app-bundle lookup path.
     find "$RESOURCE_BUNDLE" -maxdepth 1 -type d -name "*.lproj" -exec cp -R {} "$APP_DIR/Contents/Resources/" \;
     echo "Contents of Resources dir:"
     ls -la "$APP_DIR/Contents/Resources/"
@@ -92,10 +94,12 @@ cat > "$APP_DIR/Contents/Info.plist" <<EOF
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>${VERSION}</string>
   <key>CFBundleVersion</key><string>1</string>
-  <key>LSMinimumSystemVersion</key><string>14.0</string>
+  <key>LSMinimumSystemVersion</key><string>15.0</string>
   <key>LSUIElement</key><true/>
   <key>NSHighResolutionCapable</key><true/>
   <key>NSRequiresIPhoneOS</key><false/>
+  <key>NSCalendarsFullAccessUsageDescription</key>
+  <string>Meow shows calendar events for the selected day in the menu bar calendar.</string>
 </dict>
 </plist>
 EOF

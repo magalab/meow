@@ -288,6 +288,14 @@ enum L10n {
         loc("prefs.dateicon.subtitle")
     }
 
+    static var dateIconOutlinedDay: String {
+        loc("dateicon.outlinedday")
+    }
+
+    static var dateIconRoundedOutlineDay: String {
+        loc("dateicon.roundedoutlineday")
+    }
+
     static var dateIconPawPrint: String {
         loc("dateicon.pawprint")
     }
@@ -302,6 +310,10 @@ enum L10n {
 
     static var dateIconWeekdayDay: String {
         loc("dateicon.weekdayday")
+    }
+
+    static var dateIconLunarDate: String {
+        loc("dateicon.lunardate")
     }
 
     static var prefsDockIconTitle: String {
@@ -404,6 +416,34 @@ enum L10n {
 
     static var menuIconStyle: String {
         loc("menu.iconstyle")
+    }
+
+    static var calendarEventsTitle: String {
+        loc("calendar.events.title")
+    }
+
+    static var calendarEventsEmpty: String {
+        loc("calendar.events.empty")
+    }
+
+    static var calendarEventsLoading: String {
+        loc("calendar.events.loading")
+    }
+
+    static var calendarEventsDenied: String {
+        loc("calendar.events.denied")
+    }
+
+    static var calendarEventsRestricted: String {
+        loc("calendar.events.restricted")
+    }
+
+    static var calendarEventsError: String {
+        loc("calendar.events.error")
+    }
+
+    static var calendarAllDay: String {
+        loc("calendar.events.allday")
     }
 
     static var menuAutoLaunch: String {

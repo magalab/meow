@@ -60,10 +60,13 @@
 
 "prefs.dateicon.title" = "Date Icon Style";
 "prefs.dateicon.subtitle" = "How the date is displayed in the menu bar";
+"dateicon.outlinedday" = "Outlined Day";
+"dateicon.roundedoutlineday" = "Rounded Outline";
 "dateicon.pawprint" = "Paw Print";
 "dateicon.dayonly" = "Day Only";
 "dateicon.monthday" = "Month/Day";
 "dateicon.weekdayday" = "Weekday Day";
+"dateicon.lunardate" = "Lunar Date";
 
 "prefs.dockicon.title" = "Dock Icon Style";
 "prefs.dockicon.subtitle" = "Choose how the dock icon looks";
@@ -93,6 +96,13 @@
 "menu.preferences" = "Preferences...";
 "menu.calendar" = "Calendar";
 "menu.iconstyle" = "Icon Style";
+"calendar.events.title" = "Calendar Events";
+"calendar.events.empty" = "No calendar events";
+"calendar.events.loading" = "Loading events...";
+"calendar.events.denied" = "Calendar access is disabled";
+"calendar.events.restricted" = "Calendar access is restricted";
+"calendar.events.error" = "Unable to load calendar events";
+"calendar.events.allday" = "All day";
 "menu.autolaunch" = "Launch at Login";
 "menu.dock" = "Show Dock Icon";
 "menu.menubar" = "Show Menu Bar Icon";

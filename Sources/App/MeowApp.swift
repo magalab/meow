@@ -510,9 +510,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let popover = NSPopover()
         popover.behavior = .transient
         popover.animates = true
-        popover.contentSize = NSSize(width: 320, height: 310)
+        let initialSize = NSSize(width: 320, height: 314)
+        popover.contentSize = initialSize
 
-        let view = CalendarPopoverView(theme: viewModel.settings.theme)
+        let view = CalendarPopoverView(theme: viewModel.settings.theme) { [weak popover] size in
+            popover?.contentSize = size
+        }
         let hosting = NSHostingController(rootView: view)
         popover.contentViewController = hosting
 

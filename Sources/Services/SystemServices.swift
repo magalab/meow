@@ -210,10 +210,10 @@ final class DockIconService {
 @MainActor
 final class StatusItemService {
     private var statusItem: NSStatusItem?
+    private var statusMenu: NSMenu?
     private var actionTargets: [BlockActionTarget] = []
     private var openItem: NSMenuItem?
     private var preferencesItem: NSMenuItem?
-    private var calendarItem: NSMenuItem?
     private var autoLaunchItem: NSMenuItem?
     private var dockIconItem: NSMenuItem?
     private var statusBarIconItem: NSMenuItem?
@@ -244,6 +244,7 @@ final class StatusItemService {
             button.image = dateImage()
             button.toolTip = "Meow"
             scheduleDateRefresh(for: button)
+            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
 
         let menu = NSMenu()
@@ -268,18 +269,6 @@ final class StatusItemService {
         preferencesItem.action = #selector(BlockActionTarget.invoke)
         menu.addItem(preferencesItem)
         self.preferencesItem = preferencesItem
-
-        menu.addItem(.separator())
-
-        let calendarItem = NSMenuItem(title: L10n.menuCalendar, action: nil, keyEquivalent: "")
-        let calendarTarget = BlockActionTarget {
-            showCalendar()
-        }
-        actionTargets.append(calendarTarget)
-        calendarItem.target = calendarTarget
-        calendarItem.action = #selector(BlockActionTarget.invoke)
-        menu.addItem(calendarItem)
-        self.calendarItem = calendarItem
 
         menu.addItem(.separator())
 
@@ -352,7 +341,23 @@ final class StatusItemService {
         menu.addItem(quitItem)
         self.quitItem = quitItem
 
-        item.menu = menu
+        let clickTarget = BlockActionTarget { [weak self] in
+            guard let self else { return }
+            let event = NSApp.currentEvent
+            let flags = event?.modifierFlags.intersection(.deviceIndependentFlagsMask) ?? []
+            if event?.type == .rightMouseUp || flags.contains(.control) {
+                if let statusMenu = self.statusMenu, let button = self.statusItem?.button {
+                    statusMenu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.height), in: button)
+                }
+            } else {
+                showCalendar()
+            }
+        }
+        actionTargets.append(clickTarget)
+        item.button?.target = clickTarget
+        item.button?.action = #selector(BlockActionTarget.invoke)
+
+        statusMenu = menu
         statusItem = item
         updateToggleStates(initialSettings)
     }
@@ -374,7 +379,6 @@ final class StatusItemService {
     func updateL10n() {
         openItem?.title = L10n.menuOpen
         preferencesItem?.title = L10n.menuPreferences
-        calendarItem?.title = L10n.menuCalendar
         iconStyleSubmenuItem?.title = L10n.menuIconStyle
         autoLaunchItem?.title = L10n.menuAutoLaunch
         dockIconItem?.title = L10n.menuDock
@@ -404,12 +408,6 @@ final class StatusItemService {
     }
 
     private func dateImage() -> NSImage {
-        if currentStyle == .pawPrint {
-            let image = NSImage(systemSymbolName: "pawprint.fill", accessibilityDescription: "Meow")?
-                .withSymbolConfiguration(.init(pointSize: 14, weight: .regular))
-            return image ?? pawPrintFallbackImage()
-        }
-
         let now = Date()
         let cal = Calendar(identifier: .gregorian)
         let day = cal.component(.day, from: now)
@@ -421,19 +419,28 @@ final class StatusItemService {
         let dayStr = "\(day)"
 
         switch currentStyle {
+        case .outlinedDay:
+            return renderBadge(lines: [dayStr], fill: false, cornerRadius: 3)
+        case .roundedOutlineDay:
+            return renderBadge(lines: [dayStr], fill: false, cornerRadius: 5)
         case .pawPrint:
-            fatalError("unreachable")
+            let image = NSImage(systemSymbolName: "pawprint.fill", accessibilityDescription: "Meow")?
+                .withSymbolConfiguration(.init(pointSize: 14, weight: .regular))
+            return image ?? pawPrintFallbackImage()
         case .dayOnly:
-            return renderSingleLine(text: dayStr, font: .monospacedDigitSystemFont(ofSize: 13, weight: .medium))
+            return renderBadge(lines: [dayStr], fill: true, cornerRadius: 4)
         case .monthDay:
             let monthStr = shortMonth(month: month, isChinese: isChinese)
-            return renderDualLine(top: monthStr, bottom: dayStr)
+            return renderCompactTwoLineBadge(top: monthStr, bottom: dayStr)
         case .weekdayDay:
             let symbols = isChinese
                 ? ["", "周日", "周一", "周二", "周三", "周四", "周五", "周六"]
                 : ["", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
             let weekdayStr = symbols[weekday]
-            return renderDualLine(top: weekdayStr, bottom: dayStr)
+            return renderCompactTwoLineBadge(top: weekdayStr, bottom: dayStr)
+        case .lunarDate:
+            let lunar = lunarDateStrings(for: now, isChinese: isChinese)
+            return renderBadge(lines: lunar, fill: true, cornerRadius: 4)
         }
     }
 
@@ -461,48 +468,124 @@ final class StatusItemService {
         return formatter.string(from: date)
     }
 
-    private func renderSingleLine(text: String, font: NSFont) -> NSImage {
-        let textSize = (text as NSString).size(withAttributes: [.font: font])
-        let width = ceil(textSize.width) + 8
-        let height: CGFloat = 20
+    private func renderBadge(lines: [String], fill: Bool, cornerRadius: CGFloat) -> NSImage {
+        let fonts = lines.count == 1
+            ? [NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .semibold)]
+            : [
+                NSFont.systemFont(ofSize: 8, weight: .bold),
+                NSFont.monospacedDigitSystemFont(ofSize: 10, weight: .bold),
+            ]
+        let textSizes = zip(lines, fonts).map { text, font in
+            (text as NSString).size(withAttributes: [.font: font])
+        }
+        let maxTextWidth = textSizes.map(\.width).max() ?? 14
+        let width = max(CGFloat(lines.count == 1 ? 22 : 28), ceil(maxTextWidth) + 8)
+        let height: CGFloat = lines.count == 1 ? 20 : 22
         let image = NSImage(size: NSSize(width: width, height: height))
-        image.isTemplate = true
+        image.isTemplate = false
+
         image.lockFocus()
-        let point = NSPoint(x: (width - textSize.width) / 2, y: (height - textSize.height) / 2)
-        (text as NSString).draw(at: point, withAttributes: [.font: font])
+        let rect = NSRect(x: 1, y: 1, width: width - 2, height: height - 2)
+        let path = NSBezierPath(roundedRect: rect, xRadius: cornerRadius, yRadius: cornerRadius)
+        let foreground = fill ? NSColor(calibratedWhite: 0.08, alpha: 1) : NSColor.white
+
+        if fill {
+            NSColor(calibratedWhite: 0.95, alpha: 1).setFill()
+            path.fill()
+        } else {
+            NSColor.white.setStroke()
+            path.lineWidth = 2
+            path.stroke()
+        }
+
+        if lines.count == 1 {
+            let text = lines[0] as NSString
+            let size = textSizes[0]
+            text.draw(
+                at: NSPoint(x: (width - size.width) / 2, y: (height - size.height) / 2),
+                withAttributes: [.font: fonts[0], .foregroundColor: foreground]
+            )
+        } else {
+            let lineSpacing: CGFloat = -1
+            let totalHeight = textSizes[0].height + textSizes[1].height + lineSpacing
+            let topY = (height - totalHeight) / 2 + textSizes[1].height + lineSpacing
+            let bottomY = (height - totalHeight) / 2
+            for index in 0..<2 {
+                let text = lines[index] as NSString
+                let size = textSizes[index]
+                let y = index == 0 ? topY : bottomY
+                text.draw(
+                    at: NSPoint(x: (width - size.width) / 2, y: y),
+                    withAttributes: [.font: fonts[index], .foregroundColor: foreground]
+                )
+            }
+        }
         image.unlockFocus()
+
         return image
     }
 
-    private func renderDualLine(top: String, bottom: String) -> NSImage {
-        let topFont = NSFont.systemFont(ofSize: 8, weight: .medium)
-        let bottomFont = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium)
-
+    private func renderCompactTwoLineBadge(top: String, bottom: String) -> NSImage {
+        let topFont = NSFont.monospacedSystemFont(ofSize: 10, weight: .bold)
+        let bottomFont = NSFont.monospacedDigitSystemFont(ofSize: 10, weight: .bold)
         let topSize = (top as NSString).size(withAttributes: [.font: topFont])
         let bottomSize = (bottom as NSString).size(withAttributes: [.font: bottomFont])
         let maxTextWidth = max(topSize.width, bottomSize.width)
-
-        let width = ceil(maxTextWidth) + 10
+        let width = max(CGFloat(28), ceil(maxTextWidth) + 8)
         let height: CGFloat = 22
-        let lineSpacing: CGFloat = 1
-
         let image = NSImage(size: NSSize(width: width, height: height))
-        image.isTemplate = true
+        image.isTemplate = false
 
         image.lockFocus()
-        let totalTextHeight = topSize.height + lineSpacing + bottomSize.height
-        let topY = (height - totalTextHeight) / 2 + bottomSize.height + lineSpacing
-        let bottomY = (height - totalTextHeight) / 2
+        let rect = NSRect(x: 1, y: 1, width: width - 2, height: height - 2)
+        let path = NSBezierPath(roundedRect: rect, xRadius: 3, yRadius: 3)
+        NSColor(calibratedWhite: 0.95, alpha: 1).setFill()
+        path.fill()
 
-        (top as NSString).draw(at: NSPoint(x: (width - topSize.width) / 2, y: topY), withAttributes: [
-            .font: topFont,
-        ])
-        (bottom as NSString).draw(at: NSPoint(x: (width - bottomSize.width) / 2, y: bottomY), withAttributes: [
-            .font: bottomFont,
-        ])
+        let foreground = NSColor(calibratedWhite: 0.08, alpha: 1)
+        let topY = height - topSize.height + 0.2
+        let bottomY: CGFloat = -0.7
+        (top as NSString).draw(
+            at: NSPoint(x: (width - topSize.width) / 2, y: topY),
+            withAttributes: [.font: topFont, .foregroundColor: foreground]
+        )
+        (bottom as NSString).draw(
+            at: NSPoint(x: (width - bottomSize.width) / 2, y: bottomY),
+            withAttributes: [.font: bottomFont, .foregroundColor: foreground]
+        )
         image.unlockFocus()
 
         return image
+    }
+
+    private func lunarDateStrings(for date: Date, isChinese: Bool) -> [String] {
+        var calendar = Calendar(identifier: .chinese)
+        calendar.locale = Locale(identifier: "zh-Hans")
+        let components = calendar.dateComponents([.month, .day, .isLeapMonth], from: date)
+        let month = components.month ?? 1
+        let day = components.day ?? 1
+
+        if isChinese {
+            let monthNames = [
+                1: "正月", 2: "二月", 3: "三月", 4: "四月", 5: "五月", 6: "六月",
+                7: "七月", 8: "八月", 9: "九月", 10: "十月", 11: "冬月", 12: "腊月",
+            ]
+            let dayNames = [
+                1: "初一", 2: "初二", 3: "初三", 4: "初四", 5: "初五",
+                6: "初六", 7: "初七", 8: "初八", 9: "初九", 10: "初十",
+                11: "十一", 12: "十二", 13: "十三", 14: "十四", 15: "十五",
+                16: "十六", 17: "十七", 18: "十八", 19: "十九", 20: "二十",
+                21: "廿一", 22: "廿二", 23: "廿三", 24: "廿四", 25: "廿五",
+                26: "廿六", 27: "廿七", 28: "廿八", 29: "廿九", 30: "三十",
+            ]
+            let leapPrefix = components.isLeapMonth == true ? "闰" : ""
+            return [
+                "\(leapPrefix)\(monthNames[month] ?? "\(month)月")",
+                dayNames[day] ?? "\(day)",
+            ]
+        }
+
+        return ["Lunar", "\(day)"]
     }
 
     private func scheduleDateRefresh(for button: NSStatusBarButton) {

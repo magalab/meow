@@ -60,10 +60,13 @@
 
 "prefs.dateicon.title" = "日期图标样式";
 "prefs.dateicon.subtitle" = "菜单栏日期的显示方式";
+"dateicon.outlinedday" = "方框日期";
+"dateicon.roundedoutlineday" = "圆角方框";
 "dateicon.pawprint" = "猫爪";
 "dateicon.dayonly" = "仅日";
 "dateicon.monthday" = "月/日";
 "dateicon.weekdayday" = "周几 日";
+"dateicon.lunardate" = "农历日期";
 
 "prefs.dockicon.title" = "Dock 图标样式";
 "prefs.dockicon.subtitle" = "选择 Dock 图标的外观";
@@ -93,6 +96,13 @@
 "menu.preferences" = "偏好设置…";
 "menu.calendar" = "日历";
 "menu.iconstyle" = "图标样式";
+"calendar.events.title" = "日历事件";
+"calendar.events.empty" = "无日历事件";
+"calendar.events.loading" = "正在加载事件…";
+"calendar.events.denied" = "日历访问已关闭";
+"calendar.events.restricted" = "日历访问受限";
+"calendar.events.error" = "无法加载日历事件";
+"calendar.events.allday" = "全天";
 "menu.autolaunch" = "登录时启动";
 "menu.dock" = "显示 Dock 图标";
 "menu.menubar" = "显示菜单栏图标";

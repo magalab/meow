@@ -1,3 +1,5 @@
+import AppKit
+import EventKit
 import Foundation
 
 struct MonthDayInfo: Identifiable {
@@ -11,6 +13,111 @@ struct MonthDayInfo: Identifiable {
     let solarTerm: String?
     let holiday: String?
     let isWeekend: Bool
+}
+
+struct CalendarEventInfo: Identifiable {
+    let id: String
+    let title: String
+    let timeText: String
+    let calendarTitle: String
+    let calendarColor: NSColor
+}
+
+enum CalendarEventLoadState {
+    case idle
+    case loading
+    case loaded([CalendarEventInfo])
+    case denied
+    case restricted
+    case failed
+}
+
+@MainActor
+final class CalendarEventService: ObservableObject {
+    @Published private(set) var state: CalendarEventLoadState = .idle
+
+    private let store = EKEventStore()
+    private let gregorian = Calendar(identifier: .gregorian)
+
+    func loadEvents(on date: Date) {
+        state = .loading
+
+        switch EKEventStore.authorizationStatus(for: .event) {
+        case .fullAccess:
+            loadAuthorizedEvents(on: date)
+        case .notDetermined:
+            requestAccessThenLoad(on: date)
+        case .denied, .writeOnly:
+            state = .denied
+        case .restricted:
+            state = .restricted
+        @unknown default:
+            state = .failed
+        }
+    }
+
+    private func requestAccessThenLoad(on date: Date) {
+        store.requestFullAccessToEvents { [weak self] granted, _ in
+            Task { @MainActor in
+                guard let self else { return }
+                if granted {
+                    self.loadAuthorizedEvents(on: date)
+                } else {
+                    self.state = .denied
+                }
+            }
+        }
+    }
+
+    private func loadAuthorizedEvents(on date: Date) {
+        let start = gregorian.startOfDay(for: date)
+        guard let end = gregorian.date(byAdding: .day, value: 1, to: start) else {
+            state = .failed
+            return
+        }
+
+        let predicate = store.predicateForEvents(withStart: start, end: end, calendars: nil)
+        let events = store.events(matching: predicate)
+            .sorted { lhs, rhs in
+                if lhs.isAllDay != rhs.isAllDay {
+                    return lhs.isAllDay && !rhs.isAllDay
+                }
+                return lhs.startDate < rhs.startDate
+            }
+            .map(eventInfo)
+
+        state = .loaded(events)
+    }
+
+    private func eventInfo(from event: EKEvent) -> CalendarEventInfo {
+        let fallbackID = "\(event.title ?? "")-\(event.startDate.timeIntervalSinceReferenceDate)"
+        let color = event.calendar.cgColor.flatMap(NSColor.init(cgColor:)) ?? .controlAccentColor
+        return CalendarEventInfo(
+            id: event.eventIdentifier ?? fallbackID,
+            title: event.title?.isEmpty == false ? event.title : L10n.calendarEventsTitle,
+            timeText: timeText(for: event),
+            calendarTitle: event.calendar.title,
+            calendarColor: color
+        )
+    }
+
+    private func timeText(for event: EKEvent) -> String {
+        if event.isAllDay {
+            return L10n.calendarAllDay
+        }
+
+        let formatter = DateFormatter()
+        formatter.locale = displayLocale
+        formatter.timeStyle = .short
+        formatter.dateStyle = .none
+        return "\(formatter.string(from: event.startDate)) - \(formatter.string(from: event.endDate))"
+    }
+
+    private var displayLocale: Locale {
+        LanguageManager.shared.currentLanguageCode.hasPrefix("zh")
+            ? Locale(identifier: "zh-Hans")
+            : Locale(identifier: "en")
+    }
 }
 
 @MainActor
@@ -164,11 +271,44 @@ final class CalendarService {
             return "\(year)年\(month)月"
         }
         let formatter = DateFormatter()
+        formatter.locale = displayLocale
         formatter.dateFormat = "MMMM yyyy"
         if let date = gregorian.date(from: DateComponents(year: year, month: month, day: 1)) {
             return formatter.string(from: date)
         }
         return "\(month)/\(year)"
+    }
+
+    func detailDateString(for date: Date) -> String {
+        if isChineseLanguage {
+            let dc = gregorian.dateComponents([.year, .month, .day], from: date)
+            return "\(dc.year ?? 0)年\(dc.month ?? 0)月\(dc.day ?? 0)日"
+        }
+
+        let formatter = DateFormatter()
+        formatter.locale = displayLocale
+        formatter.dateFormat = "MMMM d, yyyy"
+        return formatter.string(from: date)
+    }
+
+    func detailLunarString(for date: Date) -> String {
+        let lunarDC = chineseCalendar.dateComponents([.year, .month, .day, .isLeapMonth], from: date)
+        let month = lunarDC.month ?? 1
+        let day = lunarDC.day ?? 1
+
+        if isChineseLanguage {
+            let zodiac = zodiacName(forChineseYear: lunarDC.year ?? 1)
+            let stemBranch = stemBranchYear(forChineseYear: lunarDC.year ?? 1)
+            let leapPrefix = lunarDC.isLeapMonth == true ? "闰" : ""
+            let lunarMonth = lunarMonthNames[month] ?? "\(month)月"
+            let lunarDay = lunarDayNames[day] ?? "\(day)"
+            return "\(stemBranch)\(zodiac)年 \(leapPrefix)\(lunarMonth)\(lunarDay)"
+        }
+
+        let lunarMonth = lunarMonthNamesEN[month] ?? "\(month) Month"
+        let lunarDay = lunarDayNamesEN[day] ?? "\(day)"
+        let leapPrefix = lunarDC.isLeapMonth == true ? "Leap " : ""
+        return "\(leapPrefix)\(lunarMonth) \(lunarDay)"
     }
 
     var weekdaySymbols: [String] {
@@ -190,6 +330,7 @@ final class CalendarService {
             return "\(dc.year ?? 0)年\(dc.month ?? 0)月\(dc.day ?? 0)日  农历\(leapStr)\(lunarMonth)\(lunarDay)"
         }
         let formatter = DateFormatter()
+        formatter.locale = displayLocale
         formatter.dateFormat = "EEEE, MMMM d, yyyy"
         return formatter.string(from: now)
     }
@@ -200,9 +341,25 @@ final class CalendarService {
         LanguageManager.shared.currentLanguageCode.hasPrefix("zh")
     }
 
+    private var displayLocale: Locale {
+        isChineseLanguage ? Locale(identifier: "zh-Hans") : Locale(identifier: "en")
+    }
+
     private func isWeekendDay(_ date: Date) -> Bool {
         let wd = gregorian.component(.weekday, from: date)
         return wd == 1 || wd == 7
+    }
+
+    private func stemBranchYear(forChineseYear year: Int) -> String {
+        let stems = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"]
+        let branches = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"]
+        let offset = year - 1
+        return stems[offset % stems.count] + branches[offset % branches.count]
+    }
+
+    private func zodiacName(forChineseYear year: Int) -> String {
+        let animals = ["鼠", "牛", "虎", "兔", "龙", "蛇", "马", "羊", "猴", "鸡", "狗", "猪"]
+        return animals[(year - 1) % animals.count]
     }
 
     private func findSolarTerm(year: Int, month: Int, day: Int) -> String? {
