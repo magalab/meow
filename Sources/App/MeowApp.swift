@@ -34,6 +34,7 @@ struct MeowApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let settingsStore = SettingsStore()
     private let dockService = DockService()
+    private let dockIconService = DockIconService()
     private let statusItemService = StatusItemService()
     private let discoveryService = AppDiscoveryService()
     private let launchHistoryStore = LaunchHistoryStore()
@@ -55,6 +56,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var localKeyMonitor: Any?
     private var appliedLanguage: AppLanguage?
     private var clipboardMonitoringEnabled = false
+    private var calendarPopover: NSPopover?
+    private var calendarPopoverController: NSHostingController<CalendarPopoverView>?
 
     func applicationDidFinishLaunching(_: Notification) {
         viewModel = LauncherViewModel(
@@ -94,6 +97,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         setupStatusItem()
         let initial = settingsStore.load()
+        dockIconService.start(style: initial.dockIconStyle)
         apply(settings: initial)
         createLauncherWindow()
         createTranslationWindow()
@@ -103,6 +107,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_: Notification) {
         hotkeyService.unregister()
         clipboardStore.stopMonitoring()
+        dockIconService.stop()
         if let globalMouseMonitor {
             NSEvent.removeMonitor(globalMouseMonitor)
             self.globalMouseMonitor = nil
@@ -170,6 +175,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             openPreferences: { [weak self] in
                 self?.showPreferences()
             },
+            showCalendar: { [weak self] in
+                self?.showCalendarPopover()
+            },
             toggleAutoLaunch: { [weak self] in
                 guard let self else { return }
                 self.viewModel.settings.autoLaunch.toggle()
@@ -186,6 +194,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 NSApp.terminate(nil)
             }
         )
+        statusItemService.onDateIconStyleChanged = { [weak self] style in
+            guard let self else { return }
+            self.viewModel.settings.dateIconStyle = style
+        }
     }
 
     private func apply(settings: AppSettings) {
@@ -193,14 +205,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if languageChanged {
             LanguageManager.shared.apply(settings.language)
             statusItemService.updateL10n()
+            dockIconService.refresh()
             viewModel?.refresh()
             preferencesWindow?.title = L10n.windowPrefsTitle
             appliedLanguage = settings.language
         }
 
         dockService.apply(showDockIcon: settings.showDockIcon)
+        dockIconService.apply(style: settings.dockIconStyle)
         statusItemService.setVisible(settings.showStatusItem)
         statusItemService.updateToggleStates(settings)
+        statusItemService.updateDateIconStyle(settings.dateIconStyle)
         let actualAutoLaunchEnabled = autoLaunchService.apply(enabled: settings.autoLaunch)
         hotkeyService.registerToggleHotkey(
             keyCode: settings.hotkeyKeyCode,
@@ -484,6 +499,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func openPreferencesFromCommand() {
         showPreferences(animated: true)
+    }
+
+    private func showCalendarPopover() {
+        if let popover = calendarPopover, popover.isShown {
+            popover.performClose(nil)
+            return
+        }
+
+        let popover = NSPopover()
+        popover.behavior = .transient
+        popover.animates = true
+        popover.contentSize = NSSize(width: 320, height: 310)
+
+        let view = CalendarPopoverView(theme: viewModel.settings.theme)
+        let hosting = NSHostingController(rootView: view)
+        popover.contentViewController = hosting
+
+        guard let button = statusItemService.statusItemButton else { return }
+        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+
+        calendarPopover = popover
+        calendarPopoverController = hosting
     }
 
     private func activeScreen() -> NSScreen? {

@@ -8,6 +8,7 @@ final class LanguageManager: ObservableObject {
     @Published private(set) var refreshToken: Int = 0
 
     private(set) var bundle: Bundle = .main
+    private(set) var currentLanguageCode: String = "en"
 
     private init() {
         // Initialize to default language
@@ -68,6 +69,8 @@ final class LanguageManager: ObservableObject {
         if langBundle == nil, let path = Bundle.main.path(forResource: code, ofType: "lproj") {
             langBundle = Bundle(path: path)
         }
+
+        currentLanguageCode = code
 
         if let langBundle = langBundle {
             bundle = langBundle
@@ -217,6 +220,10 @@ enum L10n {
         loc("prefs.section.general")
     }
 
+    static var prefsSectionDock: String {
+        loc("prefs.section.dock")
+    }
+
     static var prefsSectionAppearance: String {
         loc("prefs.section.appearance")
     }
@@ -271,6 +278,50 @@ enum L10n {
 
     static var prefsMenuBarSubtitle: String {
         loc("prefs.menubar.subtitle")
+    }
+
+    static var prefsDateIconTitle: String {
+        loc("prefs.dateicon.title")
+    }
+
+    static var prefsDateIconSubtitle: String {
+        loc("prefs.dateicon.subtitle")
+    }
+
+    static var dateIconPawPrint: String {
+        loc("dateicon.pawprint")
+    }
+
+    static var dateIconDayOnly: String {
+        loc("dateicon.dayonly")
+    }
+
+    static var dateIconMonthDay: String {
+        loc("dateicon.monthday")
+    }
+
+    static var dateIconWeekdayDay: String {
+        loc("dateicon.weekdayday")
+    }
+
+    static var prefsDockIconTitle: String {
+        loc("prefs.dockicon.title")
+    }
+
+    static var prefsDockIconSubtitle: String {
+        loc("prefs.dockicon.subtitle")
+    }
+
+    static var dockIconDefault: String {
+        loc("dockicon.default")
+    }
+
+    static var dockIconCalendar: String {
+        loc("dockicon.calendar")
+    }
+
+    static var dockIconFlat: String {
+        loc("dockicon.flat")
     }
 
     static var prefsThemeTitle: String {
@@ -345,6 +396,14 @@ enum L10n {
 
     static var menuPreferences: String {
         loc("menu.preferences")
+    }
+
+    static var menuCalendar: String {
+        loc("menu.calendar")
+    }
+
+    static var menuIconStyle: String {
+        loc("menu.iconstyle")
     }
 
     static var menuAutoLaunch: String {
