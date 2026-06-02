@@ -1,40 +1,49 @@
 import AppKit
 import SwiftUI
 
-struct PreferencesView: View {
-    private enum Section: String, CaseIterable, Identifiable {
-        case dock
-        case general
-        case appearance
-        case about
+enum PreferenceSection: String, CaseIterable, Identifiable {
+    case dock
+    case general
+    case ai
+    case appearance
+    case about
 
-        var id: String {
-            rawValue
-        }
+    var id: String {
+        rawValue
+    }
 
-        var localizedTitle: String {
-            switch self {
-            case .dock: return L10n.prefsSectionDock
-            case .general: return L10n.prefsSectionGeneral
-            case .appearance: return L10n.prefsSectionAppearance
-            case .about: return L10n.prefsSectionAbout
-            }
-        }
-
-        var icon: String {
-            switch self {
-            case .dock: return "dock.rectangle"
-            case .general: return "gearshape"
-            case .appearance: return "paintpalette"
-            case .about: return "info.circle"
-            }
+    var localizedTitle: String {
+        switch self {
+        case .dock: return L10n.prefsSectionDock
+        case .general: return L10n.prefsSectionGeneral
+        case .ai: return L10n.prefsSectionAI
+        case .appearance: return L10n.prefsSectionAppearance
+        case .about: return L10n.prefsSectionAbout
         }
     }
 
+    var icon: String {
+        switch self {
+        case .dock: return "dock.rectangle"
+        case .general: return "gearshape"
+        case .ai: return "sparkles"
+        case .appearance: return "paintpalette"
+        case .about: return "info.circle"
+        }
+    }
+}
+
+@MainActor
+final class PreferencesNavigationState: ObservableObject {
+    @Published var selectedSection: PreferenceSection = .general
+}
+
+struct PreferencesView: View {
     @ObservedObject var viewModel: LauncherViewModel
+    @ObservedObject var navigation: PreferencesNavigationState
+    @ObservedObject var aiChatHistoryStore: AIChatHistoryStore
     @ObservedObject private var lang = LanguageManager.shared
     @Environment(\.colorScheme) private var colorScheme
-    @State private var selectedSection: Section = .general
 
     private var palette: ThemePalette {
         MeowTheme.palette(theme: viewModel.settings.theme, scheme: colorScheme)
@@ -51,31 +60,31 @@ struct PreferencesView: View {
 
             VStack(spacing: 0) {
                 HStack(spacing: 8) {
-                    ForEach(Section.allCases) { section in
+                    ForEach(PreferenceSection.allCases) { section in
                         Button {
                             withAnimation(.snappy(duration: 0.22)) {
-                                selectedSection = section
+                                navigation.selectedSection = section
                             }
                         } label: {
                             HStack(spacing: 6) {
                                 Image(systemName: section.icon)
                                     .font(.system(size: 12, weight: .semibold))
-                                    .foregroundStyle(selectedSection == section ? palette.preferencesAccent : Color.secondary)
+                                    .foregroundStyle(navigation.selectedSection == section ? palette.preferencesAccent : Color.secondary)
                                 Text(section.localizedTitle)
                                     .font(.system(size: 13, weight: .semibold, design: .rounded))
                             }
-                            .foregroundStyle(selectedSection == section ? Color.primary : Color.secondary)
+                            .foregroundStyle(navigation.selectedSection == section ? Color.primary : Color.secondary)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 8)
                             .background(
-                                selectedSection == section
+                                navigation.selectedSection == section
                                     ? palette.preferencesPanelBackground
                                     : Color.clear,
                                 in: RoundedRectangle(cornerRadius: 10, style: .continuous)
                             )
                             .overlay(
                                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                    .stroke(selectedSection == section ? palette.preferencesPanelStroke : Color.clear, lineWidth: 1)
+                                    .stroke(navigation.selectedSection == section ? palette.preferencesPanelStroke : Color.clear, lineWidth: 1)
                             )
                         }
                         .buttonStyle(.plain)
@@ -91,7 +100,7 @@ struct PreferencesView: View {
 
                 ScrollView {
                     VStack(spacing: 10) {
-                        if selectedSection == .dock {
+                        if navigation.selectedSection == .dock {
                             PreferenceDockIconPreview(
                                 theme: viewModel.settings.theme,
                                 style: viewModel.settings.dockIconStyle
@@ -135,7 +144,7 @@ struct PreferencesView: View {
                             .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .opacity))
                         }
 
-                        if selectedSection == .general {
+                        if navigation.selectedSection == .general {
                             PreferenceToggleRow(
                                 title: L10n.prefsAutoLaunchTitle,
                                 subtitle: L10n.prefsAutoLaunchSubtitle,
@@ -190,7 +199,7 @@ struct PreferencesView: View {
                             .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .opacity))
                         }
 
-                        if selectedSection == .appearance {
+                        if navigation.selectedSection == .appearance {
                             PreferenceThemeRow(
                                 theme: Binding(
                                     get: { viewModel.settings.theme },
@@ -200,13 +209,25 @@ struct PreferencesView: View {
                             .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
                         }
 
-                        if selectedSection == .about {
+                        if navigation.selectedSection == .ai {
+                            PreferenceAISettingsSection(
+                                theme: viewModel.settings.theme,
+                                settings: Binding(
+                                    get: { viewModel.settings.ai },
+                                    set: { viewModel.settings.ai = $0 }
+                                ),
+                                historyStore: aiChatHistoryStore
+                            )
+                            .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+                        }
+
+                        if navigation.selectedSection == .about {
                             PreferenceAboutSectionView(theme: viewModel.settings.theme)
                                 .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
                         }
                     }
                     .padding(16)
-                    .animation(.snappy(duration: 0.28), value: selectedSection)
+                    .animation(.snappy(duration: 0.28), value: navigation.selectedSection)
                 }
                 .background(Color.white.opacity(colorScheme == .dark ? 0.01 : 0.16))
             }

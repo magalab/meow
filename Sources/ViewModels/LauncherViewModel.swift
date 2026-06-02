@@ -25,6 +25,7 @@ final class LauncherViewModel: ObservableObject {
     var onSettingsChanged: ((AppSettings) -> Void)?
     var onPasteClipboard: ((ClipboardEntry) -> Void)?
     var onLaunchApplication: ((AppEntry) -> Void)?
+    var onOpenAIChat: ((String?) -> Void)?
 
     private let settingsStore: SettingsStore
     private let discoveryService: AppDiscoveryService
@@ -45,6 +46,13 @@ final class LauncherViewModel: ObservableObject {
                 subtitle: L10n.cmdPreferencesSubtitle,
                 keywords: ["settings", "preferences", "menu bar", "dock", "auto launch", "toggle",
                            "设置", "偏好设置", "菜单栏", "自动启动"]
+            ),
+            CommandEntry(
+                id: "meow.ai.chat",
+                title: L10n.cmdAIChatTitle,
+                subtitle: L10n.cmdAIChatSubtitle,
+                keywords: ["ai", "chat", "ask", "assistant", "summarize", "rewrite",
+                           "人工智能", "聊天", "助手", "总结", "改写"]
             ),
             CommandEntry(
                 id: "meow.quit",
@@ -120,6 +128,10 @@ final class LauncherViewModel: ObservableObject {
         clipboardStore.writeToPasteboard(entry)
     }
 
+    func openAIChat(prompt: String?) {
+        onOpenAIChat?(prompt)
+    }
+
     func activate(_ item: SearchItem) {
         switch item {
         case let .app(app):
@@ -143,6 +155,8 @@ final class LauncherViewModel: ObservableObject {
         switch command.id {
         case "meow.preferences":
             onOpenPreferences?()
+        case "meow.ai.chat":
+            onOpenAIChat?(nil)
         case "meow.quit":
             NSApp.terminate(nil)
         default:

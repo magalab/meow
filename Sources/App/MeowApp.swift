@@ -2,6 +2,10 @@ import AppKit
 @preconcurrency import ApplicationServices
 import SwiftUI
 
+enum MeowWindowIdentifiers {
+    static let aiChat = NSUserInterfaceItemIdentifier("meow.ai.chat.window")
+}
+
 final class LauncherPanel: NSPanel {
     override var canBecomeKey: Bool {
         true
@@ -41,6 +45,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let autoLaunchService = AutoLaunchService()
     private let hotkeyService = HotkeyService()
     private let clipboardStore = ClipboardStore()
+    private let preferencesNavigation = PreferencesNavigationState()
+    private let aiChatHistoryStore = AIChatHistoryStore()
 
     private let translationService = TranslationService()
 
@@ -48,6 +54,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var launcherHostingController: NSHostingController<LauncherView>?
     private var translationWindow: LauncherPanel?
     private var translationHostingController: NSHostingController<AnyView>?
+    private var aiChatWindow: NSWindow?
+    private var aiChatHostingController: NSHostingController<AnyView>?
     private var preferencesWindow: NSWindow?
     private var viewModel: LauncherViewModel!
     private var globalMouseMonitor: Any?
@@ -68,6 +76,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         viewModel.onOpenPreferences = { [weak self] in
             self?.showPreferences()
+        }
+        viewModel.onOpenAIChat = { [weak self] prompt in
+            self?.showAIChat(initialPrompt: prompt)
         }
         viewModel.onSettingsChanged = { [weak self] settings in
             self?.apply(settings: settings)
@@ -101,6 +112,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         apply(settings: initial)
         createLauncherWindow()
         createTranslationWindow()
+        createAIChatWindow()
         setupOutsideClickDismissMonitor()
     }
 
@@ -216,6 +228,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItemService.setVisible(settings.showStatusItem)
         statusItemService.updateToggleStates(settings)
         statusItemService.updateDateIconStyle(settings.dateIconStyle)
+        aiChatHistoryStore.setPersistenceEnabled(settings.ai.chatHistoryEnabled)
         let actualAutoLaunchEnabled = autoLaunchService.apply(enabled: settings.autoLaunch)
         hotkeyService.registerToggleHotkey(
             keyCode: settings.hotkeyKeyCode,
@@ -303,12 +316,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             [weak self] _ in
             self?.dismissIfClickedOutsideLauncher()
             self?.dismissIfClickedOutsideTranslation()
+            self?.dismissIfClickedOutsideCalendarPopover()
         }
 
         localMouseMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) {
             [weak self] event in
             self?.dismissIfClickedOutsideLauncher()
             self?.dismissIfClickedOutsideTranslation()
+            self?.dismissIfClickedOutsideCalendarPopover()
             return event
         }
 
@@ -348,6 +363,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    private func dismissIfClickedOutsideCalendarPopover() {
+        guard let popover = calendarPopover, popover.isShown else { return }
+        let mouseLocation = NSEvent.mouseLocation
+
+        if let button = statusItemService.statusItemButton,
+           let buttonWindow = button.window
+        {
+            let buttonRectInWindow = button.convert(button.bounds, to: nil)
+            let buttonRectOnScreen = buttonWindow.convertToScreen(buttonRectInWindow)
+            if buttonRectOnScreen.contains(mouseLocation) {
+                return
+            }
+        }
+
+        if let popoverFrame = popover.contentViewController?.view.window?.frame,
+           popoverFrame.contains(mouseLocation)
+        {
+            return
+        }
+
+        popover.performClose(nil)
+        calendarPopover = nil
+        calendarPopoverController = nil
+    }
+
     @discardableResult
     private func dismissTranslationIfEscape(_ event: NSEvent) -> Bool {
         guard event.keyCode == 53,
@@ -359,6 +399,56 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     // MARK: - Translation panel
+
+    private func createAIChatWindow() {
+        guard aiChatWindow == nil else { return }
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 780, height: 620),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = L10n.aiChatTitle
+        window.identifier = MeowWindowIdentifiers.aiChat
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
+        window.toolbarStyle = .unified
+        window.isMovableByWindowBackground = true
+        window.level = .normal
+        window.collectionBehavior = [.managed, .fullScreenAuxiliary]
+        window.isOpaque = false
+        window.backgroundColor = NSColor.windowBackgroundColor
+        window.hasShadow = true
+        window.isReleasedWhenClosed = false
+        window.minSize = NSSize(width: 700, height: 520)
+        aiChatWindow = window
+    }
+
+    private func showAIChat(initialPrompt: String?) {
+        createAIChatWindow()
+
+        let view = AnyView(
+            AIChatPanelView(
+                settings: viewModel.settings.ai,
+                initialPrompt: initialPrompt,
+                theme: viewModel.settings.theme,
+                historyStore: aiChatHistoryStore,
+                onOpenPreferences: { [weak self] in
+                    self?.showPreferences(section: .ai)
+                }
+            )
+        )
+        let hosting = NSHostingController(rootView: view)
+        aiChatHostingController = hosting
+
+        guard let window = aiChatWindow else { return }
+        hideLauncher()
+        window.contentViewController = hosting
+        centerWindowOnScreen(window, on: activeScreen())
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
 
     private func createTranslationWindow() {
         guard translationWindow == nil else { return }
@@ -435,10 +525,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return NSSize(width: width, height: height)
     }
 
-    private func showPreferences(animated: Bool = true) {
+    private func showPreferences(section: PreferenceSection? = nil, animated: Bool = true) {
+        if let section {
+            preferencesNavigation.selectedSection = section
+        }
+
         let isFirstPresentation = preferencesWindow == nil
         if preferencesWindow == nil {
-            let prefs = PreferencesView(viewModel: viewModel)
+            let prefs = PreferencesView(
+                viewModel: viewModel,
+                navigation: preferencesNavigation,
+                aiChatHistoryStore: aiChatHistoryStore
+            )
             let hosting = NSHostingController(rootView: prefs)
 
             let window = NSWindow(

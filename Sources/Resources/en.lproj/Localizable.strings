@@ -22,6 +22,7 @@
 "action.menu.copy.path" = "Copy Path";
 "action.menu.paste" = "Paste";
 "action.menu.copy" = "Copy";
+"action.menu.ask.ai" = "Ask AI";
 "action.menu.delete" = "Delete";
 "action.menu.execute" = "Execute";
 "action.cancel" = "Cancel";
@@ -35,6 +36,7 @@
 "prefs.title" = "Meow Preferences";
 "prefs.subtitle" = "System behavior and launcher visibility";
 "prefs.section.general" = "General";
+"prefs.section.ai" = "AI";
 "prefs.section.dock" = "Dock";
 "prefs.section.appearance" = "Appearance";
 "prefs.section.about" = "About";
@@ -77,6 +79,26 @@
 "prefs.theme.title" = "Theme";
 "prefs.theme.subtitle" = "Choose the launcher and preferences color palette";
 
+"prefs.ai.endpoint.title" = "Endpoint";
+"prefs.ai.endpoint.subtitle" = "Use /v1 or /v1/chat/completions";
+"prefs.ai.key.title" = "API Key";
+"prefs.ai.key.subtitle" = "Stored locally in Meow settings";
+"prefs.ai.key.copy" = "Copy API Key";
+"prefs.ai.key.reveal" = "Show API Key";
+"prefs.ai.key.hide" = "Hide API Key";
+"prefs.ai.model.title" = "Model";
+"prefs.ai.model.subtitle" = "Type one, or fetch models from the provider";
+"prefs.ai.model.choose" = "Choose model";
+"prefs.ai.models.refresh" = "Fetch models";
+"prefs.ai.models.empty" = "No models returned. You can still type a model name.";
+"prefs.ai.models.loaded" = "%lld models loaded";
+"prefs.ai.history.title" = "Save Chat History";
+"prefs.ai.history.subtitle" = "Store local chats as per-conversation files";
+"prefs.ai.history.clear" = "Clear History";
+"prefs.ai.history.clear.title" = "Clear chat history?";
+"prefs.ai.history.clear.message" = "This will delete all saved AI conversations stored by Meow. This action cannot be undone.";
+"prefs.ai.history.open.folder" = "Open Folder";
+
 "prefs.about.version" = "Version";
 "prefs.about.build" = "Build";
 "prefs.about.privacy" = "Privacy";
@@ -111,6 +133,8 @@
 /* Built-in commands */
 "cmd.preferences.title" = "Meow Preferences";
 "cmd.preferences.subtitle" = "Settings";
+"cmd.ai.chat.title" = "Ask AI";
+"cmd.ai.chat.subtitle" = "Open the AI assistant";
 "cmd.quit.title" = "Quit Meow";
 "cmd.quit.subtitle" = "Exit Application";
 
@@ -126,3 +150,29 @@
 "translate.open.privacy" = "Open Privacy Settings";
 "translate.copy" = "Copy Translation";
 "translate.copied" = "Copied";
+
+/* AI chat */
+"ai.chat.title" = "Ask AI";
+"ai.chat.no.model" = "No model configured";
+"ai.chat.history.title" = "History";
+"ai.chat.history.empty" = "No chats yet";
+"ai.chat.new.conversation" = "New chat";
+"ai.chat.delete.conversation" = "Delete chat";
+"ai.chat.untitled.conversation" = "New chat";
+"ai.chat.not.configured.title" = "AI is not configured";
+"ai.chat.not.configured.subtitle" = "Add an endpoint, API key, and model before using the assistant.";
+"ai.chat.open.settings" = "Open AI Settings";
+"ai.chat.empty.title" = "Ask a question or paste something to work on.";
+"ai.chat.empty.subtitle" = "Meow only sends content when you choose to send it.";
+"ai.chat.input.placeholder" = "Ask a question, paste text, or describe what you need...";
+"ai.chat.you" = "You";
+"ai.chat.assistant" = "Assistant";
+"ai.chat.copy" = "Copy response";
+"ai.chat.thinking" = "Thinking...";
+"ai.chat.thinking.section" = "Thinking";
+"ai.chat.privacy.hint" = "Enter to send · Shift+Enter for newline";
+"ai.chat.send" = "Send";
+"ai.clipboard.prompt" = "Summarize and explain this clipboard content clearly. If it is a file, URL, image, or audio item, explain what can be inferred from the metadata only.";
+"ai.error.not.configured" = "AI is not configured.";
+"ai.error.invalid.endpoint" = "The AI endpoint is invalid.";
+"ai.error.empty.response" = "The model returned an empty response.";

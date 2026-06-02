@@ -251,6 +251,14 @@ struct LauncherView: View {
                         return nil
                     }
                     return event
+                case 0: // A
+                    if showActionMenu, flags.contains(.command) {
+                        if canPerformAction(.askAI, on: selectedItem), let selectedItem {
+                            executeActionMenu(.askAI, selected: selectedItem)
+                        }
+                        return nil
+                    }
+                    return event
                 case 51: // Delete / Backspace
                     if showActionMenu, flags.contains(.command) {
                         if canPerformAction(.delete, on: selectedItem), let selectedItem {
@@ -435,7 +443,7 @@ struct LauncherView: View {
         case .app:
             return [.open, .showInFinder, .copyPath]
         case .clipboard:
-            return [.paste, .copy, .delete]
+            return [.paste, .copy, .askAI, .delete]
         case .command:
             return [.execute]
         }
@@ -462,7 +470,7 @@ struct LauncherView: View {
         switch (selectedItem, action) {
         case (.app, .open), (.app, .showInFinder), (.app, .copyPath):
             return true
-        case (.clipboard, .paste), (.clipboard, .copy), (.clipboard, .delete):
+        case (.clipboard, .paste), (.clipboard, .copy), (.clipboard, .askAI), (.clipboard, .delete):
             return true
         case (.command, .execute):
             return true
@@ -481,9 +489,17 @@ struct LauncherView: View {
             copySelectedPath()
         case .copy:
             copyClipboardContent()
+        case .askAI:
+            askAIAboutClipboard(selected)
         case .delete:
             viewModel.deleteClipboardItem(selected)
         }
         showActionMenu = false
+    }
+
+    private func askAIAboutClipboard(_ selected: SearchItem) {
+        guard case let .clipboard(entry) = selected else { return }
+        let prompt = "\(L10n.aiClipboardPrompt)\n\n\(entry.content.aiContextText)"
+        viewModel.openAIChat(prompt: prompt)
     }
 }

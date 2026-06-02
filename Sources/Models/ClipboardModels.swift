@@ -71,6 +71,24 @@ enum ClipboardContent: Hashable {
             return L10n.clipboardTypeAudio
         }
     }
+
+    var aiContextText: String {
+        switch self {
+        case let .text(string):
+            return string
+        case let .image(image):
+            return "Image: \(image.sourceName) (\(image.width)x\(image.height))"
+        case let .file(file):
+            return "File: \(file.name)\nPath: \(file.url.path)"
+        case let .url(url):
+            return "URL: \(url.absoluteString)"
+        case let .audio(audio):
+            if let duration = audio.duration {
+                return "Audio: \(audio.name)\nDuration: \(duration) seconds"
+            }
+            return "Audio: \(audio.name)"
+        }
+    }
 }
 
 struct ImageClipboardContent: Hashable {
