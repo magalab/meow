@@ -194,6 +194,10 @@ enum L10n {
         loc("action.menu.copy")
     }
 
+    static var actionMenuAskAI: String {
+        loc("action.menu.ask.ai")
+    }
+
     static var actionMenuDelete: String {
         loc("action.menu.delete")
     }
@@ -218,6 +222,10 @@ enum L10n {
 
     static var prefsSectionGeneral: String {
         loc("prefs.section.general")
+    }
+
+    static var prefsSectionAI: String {
+        loc("prefs.section.ai")
     }
 
     static var prefsSectionDock: String {
@@ -352,6 +360,82 @@ enum L10n {
         loc("prefs.language.subtitle")
     }
 
+    static var prefsAIEndpointTitle: String {
+        loc("prefs.ai.endpoint.title")
+    }
+
+    static var prefsAIEndpointSubtitle: String {
+        loc("prefs.ai.endpoint.subtitle")
+    }
+
+    static var prefsAIKeyTitle: String {
+        loc("prefs.ai.key.title")
+    }
+
+    static var prefsAIKeySubtitle: String {
+        loc("prefs.ai.key.subtitle")
+    }
+
+    static var prefsAIKeyCopy: String {
+        loc("prefs.ai.key.copy")
+    }
+
+    static var prefsAIKeyReveal: String {
+        loc("prefs.ai.key.reveal")
+    }
+
+    static var prefsAIKeyHide: String {
+        loc("prefs.ai.key.hide")
+    }
+
+    static var prefsAIModelTitle: String {
+        loc("prefs.ai.model.title")
+    }
+
+    static var prefsAIModelSubtitle: String {
+        loc("prefs.ai.model.subtitle")
+    }
+
+    static var prefsAIModelChoose: String {
+        loc("prefs.ai.model.choose")
+    }
+
+    static var prefsAIModelsRefresh: String {
+        loc("prefs.ai.models.refresh")
+    }
+
+    static var prefsAIModelsEmpty: String {
+        loc("prefs.ai.models.empty")
+    }
+
+    static var prefsAIModelsLoaded: String {
+        loc("prefs.ai.models.loaded")
+    }
+
+    static var prefsAIHistoryTitle: String {
+        loc("prefs.ai.history.title")
+    }
+
+    static var prefsAIHistorySubtitle: String {
+        loc("prefs.ai.history.subtitle")
+    }
+
+    static var prefsAIHistoryClear: String {
+        loc("prefs.ai.history.clear")
+    }
+
+    static var prefsAIHistoryClearTitle: String {
+        loc("prefs.ai.history.clear.title")
+    }
+
+    static var prefsAIHistoryClearMessage: String {
+        loc("prefs.ai.history.clear.message")
+    }
+
+    static var prefsAIHistoryOpenFolder: String {
+        loc("prefs.ai.history.open.folder")
+    }
+
     static var prefsAboutVersion: String {
         loc("prefs.about.version")
     }
@@ -468,6 +552,14 @@ enum L10n {
         loc("cmd.preferences.subtitle")
     }
 
+    static var cmdAIChatTitle: String {
+        loc("cmd.ai.chat.title")
+    }
+
+    static var cmdAIChatSubtitle: String {
+        loc("cmd.ai.chat.subtitle")
+    }
+
     static var cmdQuitTitle: String {
         loc("cmd.quit.title")
     }
@@ -522,6 +614,104 @@ enum L10n {
 
     static var prefsTranslateHotkeySubtitle: String {
         loc("prefs.translate.hotkey.subtitle")
+    }
+
+    // MARK: - AI chat
+
+    static var aiChatTitle: String {
+        loc("ai.chat.title")
+    }
+
+    static var aiChatNoModel: String {
+        loc("ai.chat.no.model")
+    }
+
+    static var aiChatHistoryTitle: String {
+        loc("ai.chat.history.title")
+    }
+
+    static var aiChatHistoryEmpty: String {
+        loc("ai.chat.history.empty")
+    }
+
+    static var aiChatNewConversation: String {
+        loc("ai.chat.new.conversation")
+    }
+
+    static var aiChatDeleteConversation: String {
+        loc("ai.chat.delete.conversation")
+    }
+
+    static var aiChatUntitledConversation: String {
+        loc("ai.chat.untitled.conversation")
+    }
+
+    static var aiChatNotConfiguredTitle: String {
+        loc("ai.chat.not.configured.title")
+    }
+
+    static var aiChatNotConfiguredSubtitle: String {
+        loc("ai.chat.not.configured.subtitle")
+    }
+
+    static var aiChatOpenSettings: String {
+        loc("ai.chat.open.settings")
+    }
+
+    static var aiChatEmptyTitle: String {
+        loc("ai.chat.empty.title")
+    }
+
+    static var aiChatEmptySubtitle: String {
+        loc("ai.chat.empty.subtitle")
+    }
+
+    static var aiChatInputPlaceholder: String {
+        loc("ai.chat.input.placeholder")
+    }
+
+    static var aiChatYou: String {
+        loc("ai.chat.you")
+    }
+
+    static var aiChatAssistant: String {
+        loc("ai.chat.assistant")
+    }
+
+    static var aiChatCopy: String {
+        loc("ai.chat.copy")
+    }
+
+    static var aiChatThinking: String {
+        loc("ai.chat.thinking")
+    }
+
+    static var aiChatThinkingSection: String {
+        loc("ai.chat.thinking.section")
+    }
+
+    static var aiChatPrivacyHint: String {
+        loc("ai.chat.privacy.hint")
+    }
+
+    static var aiChatSend: String {
+        loc("ai.chat.send")
+    }
+
+    static var aiClipboardPrompt: String {
+        loc("ai.clipboard.prompt")
+    }
+
+    static var aiErrorNotConfigured: String {
+        loc("ai.error.not.configured")
+    }
+
+    static var aiErrorInvalidEndpoint: String {
+        loc("ai.error.invalid.endpoint")
+    }
+
+    static var aiErrorEmptyResponse: String {
+        loc("ai.error.empty.response")
     }
 
     // MARK: - Private

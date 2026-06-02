@@ -6,6 +6,7 @@ enum ActionMenuAction: String, Hashable {
     case copyPath
     case paste
     case copy
+    case askAI
     case delete
     case execute
 }
@@ -26,6 +27,7 @@ struct ActionMenu: View {
             case .clipboard:
                 menuRow(action: .paste, title: L10n.actionMenuPaste, systemImage: "doc.on.clipboard", shortcuts: ["↩"])
                 menuRow(action: .copy, title: L10n.actionMenuCopy, systemImage: "doc.on.clipboard.fill", shortcuts: ["⌘", "C"])
+                menuRow(action: .askAI, title: L10n.actionMenuAskAI, systemImage: "sparkles", shortcuts: ["⌘", "A"])
                 menuRow(action: .delete, title: L10n.actionMenuDelete, systemImage: "trash", shortcuts: ["⌘", "⌫"], isDanger: true)
 
             case .command:

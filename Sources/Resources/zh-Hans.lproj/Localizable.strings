@@ -22,6 +22,7 @@
 "action.menu.copy.path" = "复制路径";
 "action.menu.paste" = "粘贴";
 "action.menu.copy" = "复制";
+"action.menu.ask.ai" = "询问 AI";
 "action.menu.delete" = "删除";
 "action.menu.execute" = "执行";
 "action.cancel" = "取消";
@@ -35,6 +36,7 @@
 "prefs.title" = "Meow 偏好设置";
 "prefs.subtitle" = "系统行为与启动器显示";
 "prefs.section.general" = "通用";
+"prefs.section.ai" = "AI";
 "prefs.section.dock" = "Dock";
 "prefs.section.appearance" = "外观";
 "prefs.section.about" = "关于";
@@ -77,6 +79,26 @@
 "prefs.theme.title" = "主题";
 "prefs.theme.subtitle" = "选择启动器与偏好设置的配色方案";
 
+"prefs.ai.endpoint.title" = "接口地址";
+"prefs.ai.endpoint.subtitle" = "可填写 /v1 或 /v1/chat/completions";
+"prefs.ai.key.title" = "API Key";
+"prefs.ai.key.subtitle" = "保存在 Meow 本地设置中";
+"prefs.ai.key.copy" = "复制 API Key";
+"prefs.ai.key.reveal" = "显示 API Key";
+"prefs.ai.key.hide" = "隐藏 API Key";
+"prefs.ai.model.title" = "模型";
+"prefs.ai.model.subtitle" = "可以手动输入，也可以从服务商获取模型";
+"prefs.ai.model.choose" = "选择模型";
+"prefs.ai.models.refresh" = "获取模型列表";
+"prefs.ai.models.empty" = "没有返回模型，你仍然可以手动输入模型名。";
+"prefs.ai.models.loaded" = "已加载 %lld 个模型";
+"prefs.ai.history.title" = "保存聊天历史";
+"prefs.ai.history.subtitle" = "按会话文件保存在本机";
+"prefs.ai.history.clear" = "清空历史";
+"prefs.ai.history.clear.title" = "清空聊天历史？";
+"prefs.ai.history.clear.message" = "这会删除 Meow 保存的所有 AI 对话，此操作不可撤销。";
+"prefs.ai.history.open.folder" = "打开文件夹";
+
 "prefs.about.version" = "版本";
 "prefs.about.build" = "构建";
 "prefs.about.privacy" = "隐私";
@@ -111,6 +133,8 @@
 /* 内置命令 */
 "cmd.preferences.title" = "Meow 偏好设置";
 "cmd.preferences.subtitle" = "设置";
+"cmd.ai.chat.title" = "询问 AI";
+"cmd.ai.chat.subtitle" = "打开 AI 助手";
 "cmd.quit.title" = "退出 Meow";
 "cmd.quit.subtitle" = "退出应用";
 
@@ -126,3 +150,29 @@
 "translate.open.privacy" = "打开隐私设置";
 "translate.copy" = "复制译文";
 "translate.copied" = "已复制";
+
+/* AI 聊天 */
+"ai.chat.title" = "询问 AI";
+"ai.chat.no.model" = "未配置模型";
+"ai.chat.history.title" = "历史";
+"ai.chat.history.empty" = "暂无聊天";
+"ai.chat.new.conversation" = "新建聊天";
+"ai.chat.delete.conversation" = "删除聊天";
+"ai.chat.untitled.conversation" = "新聊天";
+"ai.chat.not.configured.title" = "AI 尚未配置";
+"ai.chat.not.configured.subtitle" = "请先填写接口地址、API Key 和模型后再使用助手。";
+"ai.chat.open.settings" = "打开 AI 设置";
+"ai.chat.empty.title" = "输入问题，或粘贴一段内容让它处理。";
+"ai.chat.empty.subtitle" = "Meow 只会在你主动发送时上传内容。";
+"ai.chat.input.placeholder" = "输入问题，粘贴文本，或描述你想处理的内容…";
+"ai.chat.you" = "你";
+"ai.chat.assistant" = "助手";
+"ai.chat.copy" = "复制回复";
+"ai.chat.thinking" = "思考中…";
+"ai.chat.thinking.section" = "思考过程";
+"ai.chat.privacy.hint" = "Enter 发送 · Shift+Enter 换行";
+"ai.chat.send" = "发送";
+"ai.clipboard.prompt" = "请清晰地总结并解释这段剪贴板内容。如果它是文件、链接、图片或音频，只根据元数据说明能推断出的信息。";
+"ai.error.not.configured" = "AI 尚未配置。";
+"ai.error.invalid.endpoint" = "AI 接口地址无效。";
+"ai.error.empty.response" = "模型返回了空回复。";

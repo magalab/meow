@@ -88,6 +88,47 @@ enum AppTheme: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+struct AISettings: Codable, Equatable, Sendable {
+    var endpoint: String
+    var apiKey: String
+    var model: String
+    var systemPrompt: String
+    var chatHistoryEnabled: Bool
+
+    var isConfigured: Bool {
+        !endpoint.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+            !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+            !model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    static let `default` = AISettings(
+        endpoint: "https://api.openai.com/v1/chat/completions",
+        apiKey: "",
+        model: "gpt-4o-mini",
+        systemPrompt: "You are a concise, helpful assistant inside a lightweight macOS launcher.",
+        chatHistoryEnabled: true
+    )
+}
+
+extension AISettings {
+    private enum CodingKeys: String, CodingKey {
+        case endpoint
+        case apiKey
+        case model
+        case systemPrompt
+        case chatHistoryEnabled
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        endpoint = try container.decodeIfPresent(String.self, forKey: .endpoint) ?? Self.default.endpoint
+        apiKey = try container.decodeIfPresent(String.self, forKey: .apiKey) ?? Self.default.apiKey
+        model = try container.decodeIfPresent(String.self, forKey: .model) ?? Self.default.model
+        systemPrompt = try container.decodeIfPresent(String.self, forKey: .systemPrompt) ?? Self.default.systemPrompt
+        chatHistoryEnabled = try container.decodeIfPresent(Bool.self, forKey: .chatHistoryEnabled) ?? Self.default.chatHistoryEnabled
+    }
+}
+
 struct AppSettings: Codable {
     var autoLaunch: Bool
     var clipboardHistoryEnabled: Bool
@@ -103,6 +144,7 @@ struct AppSettings: Codable {
     var theme: AppTheme
     var dateIconStyle: DateIconStyle
     var dockIconStyle: DockIconStyle
+    var ai: AISettings
 
     init(
         autoLaunch: Bool,
@@ -116,7 +158,8 @@ struct AppSettings: Codable {
         language: AppLanguage,
         theme: AppTheme,
         dateIconStyle: DateIconStyle = .pawPrint,
-        dockIconStyle: DockIconStyle = .calendar
+        dockIconStyle: DockIconStyle = .calendar,
+        ai: AISettings = .default
     ) {
         self.autoLaunch = autoLaunch
         self.clipboardHistoryEnabled = clipboardHistoryEnabled
@@ -130,6 +173,7 @@ struct AppSettings: Codable {
         self.theme = theme
         self.dateIconStyle = dateIconStyle
         self.dockIconStyle = dockIconStyle
+        self.ai = ai
     }
 
     static let `default` = AppSettings(
@@ -144,4 +188,39 @@ struct AppSettings: Codable {
         language: .system,
         theme: .gingerCat
     )
+}
+
+extension AppSettings {
+    private enum CodingKeys: String, CodingKey {
+        case autoLaunch
+        case clipboardHistoryEnabled
+        case showStatusItem
+        case showDockIcon
+        case hotkeyKeyCode
+        case hotkeyModifiers
+        case translateHotkeyKeyCode
+        case translateHotkeyModifiers
+        case language
+        case theme
+        case dateIconStyle
+        case dockIconStyle
+        case ai
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        autoLaunch = try container.decodeIfPresent(Bool.self, forKey: .autoLaunch) ?? Self.default.autoLaunch
+        clipboardHistoryEnabled = try container.decodeIfPresent(Bool.self, forKey: .clipboardHistoryEnabled) ?? Self.default.clipboardHistoryEnabled
+        showStatusItem = try container.decodeIfPresent(Bool.self, forKey: .showStatusItem) ?? Self.default.showStatusItem
+        showDockIcon = try container.decodeIfPresent(Bool.self, forKey: .showDockIcon) ?? Self.default.showDockIcon
+        hotkeyKeyCode = try container.decodeIfPresent(UInt32.self, forKey: .hotkeyKeyCode) ?? Self.default.hotkeyKeyCode
+        hotkeyModifiers = try container.decodeIfPresent(UInt32.self, forKey: .hotkeyModifiers) ?? Self.default.hotkeyModifiers
+        translateHotkeyKeyCode = try container.decodeIfPresent(UInt32.self, forKey: .translateHotkeyKeyCode) ?? Self.default.translateHotkeyKeyCode
+        translateHotkeyModifiers = try container.decodeIfPresent(UInt32.self, forKey: .translateHotkeyModifiers) ?? Self.default.translateHotkeyModifiers
+        language = try container.decodeIfPresent(AppLanguage.self, forKey: .language) ?? Self.default.language
+        theme = try container.decodeIfPresent(AppTheme.self, forKey: .theme) ?? Self.default.theme
+        dateIconStyle = try container.decodeIfPresent(DateIconStyle.self, forKey: .dateIconStyle) ?? Self.default.dateIconStyle
+        dockIconStyle = try container.decodeIfPresent(DockIconStyle.self, forKey: .dockIconStyle) ?? Self.default.dockIconStyle
+        ai = try container.decodeIfPresent(AISettings.self, forKey: .ai) ?? Self.default.ai
+    }
 }
