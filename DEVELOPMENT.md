@@ -4,58 +4,103 @@
 
 ```
 ├── Sources/
-│   ├── MeowApp.swift        # App entry point and AppDelegate
-│   ├── Models.swift         # Data models
-│   ├── Views.swift          # SwiftUI components
-│   ├── Services.swift       # System services
-│   ├── LauncherViewModel.swift # Search/ranking and actions
-│   ├── Strings.swift        # Localization manager
+│   ├── App/
+│   │   └── MeowApp.swift            # App entry, AppDelegate, window management
+│   ├── Models/
+│   │   ├── AppModels.swift          # AppEntry, CommandEntry
+│   │   ├── AppSettings.swift        # AppSettings, AISettings, enums (theme, lang, dock/date icon)
+│   │   └── ClipboardModels.swift    # ClipboardEntry, ClipboardContent, SearchItem
+│   ├── Services/
+│   │   ├── SystemServices.swift     # DockService, StatusItemService, AppDiscoveryService, AutoLaunchService, HotkeyService
+│   │   ├── SettingsStore.swift      # UserDefaults-based persistence
+│   │   ├── ClipboardService.swift   # ClipboardStore, ClipboardImageCache
+│   │   ├── TranslationService.swift # AX text capture + fallback copy
+│   │   ├── AIChatService.swift      # OpenAI-compatible chat completions
+│   │   ├── AIChatHistoryStore.swift  # File-based conversation persistence
+│   │   ├── CalendarService.swift    # Lunisolar calendar, solar terms, holidays, EventKit
+│   │   └── LaunchHistoryStore.swift # Launch frequency/recency tracking
+│   ├── ViewModels/
+│   │   └── LauncherViewModel.swift  # Search, ranking, app dispatch, clipboard management
+│   ├── Views/
+│   │   ├── LauncherView.swift       # Main search panel
+│   │   ├── TranslationView.swift    # Floating translation panel
+│   │   ├── AIChatView.swift         # AI chat with history sidebar
+│   │   ├── PreferencesView.swift    # Tabbed settings window
+│   │   └── Components/
+│   │       ├── ActionMenu.swift     # Contextual action menu overlay
+│   │       ├── CalendarView.swift   # Menu bar calendar popover
+│   │       ├── ItemComponents.swift # App icon / clipboard thumbnail
+│   │       └── PreferenceRows.swift # Toggle/hotkey/theme/language/AI settings rows
+│   ├── Strings.swift                # L10n enum + LanguageManager
+│   ├── Theme.swift                  # ThemePalette with 4 themes
 │   └── Resources/
-│       ├── en.lproj/        # English strings
-│       └── zh-Hans.lproj/   # Chinese strings
-├── Package.swift            # Swift Package manifest
+│       ├── en.lproj/                # English strings
+│       ├── zh-Hans.lproj/           # Chinese strings
+│       └── solar_terms.json         # Solar term dates
+├── Package.swift                    # Swift Package manifest (Swift 6, macOS 15+)
 ├── scripts/
-│   ├── build-dmg.sh         # Create distributable DMG
-│   └── create-icon.sh       # Generate app icon
+│   ├── build-dmg.sh                 # Create distributable DMG
+│   └── create-icon.sh               # Generate app icon
+├── .github/workflows/
+│   ├── build.yml                    # CI
+│   ├── release.yml                  # Release automation
+│   └── dependabot-auto-merge.yml    # Auto-merge dependencies
+└── dist/Meow.app/Contents/
+    └── Info.plist                   # Production entitlements
 ```
 
 ## Architecture
 
 ### App Entry & Lifecycle
-- **MeowApp.swift**: App entry and AppDelegate
-  - Sets up AppKit windows (launcher, preferences)
-  - Manages system services (hotkey, status item)
-  - Handles language switching and settings
+- **MeowApp.swift** (`Sources/App/`): App entry and AppDelegate
+  - Sets up AppKit windows (launcher, translation, AI chat, preferences)
+  - Manages system services (hotkey, status item, clipboard monitoring)
+  - Handles language switching, settings persistence, and window lifecycle
+  - Windows use `NSPanel` (non-activating, floating) or regular `NSWindow`
 
 ### State Management
-- **Models.swift**: Data structures
-  - `AppSettings`: Persisted user preferences
-  - `AppLanguage`: Language selection
-  - `CommandEntry`, `AppEntry`: Search results
+- **AppSettings.swift** (`Sources/Models/`):
+  - `AppSettings`: Codable struct persisted in `UserDefaults` via `SettingsStore`
+  - `AISettings`: API endpoint, key, model, system prompt, chat history toggle
+  - `DateIconStyle` / `DockIconStyle` / `AppTheme` / `AppLanguage` enums
 
-- **LauncherViewModel.swift**: Search & launch logic
-  - Command/app matching with scoring
-  - App discovery
-  - Launch history ranking
+- **LauncherViewModel.swift** (`Sources/ViewModels/`):
+  - Command/app matching with scoring (exact > prefix > word > contains)
+  - App discovery via `AppDiscoveryService`
+  - Launch history ranking (recency + frequency)
+  - Clipboard history management
+  - Closure-based callbacks for window actions
 
 ### UI Layer
-- **Views.swift**: SwiftUI components
-  - `LauncherView`: Main search panel (borderless NSPanel)
-  - `PreferencesView`: Settings window
-  - Reactive to language changes via `@ObservedObject`
+- **Views** (`Sources/Views/`): Per-feature SwiftUI views
+  - `LauncherView`: Main search panel (borderless NSPanel with blur)
+  - `TranslationView`: Floating translation panel using `Translation` framework
+  - `AIChatView`: Chat window with conversation sidebar, markdown rendering
+  - `PreferencesView`: 5-tab settings window (Dock, General, AI, Appearance, About)
+  - `Components/`: Reusable pieces — `ActionMenu`, `CalendarView`, `ItemComponents`, `PreferenceRows`
+  - All views reactive to language changes via `.id(lang.refreshToken)`
 
 ### Services
-- **Services.swift**:
-  - `HotkeyService`: Carbon-based global hotkey registration
-  - `StatusItemService`: Menu bar integration
-  - `DockService`: Dock visibility control
-  - `DiscoveryService`: App/command enumeration
+- **SystemServices.swift** (`Sources/Services/`):
+  - `HotkeyService`: Carbon-based global hotkeys (toggle + translate), `@unchecked Sendable`
+  - `StatusItemService`: NSStatusItem with custom date icons, calendar popover, menu
+  - `DockService` / `DockIconService`: Activation policy toggle, runtime icon rendering
+  - `AppDiscoveryService`: Scans system app directories
+  - `AutoLaunchService`: SMAppService-based login item
+
+- **ClipboardService.swift**: 0.5s pasteboard polling, 50-entry history, image caching
+- **TranslationService.swift**: AX API text capture + Cmd+C fallback
+- **AIChatService.swift**: `Sendable` async OpenAPI-compatible client
+- **AIChatHistoryStore.swift**: `@MainActor ObservableObject`, file-based persistence
+- **CalendarService.swift** / **CalendarEventService.swift**: Lunisolar calendar, EventKit integration
+- **LaunchHistoryStore.swift**: UserDefaults-based history scoring
 
 ### Localization
 - **Strings.swift**:
-  - `LanguageManager`: Runtime bundle switching
-  - `L10n`: Localized string accessors
+  - `LanguageManager`: Runtime bundle switching without app restart
+  - `L10n`: Computed property accessors using active bundle
   - Falls back to English if key not found
+  - Both `en.lproj` and `zh-Hans.lproj` maintained in parallel
 
 ## Building
 
@@ -149,15 +194,23 @@ There is currently no SwiftPM test target in this package.
 Use the manual checklist below plus build verification commands.
 
 ### Manual Testing Checklist
-- [ ] App launches and shows launcher panel
+- [ ] App launches with status item in menu bar
 - [ ] Search works with fuzzy matching
-- [ ] Launching an app works
-- [ ] Preferences window opens/closes
-- [ ] Language switching works
-- [ ] Custom hotkey recording works
-- [ ] Status bar menu functional
+- [ ] Launching an app from results works
+- [ ] Clipboard history captures and displays text/images/files
+- [ ] Translation panel captures selected text (with and without AX permission)
+- [ ] AI chat sends messages, renders markdown, streams response
+- [ ] AI chat history creates, renames, deletes conversations
+- [ ] Preferences window opens/closes, all 5 tabs functional
+- [ ] Language switching (EN/ZH) at runtime
+- [ ] Hotkey recording and global trigger works
+- [ ] Status bar menu items functional
+- [ ] Calendar popover shows lunar/solar/events info
 - [ ] Auto-launch preference works
-- [ ] Dock visibility toggle works
+- [ ] Dock icon style switching (default/calendar/flat)
+- [ ] Date icon style switching (7 styles)
+- [ ] Theme switching (4 themes)
+- [ ] Action menu on clipboard entries (paste/copy/delete/ask AI)
 
 ### Build Verification
 ```bash
@@ -205,13 +258,13 @@ log stream --predicate 'process == "Meow"'
 3. Add localization keys in both `Localizable.strings` files
 
 ### Add a Menu Bar Item
-1. Update `StatusItemService` in `Services.swift`
-2. Add to localization strings
-3. Implement action handler
+1. Update `StatusItemService.setup()` in `SystemServices.swift`
+2. Add menu item action closure in the setup block
+3. Add localization keys in both `.lproj` files
 
 ### Change Preferences Layout
-1. Edit `PreferencesView` in `Views.swift`
-2. Update `AppSettings` model in `Models.swift`
+1. Edit `PreferencesView` in `Sources/Views/PreferencesView.swift`
+2. Update `AppSettings` in `Sources/Models/AppSettings.swift`
 3. Handle in `AppDelegate.apply(settings:)` if system interaction needed
 
 ## Resources

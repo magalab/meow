@@ -35,8 +35,8 @@ echo "Building $APP_NAME ($VERSION) for $TARGET..."
 
 cd "$PROJECT_DIR"
 
-# Generate app icon if not exists
-if [ ! -f "AppIcon.icns" ]; then
+# Generate app icon if missing or older than the source logo.
+if [ ! -f "AppIcon.icns" ] || [ "logo.png" -nt "AppIcon.icns" ]; then
     echo "Generating app icon..."
     bash "$SCRIPT_DIR/create-icon.sh" || echo "Warning: Failed to create icon"
 fi

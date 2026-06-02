@@ -2,17 +2,24 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-轻量级 macOS 启动器（SwiftUI + AppKit）。
+轻量级 macOS 启动器 + 挂件工具集（SwiftUI + AppKit）。
 
 ## 功能
 
-- 全局快捷键呼出启动器
+- 全局快捷键（`Opt+Space`）呼出启动器
 - 应用搜索（带启动历史权重）
-- 内置命令（偏好设置 / 退出）
-- 菜单栏控制与可选 Dock 图标
-- 登录启动（受 macOS 签名策略限制）
+- 剪贴板历史，支持粘贴、复制、删除与清空
+- 内置命令（偏好设置 / 询问 AI / 退出）
+- 兼容 OpenAI Chat Completions 的 AI 聊天助手，并支持本地聊天历史
+- 可从剪贴板条目直接询问 AI
+- 选中文本翻译面板（需要辅助功能权限）
+- 菜单栏日历，含农历日期、节气、节假日及 Calendar.app 事件
+- 7 种菜单栏日期图标样式（爪印、轮廓日期、圆角轮廓、仅日期、月+日、星期+日、农历）
+- 3 种 Dock 图标样式（默认、日历、扁平）
+- 条目操作菜单（打开、在 Finder 中显示、复制、粘贴、询问 AI、删除）
+- 4 套主题配色：调皮猫猫、雾霾蓝、琥珀石墨、苔墨
 - 运行时语言切换（英文 / 简体中文）
-- 多主题配色（默认：调皮猫猫）
+- 登录启动（受 macOS 签名策略限制）
 
 ## 环境要求
 
@@ -22,15 +29,20 @@
 ## 快速开始
 
 ```bash
-# 构建
+# Debug 构建
 swift build
+
+# Release 构建
+swift build -c release
 
 # 运行
 .build/debug/Meow
 
-# 生成 DMG
+# 打包 DMG
 bash scripts/build-dmg.sh
 ```
+
+当 `logo.png` 比当前生成的 `AppIcon.icns` 更新时，DMG 构建脚本会自动重新生成应用图标。
 
 如需自定义 Bundle ID：
 
@@ -40,21 +52,40 @@ APP_BUNDLE_ID=tech.lury.meow bash scripts/build-dmg.sh
 
 ## 使用方式
 
-1. 启动 Meow 后，通过快捷键呼出面板（默认：`Cmd+Space`）。
+1. 启动 Meow 后，通过快捷键呼出面板（默认：`Opt+Space`）。
 2. 输入关键词搜索应用或命令。
-3. 使用 `上/下` 选择结果，回车启动。
-4. 在偏好设置中调整语言、主题、快捷键、Dock 与菜单栏选项。
+3. 使用 `上/下` 选择结果，回车启动应用或执行命令。
+4. 在剪贴板条目上使用操作菜单，可粘贴、复制、删除、在 Finder 中显示，或询问 AI。
+5. 在偏好设置中调整语言、主题、快捷键、Dock、菜单栏、剪贴板与 AI 设置。
+
+## AI 助手
+
+Meow 内置兼容 OpenAI 的聊天助手。可在「偏好设置 -> AI」中配置：
+
+- 接口地址，例如 `https://api.openai.com/v1/chat/completions`
+- API Key
+- 模型名称，可手动输入，也可从服务商的 `/models` 接口获取
+
+聊天历史保存在本机：
+
+```text
+~/Library/Application Support/Meow/AIChats/
+```
+
+API Key 仍保存在 Meow 的本地设置中。聊天历史可在 AI 设置页关闭、清空，或直接打开所在文件夹。
 
 ## 代码结构
 
-- `Sources/MeowApp.swift`: 应用生命周期与窗口管理
-- `Sources/LauncherViewModel.swift`: 搜索与排序逻辑
-- `Sources/Views.swift`: 启动器与偏好设置 UI
+- `Sources/App/MeowApp.swift`: 应用生命周期与窗口管理
+- `Sources/ViewModels/LauncherViewModel.swift`: 搜索与排序逻辑
+- `Sources/Views/`: 启动器、AI 聊天、偏好设置、翻译面板与 UI 组件
 - `Sources/Theme.swift`: 主题配色系统
-- `Sources/Services.swift`: 快捷键、状态栏、自动启动、持久化
+- `Sources/Services/`: 快捷键、状态栏、自动启动、剪贴板、翻译、AI 聊天与持久化
+- `Sources/Models/`: 应用、剪贴板与设置模型
 - `Sources/Resources/`: 本地化资源
 
 ## 说明
 
 - 当前项目没有自动化测试目标，主要依赖手工验证。
+- AI 相关变更需要手动检查：已配置/未配置状态、模型获取/手动输入、Enter 发送、Shift+Enter 换行、聊天历史，以及打开历史文件夹。
 - 详细开发说明见 [DEVELOPMENT.md](DEVELOPMENT.md)。
