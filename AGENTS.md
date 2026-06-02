@@ -4,10 +4,11 @@
 Meow is a Swift 6 Package executable app (`Package.swift`) targeting macOS 15+.
 - `Sources/App/`: app lifecycle and AppKit/SwiftUI startup (`MeowApp.swift`)
 - `Sources/ViewModels/`: launcher logic and ranking (`LauncherViewModel.swift`)
-- `Sources/Views/` and `Sources/Views/Components/`: UI screens, translation panel, and reusable view parts
-- `Sources/Services/`: system integrations (clipboard, settings, launch history, translation capture)
-- `Sources/Models/`: app and clipboard models
+- `Sources/Views/` and `Sources/Views/Components/`: UI screens, translation panel, AI chat, preferences, and reusable view parts
+- `Sources/Services/`: system integrations (clipboard, settings, launch history, translation capture, AI chat, AI chat history)
+- `Sources/Models/`: app, clipboard, and AI settings models
 - `Sources/Resources/{en.lproj,zh-Hans.lproj}`: localization strings
+- `~/Library/Application Support/Meow/AIChats/`: runtime AI chat history storage (`index.json` plus per-conversation JSON files)
 - `scripts/`: packaging helpers (`build-dmg.sh`, `create-icon.sh`)
 - `.github/workflows/`: CI, release, and Homebrew tap automation
 
@@ -33,6 +34,8 @@ There is currently no SwiftPM test target. Validate changes with:
 3. Manual checks: launcher search, app launch, preferences changes, language switching, hotkey behavior, translation hotkey/selection capture, status bar and Dock toggles.
 For UI/localization changes, test both English and Simplified Chinese resources.
 For translation changes, test on macOS 15+ with Accessibility permission granted and denied; verify selected text capture and pasteboard restoration.
+For AI changes, test configured and unconfigured states, Ask AI command, clipboard Ask AI action, Enter send vs Shift+Enter newline, model fetch/manual model entry, API key show/copy, AI settings deep-link, chat history toggle, clear-history confirmation, and opening the chat history folder.
+For AI persistence changes, verify history files under `~/Library/Application Support/Meow/AIChats/` and keep API keys in existing local settings storage unless explicitly requested otherwise.
 
 ## Commit & Pull Request Guidelines
 Recent history follows Conventional Commit-style prefixes (`feat:`, `fix:`, `refactor:`, `chore:`). Use concise imperative subjects, e.g., `fix: prevent duplicate clipboard entries`.
