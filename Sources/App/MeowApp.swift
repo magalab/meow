@@ -44,6 +44,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let launchHistoryStore = LaunchHistoryStore()
     private let autoLaunchService = AutoLaunchService()
     private let hotkeyService = HotkeyService()
+    private let keystrokeVisualizerService = KeystrokeVisualizerService()
     private let clipboardStore = ClipboardStore()
     private let preferencesNavigation = PreferencesNavigationState()
     private let aiChatHistoryStore = AIChatHistoryStore()
@@ -63,6 +64,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var globalKeyMonitor: Any?
     private var localKeyMonitor: Any?
     private var appliedLanguage: AppLanguage?
+    private var lastRegisteredToggleHotkey: (keyCode: UInt32, modifiers: UInt32)?
+    private var lastRegisteredTranslateHotkey: (keyCode: UInt32, modifiers: UInt32)?
     private var clipboardMonitoringEnabled = false
     private var calendarPopover: NSPopover?
     private var calendarPopoverController: NSHostingController<CalendarPopoverView>?
@@ -82,6 +85,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         viewModel.onSettingsChanged = { [weak self] settings in
             self?.apply(settings: settings)
+        }
+        keystrokeVisualizerService.onOverlayPlacementChanged = { [weak self] position, point in
+            guard let self else { return }
+            guard self.viewModel.settings.keystrokeVisualizerOverlayPosition != position ||
+                self.viewModel.settings.keystrokeVisualizerOverlayPoint != point
+            else { return }
+
+            self.viewModel.updateKeystrokeOverlayPlacement(position: position, point: point)
         }
         viewModel.onPasteClipboard = { [weak self] entry in
             guard let self else { return }
@@ -118,6 +129,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_: Notification) {
         hotkeyService.unregister()
+        keystrokeVisualizerService.stop()
         clipboardStore.stopMonitoring()
         dockIconService.stop()
         if let globalMouseMonitor {
@@ -136,6 +148,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSEvent.removeMonitor(localKeyMonitor)
             self.localKeyMonitor = nil
         }
+    }
+
+    func applicationDidBecomeActive(_: Notification) {
+        keystrokeVisualizerService.retryAfterPermissionChange()
     }
 
     private func createLauncherWindow() {
@@ -229,18 +245,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItemService.updateToggleStates(settings)
         statusItemService.updateDateIconStyle(settings.dateIconStyle)
         aiChatHistoryStore.setPersistenceEnabled(settings.ai.chatHistoryEnabled)
+        keystrokeVisualizerService.apply(settings: settings)
         let actualAutoLaunchEnabled = autoLaunchService.apply(enabled: settings.autoLaunch)
-        hotkeyService.registerToggleHotkey(
+        let toggleHotkeyResult = hotkeyService.registerToggleHotkey(
             keyCode: settings.hotkeyKeyCode,
             modifiers: settings.hotkeyModifiers
         ) { [weak self] in
             self?.toggleLauncher()
         }
-        hotkeyService.registerTranslateHotkey(
+        handleHotkeyRegistrationResult(
+            toggleHotkeyResult,
+            name: "launcher",
+            keyCode: settings.hotkeyKeyCode,
+            modifiers: settings.hotkeyModifiers,
+            previous: lastRegisteredToggleHotkey
+        ) { [weak self] keyCode, modifiers in
+            self?.viewModel.updateLauncherHotkey(keyCode: keyCode, modifiers: modifiers)
+        } onSuccess: { [weak self] in
+            self?.lastRegisteredToggleHotkey = (settings.hotkeyKeyCode, settings.hotkeyModifiers)
+        }
+
+        let translateHotkeyResult = hotkeyService.registerTranslateHotkey(
             keyCode: settings.translateHotkeyKeyCode,
             modifiers: settings.translateHotkeyModifiers
         ) { [weak self] in
             self?.triggerTranslation()
+        }
+        handleHotkeyRegistrationResult(
+            translateHotkeyResult,
+            name: "translation",
+            keyCode: settings.translateHotkeyKeyCode,
+            modifiers: settings.translateHotkeyModifiers,
+            previous: lastRegisteredTranslateHotkey
+        ) { [weak self] keyCode, modifiers in
+            self?.viewModel.updateTranslateHotkey(keyCode: keyCode, modifiers: modifiers)
+        } onSuccess: { [weak self] in
+            self?.lastRegisteredTranslateHotkey = (
+                settings.translateHotkeyKeyCode,
+                settings.translateHotkeyModifiers
+            )
         }
 
         if settings.clipboardHistoryEnabled != clipboardMonitoringEnabled {
@@ -259,6 +302,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.async { [weak self] in
                 guard let self, self.viewModel.settings.autoLaunch != actualAutoLaunchEnabled else { return }
                 self.viewModel.settings.autoLaunch = actualAutoLaunchEnabled
+            }
+        }
+    }
+
+    private func handleHotkeyRegistrationResult(
+        _ result: HotkeyService.RegistrationResult,
+        name: String,
+        keyCode: UInt32,
+        modifiers: UInt32,
+        previous: (keyCode: UInt32, modifiers: UInt32)?,
+        restore: @escaping (UInt32, UInt32) -> Void,
+        onSuccess: () -> Void
+    ) {
+        switch result {
+        case .registered:
+            onSuccess()
+        case let .failed(status):
+            NSLog("[Meow] Failed to register \(name) hotkey: \(status)")
+            guard let previous,
+                  previous.keyCode != keyCode || previous.modifiers != modifiers
+            else { return }
+            DispatchQueue.main.async {
+                restore(previous.keyCode, previous.modifiers)
             }
         }
     }
@@ -430,9 +496,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let view = AnyView(
             AIChatPanelView(
-                settings: viewModel.settings.ai,
+                viewModel: viewModel,
                 initialPrompt: initialPrompt,
-                theme: viewModel.settings.theme,
                 historyStore: aiChatHistoryStore,
                 onOpenPreferences: { [weak self] in
                     self?.showPreferences(section: .ai)
@@ -535,23 +600,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let prefs = PreferencesView(
                 viewModel: viewModel,
                 navigation: preferencesNavigation,
-                aiChatHistoryStore: aiChatHistoryStore
+                aiChatHistoryStore: aiChatHistoryStore,
+                keystrokeVisualizerService: keystrokeVisualizerService
             )
             let hosting = NSHostingController(rootView: prefs)
 
             let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 620, height: 448),
+                contentRect: NSRect(x: 0, y: 0, width: 680, height: 448),
                 styleMask: [.titled, .closable, .fullSizeContentView],
                 backing: .buffered,
                 defer: false
             )
-            window.setContentSize(NSSize(width: 620, height: 448))
+            window.setContentSize(NSSize(width: 680, height: 448))
             centerWindowOnScreen(window, on: activeScreen())
             window.title = L10n.windowPrefsTitle
             window.titleVisibility = .hidden
             window.titlebarAppearsTransparent = true
             window.toolbarStyle = .preference
-            window.minSize = NSSize(width: 620, height: 420)
+            window.minSize = NSSize(width: 680, height: 420)
             window.contentViewController = hosting
             window.isReleasedWhenClosed = false
             window.isMovableByWindowBackground = true

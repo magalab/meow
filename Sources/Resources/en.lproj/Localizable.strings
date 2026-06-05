@@ -36,6 +36,7 @@
 "prefs.title" = "Meow Preferences";
 "prefs.subtitle" = "System behavior and launcher visibility";
 "prefs.section.general" = "General";
+"prefs.section.keyboard" = "Keyboard";
 "prefs.section.ai" = "AI";
 "prefs.section.dock" = "Dock";
 "prefs.section.appearance" = "Appearance";
@@ -78,6 +79,47 @@
 
 "prefs.theme.title" = "Theme";
 "prefs.theme.subtitle" = "Choose the launcher and preferences color palette";
+
+"prefs.keystroke.enabled.title" = "Show Keystrokes";
+"prefs.keystroke.enabled.subtitle" = "Display pressed keys in a draggable overlay";
+"prefs.keystroke.modifier.title" = "Show Modifier Keys";
+"prefs.keystroke.modifier.subtitle" = "Display Command, Option, Shift, and Control when pressed alone";
+"prefs.keystroke.display.mode.title" = "Display Mode";
+"prefs.keystroke.display.mode.subtitle" = "Choose which key events should appear";
+"prefs.keystroke.permission.title" = "Accessibility Permission Needed";
+"prefs.keystroke.permission.subtitle" = "Grant Meow permission before global keystrokes can be shown.";
+"prefs.keystroke.permission.open" = "Open Privacy Settings";
+"prefs.keystroke.style.title" = "Overlay Style";
+"prefs.keystroke.style.subtitle" = "Uses the current Meow theme colors";
+"prefs.keystroke.duration.title" = "Display Time";
+"prefs.keystroke.duration.subtitle" = "How long each keystroke stays visible";
+"prefs.keystroke.position.title" = "Overlay Position";
+"prefs.keystroke.position.subtitle" = "Choose a preset, or drag the overlay to save a custom position";
+"prefs.keystroke.position.reset" = "Reset Position";
+"prefs.keystroke.opacity.title" = "Overlay Opacity";
+"prefs.keystroke.opacity.subtitle" = "Make the keystroke overlay less intrusive";
+"prefs.keystroke.history.count.title" = "History Count";
+"prefs.keystroke.history.count.subtitle" = "How many recent keystrokes stay visible";
+"keystroke.style.compact" = "Compact";
+"keystroke.style.prominent" = "Prominent";
+"keystroke.duration.short" = "Short";
+"keystroke.duration.normal" = "Normal";
+"keystroke.duration.long" = "Long";
+"keystroke.duration.persistent" = "Persistent";
+"keystroke.duration.custom" = "Custom";
+"keystroke.position.bottom-center" = "Bottom Center";
+"keystroke.position.top-center" = "Top Center";
+"keystroke.position.bottom-left" = "Bottom Left";
+"keystroke.position.bottom-right" = "Bottom Right";
+"keystroke.position.top-left" = "Top Left";
+"keystroke.position.top-right" = "Top Right";
+"keystroke.position.custom" = "Custom";
+"keystroke.history.count.one" = "1";
+"keystroke.history.count.two" = "2";
+"keystroke.history.count.three" = "3";
+"keystroke.display.mode.shortcuts-special" = "Shortcuts + Special";
+"keystroke.display.mode.shortcuts-only" = "Shortcuts Only";
+"keystroke.display.mode.all-keys" = "All Keys";
 
 "prefs.ai.endpoint.title" = "Endpoint";
 "prefs.ai.endpoint.subtitle" = "Use /v1 or /v1/chat/completions";

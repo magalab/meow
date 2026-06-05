@@ -1,4 +1,5 @@
 import AppKit
+@preconcurrency import ApplicationServices
 import Carbon
 import SwiftUI
 
@@ -83,7 +84,7 @@ struct PreferenceHotkeyRecorderRow: View {
 
             Spacer()
 
-            Button(isRecording ? L10n.prefsHotkeyRecording : hotkeyLabel(keyCode: keyCode, modifiers: modifiers)) {
+            Button(isRecording ? L10n.prefsHotkeyRecording : KeyDisplayFormatter.shortcutLabel(keyCode: keyCode, modifiers: modifiers)) {
                 startRecording()
             }
             .buttonStyle(.borderedProminent)
@@ -115,7 +116,7 @@ struct PreferenceHotkeyRecorderRow: View {
                 return nil
             }
 
-            if isModifierOnlyKey(keyCode) {
+            if KeyDisplayFormatter.isModifierOnlyKey(keyCode) {
                 return nil
             }
 
@@ -147,63 +148,6 @@ struct PreferenceHotkeyRecorderRow: View {
         return result
     }
 
-    private func hotkeyLabel(keyCode: UInt32, modifiers: UInt32) -> String {
-        var parts: [String] = []
-        if modifiers & UInt32(controlKey) != 0 { parts.append("⌃") }
-        if modifiers & UInt32(optionKey) != 0 { parts.append("⌥") }
-        if modifiers & UInt32(shiftKey) != 0 { parts.append("⇧") }
-        if modifiers & UInt32(cmdKey) != 0 { parts.append("⌘") }
-        parts.append(keyName(for: keyCode))
-        return parts.joined(separator: " ")
-    }
-
-    private func keyName(for keyCode: UInt32) -> String {
-        switch keyCode {
-        case 49: return "Space"
-        case 36: return "Return"
-        case 48: return "Tab"
-        case 123: return "←"
-        case 124: return "→"
-        case 125: return "↓"
-        case 126: return "↑"
-        case 0: return "A"
-        case 1: return "S"
-        case 2: return "D"
-        case 3: return "F"
-        case 4: return "H"
-        case 5: return "G"
-        case 6: return "Z"
-        case 7: return "X"
-        case 8: return "C"
-        case 9: return "V"
-        case 11: return "B"
-        case 12: return "Q"
-        case 13: return "W"
-        case 14: return "E"
-        case 15: return "R"
-        case 16: return "Y"
-        case 17: return "T"
-        case 31: return "O"
-        case 32: return "U"
-        case 34: return "I"
-        case 35: return "P"
-        case 37: return "L"
-        case 38: return "J"
-        case 40: return "K"
-        case 45: return "N"
-        case 46: return "M"
-        default: return "Key \(keyCode)"
-        }
-    }
-
-    private func isModifierOnlyKey(_ keyCode: UInt32) -> Bool {
-        switch keyCode {
-        case 54, 55, 56, 57, 58, 59, 60, 61, 62, 63:
-            return true
-        default:
-            return false
-        }
-    }
 }
 
 struct PreferenceThemeRow: View {
@@ -351,6 +295,224 @@ struct PreferenceLanguageRow: View {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .stroke(palette.surfaceStroke, lineWidth: 1)
         )
+    }
+}
+
+struct PreferenceKeystrokeVisualizerSection: View {
+    let theme: AppTheme
+    @ObservedObject var visualizerService: KeystrokeVisualizerService
+    @Binding var enabled: Bool
+    @Binding var showModifierOnly: Bool
+    @Binding var style: KeystrokeOverlayStyle
+    @Binding var overlayPosition: KeystrokeOverlayPosition
+    @Binding var displayDuration: KeystrokeDisplayDuration
+    @Binding var customDisplayDuration: Double
+    @Binding var opacity: Double
+    @Binding var historyCount: KeystrokeHistoryCount
+    @Binding var displayMode: KeystrokeDisplayMode
+    @Binding var overlayPoint: KeystrokeOverlayPoint?
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: ThemePalette {
+        MeowTheme.palette(theme: theme, scheme: colorScheme)
+    }
+
+    private var hasPermission: Bool {
+        visualizerService.permissionState == .trusted || AXIsProcessTrusted()
+    }
+
+    var body: some View {
+        VStack(spacing: 10) {
+            PreferenceToggleRow(
+                title: L10n.prefsKeystrokeEnabledTitle,
+                subtitle: L10n.prefsKeystrokeEnabledSubtitle,
+                symbol: "keyboard",
+                theme: theme,
+                isOn: $enabled
+            )
+
+            if enabled && !hasPermission {
+                permissionRow
+            }
+
+            PreferenceToggleRow(
+                title: L10n.prefsKeystrokeModifierTitle,
+                subtitle: L10n.prefsKeystrokeModifierSubtitle,
+                symbol: "command",
+                theme: theme,
+                isOn: $showModifierOnly
+            )
+
+            displayModeRow
+            styleRow
+            positionRow
+            durationRow
+            historyRow
+            opacityRow
+        }
+        .onAppear {
+            refreshPermission()
+        }
+        .onChange(of: enabled) { _, _ in
+            refreshPermission()
+        }
+    }
+
+    private var permissionRow: some View {
+        HStack(spacing: 12) {
+            rowIcon("hand.raised")
+            rowText(title: L10n.prefsKeystrokePermissionTitle, subtitle: L10n.prefsKeystrokePermissionSubtitle)
+
+            Button(L10n.prefsKeystrokePermissionOpen) {
+                openPrivacySettings()
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+        }
+        .modifier(PreferencePanelRowStyle(palette: palette))
+    }
+
+    private var styleRow: some View {
+        HStack(spacing: 12) {
+            rowIcon("rectangle.on.rectangle")
+            rowText(title: L10n.prefsKeystrokeStyleTitle, subtitle: L10n.prefsKeystrokeStyleSubtitle)
+
+            compactPicker(selection: $style, width: 92)
+        }
+        .modifier(PreferencePanelRowStyle(palette: palette))
+    }
+
+    private var displayModeRow: some View {
+        HStack(spacing: 12) {
+            rowIcon("switch.2")
+            rowText(title: L10n.prefsKeystrokeDisplayModeTitle, subtitle: L10n.prefsKeystrokeDisplayModeSubtitle)
+
+            compactPicker(selection: $displayMode, width: 132)
+        }
+        .modifier(PreferencePanelRowStyle(palette: palette))
+    }
+
+    private var durationRow: some View {
+        HStack(spacing: 12) {
+            rowIcon("timer")
+            rowText(title: L10n.prefsKeystrokeDurationTitle, subtitle: L10n.prefsKeystrokeDurationSubtitle)
+
+            HStack(spacing: 8) {
+                compactPicker(selection: $displayDuration, width: 92)
+
+                if displayDuration == .custom {
+                    Stepper(value: $customDisplayDuration, in: 0.3...10.0, step: 0.1) {
+                        Text(String(format: "%.1fs", customDisplayDuration))
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .monospacedDigit()
+                            .frame(width: 48, alignment: .trailing)
+                    }
+                    .frame(width: 126)
+                }
+            }
+        }
+        .modifier(PreferencePanelRowStyle(palette: palette))
+    }
+
+    private var positionRow: some View {
+        HStack(spacing: 12) {
+            rowIcon("rectangle.and.hand.point.up.left")
+            rowText(title: L10n.prefsKeystrokePositionTitle, subtitle: L10n.prefsKeystrokePositionSubtitle)
+
+            HStack(spacing: 8) {
+                compactPicker(selection: $overlayPosition, width: 96)
+
+                Button {
+                    overlayPosition = .bottomCenter
+                    overlayPoint = nil
+                } label: {
+                    Image(systemName: "arrow.counterclockwise")
+                        .modifier(PreferenceIconButtonLabelStyle())
+                }
+                .buttonStyle(.plain)
+                .help(L10n.prefsKeystrokePositionReset)
+                .disabled(overlayPosition == .bottomCenter && overlayPoint == nil)
+            }
+        }
+        .modifier(PreferencePanelRowStyle(palette: palette))
+    }
+
+    private var opacityRow: some View {
+        HStack(spacing: 12) {
+            rowIcon("circle.lefthalf.filled")
+            rowText(title: L10n.prefsKeystrokeOpacityTitle, subtitle: L10n.prefsKeystrokeOpacitySubtitle)
+
+            HStack(spacing: 8) {
+                Slider(value: $opacity, in: 0.35...1.0, step: 0.05)
+                    .frame(width: 132)
+                Text("\(Int((opacity * 100).rounded()))%")
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+                    .frame(width: 38, alignment: .trailing)
+            }
+        }
+        .modifier(PreferencePanelRowStyle(palette: palette))
+    }
+
+    private var historyRow: some View {
+        HStack(spacing: 12) {
+            rowIcon("rectangle.stack")
+            rowText(title: L10n.prefsKeystrokeHistoryCountTitle, subtitle: L10n.prefsKeystrokeHistoryCountSubtitle)
+
+            compactPicker(selection: $historyCount, width: 68)
+        }
+        .modifier(PreferencePanelRowStyle(palette: palette))
+    }
+
+    private func compactPicker<Option>(
+        selection: Binding<Option>,
+        width: CGFloat
+    ) -> some View where Option: CaseIterable & Hashable & Identifiable & KeystrokeDisplayNameProviding,
+        Option.AllCases: RandomAccessCollection
+    {
+        Picker("", selection: selection) {
+            ForEach(Option.allCases) { option in
+                Text(option.displayName).tag(option)
+            }
+        }
+        .pickerStyle(.menu)
+        .labelsHidden()
+        .controlSize(.small)
+        .frame(width: width)
+    }
+
+    private func refreshPermission() {
+        visualizerService.refreshPermissionState(prompt: false)
+    }
+
+    private func openPrivacySettings() {
+        refreshPermission()
+        NSWorkspace.shared.open(
+            URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
+        )
+    }
+
+    private func rowIcon(_ symbol: String) -> some View {
+        Image(systemName: symbol)
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(palette.preferencesAccent)
+            .frame(width: 30, height: 30)
+            .background(palette.iconChipBackground, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+    }
+
+    private func rowText(title: String, subtitle: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                .foregroundStyle(.primary)
+            Text(subtitle)
+                .font(.system(size: 12, weight: .medium, design: .rounded))
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
