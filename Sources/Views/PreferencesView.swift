@@ -5,6 +5,7 @@ enum PreferenceSection: String, CaseIterable, Identifiable {
     case dock
     case general
     case keyboard
+    case health
     case ai
     case appearance
     case about
@@ -18,6 +19,7 @@ enum PreferenceSection: String, CaseIterable, Identifiable {
         case .dock: return L10n.prefsSectionDock
         case .general: return L10n.prefsSectionGeneral
         case .keyboard: return L10n.prefsSectionKeyboard
+        case .health: return L10n.prefsSectionHealth
         case .ai: return L10n.prefsSectionAI
         case .appearance: return L10n.prefsSectionAppearance
         case .about: return L10n.prefsSectionAbout
@@ -29,6 +31,7 @@ enum PreferenceSection: String, CaseIterable, Identifiable {
         case .dock: return "dock.rectangle"
         case .general: return "gearshape"
         case .keyboard: return "keyboard"
+        case .health: return "figure.mind.and.body"
         case .ai: return "sparkles"
         case .appearance: return "paintpalette"
         case .about: return "info.circle"
@@ -46,6 +49,7 @@ struct PreferencesView: View {
     @ObservedObject var navigation: PreferencesNavigationState
     @ObservedObject var aiChatHistoryStore: AIChatHistoryStore
     @ObservedObject var keystrokeVisualizerService: KeystrokeVisualizerService
+    @ObservedObject var healthReminderService: HealthReminderService
     @ObservedObject private var lang = LanguageManager.shared
     @Environment(\.colorScheme) private var colorScheme
 
@@ -215,6 +219,18 @@ struct PreferencesView: View {
                             .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
                         }
 
+                        if navigation.selectedSection == .health {
+                            PreferenceHealthReminderSection(
+                                theme: viewModel.settings.theme,
+                                service: healthReminderService,
+                                settings: Binding(
+                                    get: { viewModel.settings.healthReminder },
+                                    set: { viewModel.settings.healthReminder = $0 }
+                                )
+                            )
+                            .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+                        }
+
                         if navigation.selectedSection == .keyboard {
                             PreferenceKeystrokeVisualizerSection(
                                 theme: viewModel.settings.theme,
@@ -281,7 +297,7 @@ struct PreferencesView: View {
             }
             .background(Color(nsColor: .windowBackgroundColor).opacity(colorScheme == .dark ? 0.76 : 0.84))
         }
-        .frame(width: 620, height: 448)
+        .frame(width: 700, height: 448)
         .id(lang.refreshToken)
     }
 

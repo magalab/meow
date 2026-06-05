@@ -145,6 +145,7 @@ struct AppSettings: Codable {
     var dateIconStyle: DateIconStyle
     var dockIconStyle: DockIconStyle
     var ai: AISettings
+    var healthReminder: HealthReminderSettings
     var keystrokeVisualizerEnabled: Bool
     var keystrokeVisualizerShowModifierOnly: Bool
     var keystrokeVisualizerOverlayPosition: KeystrokeOverlayPosition
@@ -170,6 +171,7 @@ struct AppSettings: Codable {
         dateIconStyle: DateIconStyle = .pawPrint,
         dockIconStyle: DockIconStyle = .calendar,
         ai: AISettings = .default,
+        healthReminder: HealthReminderSettings = .default,
         keystrokeVisualizerEnabled: Bool = false,
         keystrokeVisualizerShowModifierOnly: Bool = true,
         keystrokeVisualizerOverlayPosition: KeystrokeOverlayPosition = .bottomCenter,
@@ -194,6 +196,7 @@ struct AppSettings: Codable {
         self.dateIconStyle = dateIconStyle
         self.dockIconStyle = dockIconStyle
         self.ai = ai
+        self.healthReminder = healthReminder
         self.keystrokeVisualizerEnabled = keystrokeVisualizerEnabled
         self.keystrokeVisualizerShowModifierOnly = keystrokeVisualizerShowModifierOnly
         self.keystrokeVisualizerOverlayPosition = keystrokeVisualizerOverlayPosition
@@ -235,6 +238,7 @@ extension AppSettings {
         case dateIconStyle
         case dockIconStyle
         case ai
+        case healthReminder
         case keystrokeVisualizerEnabled
         case keystrokeVisualizerShowModifierOnly
         case keystrokeVisualizerOverlayPosition
@@ -262,6 +266,10 @@ extension AppSettings {
         dateIconStyle = try container.decodeIfPresent(DateIconStyle.self, forKey: .dateIconStyle) ?? Self.default.dateIconStyle
         dockIconStyle = try container.decodeIfPresent(DockIconStyle.self, forKey: .dockIconStyle) ?? Self.default.dockIconStyle
         ai = try container.decodeIfPresent(AISettings.self, forKey: .ai) ?? Self.default.ai
+        healthReminder = try container.decodeIfPresent(
+            HealthReminderSettings.self,
+            forKey: .healthReminder
+        ) ?? Self.default.healthReminder
         keystrokeVisualizerEnabled = try container.decodeIfPresent(
             Bool.self,
             forKey: .keystrokeVisualizerEnabled

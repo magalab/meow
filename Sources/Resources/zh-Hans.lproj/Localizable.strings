@@ -37,6 +37,7 @@
 "prefs.subtitle" = "系统行为与启动器显示";
 "prefs.section.general" = "通用";
 "prefs.section.keyboard" = "键盘";
+"prefs.section.health" = "健康";
 "prefs.section.ai" = "AI";
 "prefs.section.dock" = "Dock";
 "prefs.section.appearance" = "外观";
@@ -79,6 +80,25 @@
 
 "prefs.theme.title" = "主题";
 "prefs.theme.subtitle" = "选择启动器与偏好设置的配色方案";
+
+"prefs.health.enabled.title" = "健康提醒";
+"prefs.health.enabled.subtitle" = "在专注工作和短暂休息之间循环";
+"prefs.health.today.title" = "今日";
+"prefs.health.duration.title" = "计时";
+"prefs.health.duration.subtitle" = "工作时长和休息时长";
+"prefs.health.goal.title" = "每日目标";
+"prefs.health.goal.subtitle" = "每天希望完成的休息次数";
+"prefs.health.mode.title" = "休息窗口";
+"prefs.health.mode.subtitle" = "温和模式浮动显示，严格模式保持在其他窗口上方";
+"prefs.health.activity.title" = "活跃检测";
+"prefs.health.activity.subtitle" = "休息期间检测到键鼠操作时暂停倒计时";
+"prefs.health.sound.title" = "提醒声音";
+"prefs.health.sound.subtitle" = "到休息时间时播放短提示音";
+"health.break.mode.gentle" = "温和";
+"health.break.mode.strict" = "严格";
+"health.work.minutes.value" = "工作 %d 分钟";
+"health.break.seconds.value" = "休息 %d 秒";
+"health.goal.value" = "%d 次休息";
 
 "prefs.keystroke.enabled.title" = "显示按键";
 "prefs.keystroke.enabled.subtitle" = "在可拖拽的叠层中显示按下的按键";
@@ -170,6 +190,11 @@
 "menu.autolaunch" = "登录时启动";
 "menu.dock" = "显示 Dock 图标";
 "menu.menubar" = "显示菜单栏图标";
+"menu.health.start" = "开始健康计时";
+"menu.health.pause" = "暂停健康计时";
+"menu.health.resume" = "继续健康计时";
+"menu.health.start.break" = "开始休息";
+"menu.health.settings" = "健康设置…";
 "menu.quit" = "退出 Meow";
 
 /* 内置命令 */
@@ -177,6 +202,14 @@
 "cmd.preferences.subtitle" = "设置";
 "cmd.ai.chat.title" = "询问 AI";
 "cmd.ai.chat.subtitle" = "打开 AI 助手";
+"cmd.health.start.title" = "开始健康计时";
+"cmd.health.start.subtitle" = "开始专注工作和休息提醒";
+"cmd.health.pause.title" = "暂停健康计时";
+"cmd.health.pause.subtitle" = "暂停或继续健康提醒";
+"cmd.health.break.title" = "开始休息";
+"cmd.health.break.subtitle" = "现在休息一下";
+"cmd.health.skip.title" = "跳过休息";
+"cmd.health.skip.subtitle" = "跳过当前健康提醒";
 "cmd.quit.title" = "退出 Meow";
 "cmd.quit.subtitle" = "退出应用";
 
@@ -192,6 +225,24 @@
 "translate.open.privacy" = "打开隐私设置";
 "translate.copy" = "复制译文";
 "translate.copied" = "已复制";
+
+/* 健康提醒 */
+"health.status.idle" = "空闲";
+"health.status.working" = "工作 %@";
+"health.status.break.ready" = "可以休息";
+"health.status.breaking" = "休息 %@";
+"health.status.activity.paused" = "因操作暂停";
+"health.status.paused" = "已暂停";
+"health.break.ready.title" = "该休息了";
+"health.breaking.title" = "短暂休息一下";
+"health.today.progress" = "今日：%@ 次休息";
+"health.skipped.today" = "跳过 %d 次";
+"health.break.ready.message" = "暂时离开屏幕。开始休息后会暂停工作计时。";
+"health.breaking.message" = "倒计时结束前尽量不要操作键盘和鼠标。";
+"health.activity.paused.message" = "检测到键盘或鼠标操作，休息倒计时已暂停。";
+"health.start.break" = "开始休息";
+"health.done.break" = "完成";
+"health.skip.break" = "跳过";
 
 /* AI 聊天 */
 "ai.chat.title" = "询问 AI";

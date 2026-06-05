@@ -37,6 +37,7 @@
 "prefs.subtitle" = "System behavior and launcher visibility";
 "prefs.section.general" = "General";
 "prefs.section.keyboard" = "Keyboard";
+"prefs.section.health" = "Health";
 "prefs.section.ai" = "AI";
 "prefs.section.dock" = "Dock";
 "prefs.section.appearance" = "Appearance";
@@ -79,6 +80,25 @@
 
 "prefs.theme.title" = "Theme";
 "prefs.theme.subtitle" = "Choose the launcher and preferences color palette";
+
+"prefs.health.enabled.title" = "Health Reminder";
+"prefs.health.enabled.subtitle" = "Alternate focused work with short breaks";
+"prefs.health.today.title" = "Today";
+"prefs.health.duration.title" = "Timing";
+"prefs.health.duration.subtitle" = "Work session length and break duration";
+"prefs.health.goal.title" = "Daily Goal";
+"prefs.health.goal.subtitle" = "Target number of completed breaks per day";
+"prefs.health.mode.title" = "Break Window";
+"prefs.health.mode.subtitle" = "Gentle floats; strict stays above other windows";
+"prefs.health.activity.title" = "Activity Detection";
+"prefs.health.activity.subtitle" = "Pause break countdown when keyboard or mouse activity is detected";
+"prefs.health.sound.title" = "Reminder Sound";
+"prefs.health.sound.subtitle" = "Play a short sound when it is time to rest";
+"health.break.mode.gentle" = "Gentle";
+"health.break.mode.strict" = "Strict";
+"health.work.minutes.value" = "%d min work";
+"health.break.seconds.value" = "%d sec break";
+"health.goal.value" = "%d breaks";
 
 "prefs.keystroke.enabled.title" = "Show Keystrokes";
 "prefs.keystroke.enabled.subtitle" = "Display pressed keys in a draggable overlay";
@@ -170,6 +190,11 @@
 "menu.autolaunch" = "Launch at Login";
 "menu.dock" = "Show Dock Icon";
 "menu.menubar" = "Show Menu Bar Icon";
+"menu.health.start" = "Start Health Timer";
+"menu.health.pause" = "Pause Health Timer";
+"menu.health.resume" = "Resume Health Timer";
+"menu.health.start.break" = "Start Break";
+"menu.health.settings" = "Health Settings...";
 "menu.quit" = "Quit Meow";
 
 /* Built-in commands */
@@ -177,6 +202,14 @@
 "cmd.preferences.subtitle" = "Settings";
 "cmd.ai.chat.title" = "Ask AI";
 "cmd.ai.chat.subtitle" = "Open the AI assistant";
+"cmd.health.start.title" = "Start Health Timer";
+"cmd.health.start.subtitle" = "Begin focused work and break reminders";
+"cmd.health.pause.title" = "Pause Health Timer";
+"cmd.health.pause.subtitle" = "Pause or resume the health reminder";
+"cmd.health.break.title" = "Start Break";
+"cmd.health.break.subtitle" = "Take a rest now";
+"cmd.health.skip.title" = "Skip Break";
+"cmd.health.skip.subtitle" = "Skip the current health reminder";
 "cmd.quit.title" = "Quit Meow";
 "cmd.quit.subtitle" = "Exit Application";
 
@@ -192,6 +225,24 @@
 "translate.open.privacy" = "Open Privacy Settings";
 "translate.copy" = "Copy Translation";
 "translate.copied" = "Copied";
+
+/* Health reminder */
+"health.status.idle" = "Idle";
+"health.status.working" = "Working %@";
+"health.status.break.ready" = "Break ready";
+"health.status.breaking" = "Break %@";
+"health.status.activity.paused" = "Paused by activity";
+"health.status.paused" = "Paused";
+"health.break.ready.title" = "Time to rest";
+"health.breaking.title" = "Take a short break";
+"health.today.progress" = "Today: %@ breaks";
+"health.skipped.today" = "%d skipped";
+"health.break.ready.message" = "Step away for a moment. Starting the break will pause work tracking.";
+"health.breaking.message" = "Avoid keyboard and mouse activity until the countdown finishes.";
+"health.activity.paused.message" = "Keyboard or mouse activity detected. The break countdown is paused.";
+"health.start.break" = "Start Break";
+"health.done.break" = "Done";
+"health.skip.break" = "Skip";
 
 /* AI chat */
 "ai.chat.title" = "Ask AI";
