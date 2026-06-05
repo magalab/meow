@@ -37,7 +37,7 @@ This repo also has an `AGENTS.md` with coding style (`.editorconfig`: 4-space Sw
 ### App Lifecycle & Windows
 - `Sources/App/MeowApp.swift`: `@main` entry point (`MeowApp`) + `AppDelegate`
   - AppDelegate owns all service instances and coordinates settings changes
-  - Four windows: `LauncherPanel` (search), `LauncherPanel` (translation), `NSWindow` (preferences), `NSWindow` (AI chat)
+  - Five windows: `LauncherPanel` (search), `LauncherPanel` (translation), `NSPanel` (keystroke overlay), `NSWindow` (preferences), `NSWindow` (AI chat)
   - Calendar popover (`NSPopover`) attached to the status item button
   - Global mouse/key monitors dismiss panels on outside click; escape dismisses translation
   - Cmd+, shortcut opens preferences from anywhere via local key monitor
@@ -46,6 +46,7 @@ This repo also has an `AGENTS.md` with coding style (`.editorconfig`: 4-space Sw
 - `AppSettings.swift`: All user preferences persisted via `UserDefaults` including `AISettings` (endpoint, apiKey, model, systemPrompt, chatHistoryEnabled), `DateIconStyle` (7 variants: pawPrint, outlinedDay, roundedOutlineDay, dayOnly, monthDay, weekdayDay, lunarDate), `DockIconStyle` (default/calendar/flat), `AppLanguage`, `AppTheme`
 - `AppModels.swift`: `AppEntry` (launchable app), `CommandEntry` (built-in command), `SearchItem` enum unifying both
 - `ClipboardModels.swift`: `ClipboardEntry`, `ClipboardContent` enum (text/image/file/unsupported)
+- `KeystrokeModels.swift`: Keystroke visualizer settings (display mode, style, opacity, duration, history count, position) and display models
 
 ### View Models
 - `Sources/ViewModels/LauncherViewModel.swift`: `LauncherViewModel`
@@ -64,16 +65,20 @@ This repo also has an `AGENTS.md` with coding style (`.editorconfig`: 4-space Sw
 - `AIChatHistoryStore.swift`: Persists conversations as individual JSON files in `~/Library/Application Support/Meow/AIChats/conversations/` plus an `index.json`; max 50 conversations, 80 messages each, 100k char message limit; supports legacy migration from UserDefaults and flat-file formats
 - `CalendarService.swift`: Singleton that computes lunar calendar dates, solar terms (via `solar_terms.json` resource), Chinese holidays, zodiac/stem-branch year names; bilingual (en/zh)
 - `CalendarService.swift` also defines `CalendarEventService` (`@MainActor ObservableObject`): loads daily events via EventKit with permission handling (idle → loading → loaded/denied/restricted/failed)
+- `KeystrokeVisualizerService.swift`: Global CGEvent tap (requires Accessibility permission), renders keystrokes in a draggable overlay panel; managed via `@MainActor` with permission state handling
+- `KeyDisplayFormatter.swift`: Maps key codes to display labels using the current keyboard layout, with fixed fallbacks for special keys
 
 ### Views (Sources/Views/)
 - `LauncherView.swift`: Search bar + `LazyVStack` results list in a floating gradient panel, with clipboard history drawer
-- `PreferencesView.swift`: Segmented sections (General, Appearance, AI) with hotkey recorders, theme picker, AI configuration, chat history management
+- `PreferencesView.swift`: 6-tab settings window (Dock, General, Keyboard, AI, Appearance, About) with hotkey recorders, theme picker, AI configuration, chat history management
 - `TranslationView.swift`: Floating translation panel using `TranslationSession` (macOS 15+), auto-detects source language with `NLLanguageRecognizer`, switches between en/zh-Hans
 - `AIChatView.swift`: Chat panel with conversation sidebar, message list, streaming responses, markdown rendering; creates fresh conversations via launcher or direct window
 - `Components/ItemComponents.swift`: Search result row rendering (app icon, clipboard preview, command chip)
 - `Components/ActionMenu.swift`: Context menu for app/clipboard entries
 - `Components/CalendarView.swift`: Calendar popover with month grid, lunar dates, solar terms, holidays, daily EventKit events
 - `Components/PreferenceRows.swift`: Reusable preference toggle rows, hotkey recorder row, language picker row, theme selector
+- `KeystrokeOverlayView.swift`: Draggable global keystroke overlay rendered in a non-activating `NSPanel`; supports compact/prominent styles, shortcut-only/all-keys modes, and configurable opacity/duration
+- `KeystrokeOverlayLayout.swift`: Overlay sizing and layout calculations
 
 ### Theming
 - `Sources/Theme.swift`: `ThemePalette` struct + `MeowTheme` enum with 4 presets (gingerCat, mistBlue, graphiteAmber, mossInk), each with light/dark variants. Palettes are pure functions of theme + color scheme. Applied via `ThemePalette` passed from `MeowTheme.palette(theme:scheme:)`.
@@ -107,3 +112,4 @@ This repo also has an `AGENTS.md` with coding style (`.editorconfig`: 4-space Sw
 - **AI Chat**: Uses OpenAI-compatible chat completions API (any endpoint). Model list fetched from `/v1/models`. Endpoint normalization: bare `/v1` or empty path auto-suffixes `/chat/completions`. Settings stored in `AISettings` inside `AppSettings`. Chat history persisted as individual JSON files per conversation (max 50 conversations, 80 messages each, messages capped at 100k chars). Supports legacy migration from UserDefaults and flat JSON file formats. History can be toggled on/off; disabling clears all persisted data.
 - **Calendar**: Lunar calendar via `Calendar(identifier: .chinese)` plus custom solar-term lookup from `solar_terms.json` (pre-computed JSON keyed by year). Holidays: New Year, Labour Day, National Day, Spring Festival, Dragon Boat Festival, Mid-Autumn Festival, Qingming — all bilingual. Calendar events via EventKit with permission states (idle/loading/loaded/denied/restricted/failed). Popover is a transient `NSPopover` attached to the status item button.
 - **Dynamic dock icon**: `DockIconService` renders the dock icon dynamically based on `DockIconStyle` (default/calendar/flat) + current date. Calendar style shows the day number; other styles include paw print, outlined day, month+day, weekday+day, and lunar date. Status item similarly supports date-themed icons via `DateIconStyle`.
+- **Keystroke visualizer**: Uses a global CGEvent tap (requires Accessibility permission) to intercept key events system-wide. Displays keystrokes in a draggable, non-activating `NSPanel` overlay. Supports three display modes (shortcut-only, shortcuts+special keys, all keys), with key labels resolved from the current keyboard layout via `TISCopyCurrentKeyboardLayoutInputSource`. Permission state is gated — denied state shows an explanatory message in preferences.
