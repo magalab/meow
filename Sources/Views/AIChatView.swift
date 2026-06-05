@@ -2,9 +2,8 @@ import AppKit
 import SwiftUI
 
 struct AIChatPanelView: View {
-    let settings: AISettings
+    @ObservedObject var viewModel: LauncherViewModel
     let initialPrompt: String?
-    let theme: AppTheme
     @ObservedObject var historyStore: AIChatHistoryStore
     let onOpenPreferences: () -> Void
 
@@ -16,6 +15,14 @@ struct AIChatPanelView: View {
     @State private var keyMonitor: Any?
 
     private let service = AIChatService()
+
+    private var settings: AISettings {
+        viewModel.settings.ai
+    }
+
+    private var theme: AppTheme {
+        viewModel.settings.theme
+    }
 
     private var palette: ThemePalette {
         MeowTheme.palette(theme: theme, scheme: colorScheme)

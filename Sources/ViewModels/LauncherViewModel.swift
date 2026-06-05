@@ -132,6 +132,27 @@ final class LauncherViewModel: ObservableObject {
         onOpenAIChat?(prompt)
     }
 
+    func updateKeystrokeOverlayPlacement(position: KeystrokeOverlayPosition, point: KeystrokeOverlayPoint?) {
+        var updated = settings
+        updated.keystrokeVisualizerOverlayPosition = position
+        updated.keystrokeVisualizerOverlayPoint = point
+        settings = updated
+    }
+
+    func updateLauncherHotkey(keyCode: UInt32, modifiers: UInt32) {
+        var updated = settings
+        updated.hotkeyKeyCode = keyCode
+        updated.hotkeyModifiers = modifiers
+        settings = updated
+    }
+
+    func updateTranslateHotkey(keyCode: UInt32, modifiers: UInt32) {
+        var updated = settings
+        updated.translateHotkeyKeyCode = keyCode
+        updated.translateHotkeyModifiers = modifiers
+        settings = updated
+    }
+
     func activate(_ item: SearchItem) {
         switch item {
         case let .app(app):

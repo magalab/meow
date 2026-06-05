@@ -36,6 +36,7 @@
 "prefs.title" = "Meow 偏好设置";
 "prefs.subtitle" = "系统行为与启动器显示";
 "prefs.section.general" = "通用";
+"prefs.section.keyboard" = "键盘";
 "prefs.section.ai" = "AI";
 "prefs.section.dock" = "Dock";
 "prefs.section.appearance" = "外观";
@@ -78,6 +79,47 @@
 
 "prefs.theme.title" = "主题";
 "prefs.theme.subtitle" = "选择启动器与偏好设置的配色方案";
+
+"prefs.keystroke.enabled.title" = "显示按键";
+"prefs.keystroke.enabled.subtitle" = "在可拖拽的叠层中显示按下的按键";
+"prefs.keystroke.modifier.title" = "显示修饰键";
+"prefs.keystroke.modifier.subtitle" = "单独按下 Command、Option、Shift、Control 时也显示";
+"prefs.keystroke.display.mode.title" = "显示模式";
+"prefs.keystroke.display.mode.subtitle" = "选择哪些按键事件会出现在叠层中";
+"prefs.keystroke.permission.title" = "需要辅助功能权限";
+"prefs.keystroke.permission.subtitle" = "授权 Meow 后才能显示全局按键。";
+"prefs.keystroke.permission.open" = "打开隐私设置";
+"prefs.keystroke.style.title" = "叠层样式";
+"prefs.keystroke.style.subtitle" = "使用当前 Meow 主题配色";
+"prefs.keystroke.duration.title" = "显示时间";
+"prefs.keystroke.duration.subtitle" = "每次按键在叠层中停留的时间";
+"prefs.keystroke.position.title" = "叠层位置";
+"prefs.keystroke.position.subtitle" = "选择预设位置，或拖动叠层保存自定义位置";
+"prefs.keystroke.position.reset" = "重置位置";
+"prefs.keystroke.opacity.title" = "叠层透明度";
+"prefs.keystroke.opacity.subtitle" = "降低按键叠层对内容的遮挡";
+"prefs.keystroke.history.count.title" = "历史数量";
+"prefs.keystroke.history.count.subtitle" = "叠层中保留的最近按键数量";
+"keystroke.style.compact" = "紧凑";
+"keystroke.style.prominent" = "醒目";
+"keystroke.duration.short" = "短";
+"keystroke.duration.normal" = "标准";
+"keystroke.duration.long" = "长";
+"keystroke.duration.persistent" = "持久";
+"keystroke.duration.custom" = "自定义";
+"keystroke.position.bottom-center" = "底部居中";
+"keystroke.position.top-center" = "顶部居中";
+"keystroke.position.bottom-left" = "左下";
+"keystroke.position.bottom-right" = "右下";
+"keystroke.position.top-left" = "左上";
+"keystroke.position.top-right" = "右上";
+"keystroke.position.custom" = "自定义";
+"keystroke.history.count.one" = "1";
+"keystroke.history.count.two" = "2";
+"keystroke.history.count.three" = "3";
+"keystroke.display.mode.shortcuts-special" = "快捷键 + 特殊键";
+"keystroke.display.mode.shortcuts-only" = "仅快捷键";
+"keystroke.display.mode.all-keys" = "全部按键";
 
 "prefs.ai.endpoint.title" = "接口地址";
 "prefs.ai.endpoint.subtitle" = "可填写 /v1 或 /v1/chat/completions";

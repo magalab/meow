@@ -722,28 +722,51 @@ final class AutoLaunchService {
 }
 
 final class HotkeyService: @unchecked Sendable {
-    private var hotKeyRefs: [UInt32: EventHotKeyRef] = [:]
+    enum RegistrationResult: Equatable {
+        case registered
+        case failed(OSStatus)
+
+        var isRegistered: Bool {
+            if case .registered = self { return true }
+            return false
+        }
+    }
+
+    private struct RegisteredHotkey {
+        let keyCode: UInt32
+        let modifiers: UInt32
+        let ref: EventHotKeyRef
+        let action: () -> Void
+    }
+
+    private var hotKeys: [UInt32: RegisteredHotkey] = [:]
     private var eventHandlerRef: EventHandlerRef?
-    private var callbacks: [UInt32: () -> Void] = [:]
 
     deinit {
         unregister()
     }
 
     /// Registers (or replaces) the launcher-toggle hotkey (id = 1).
-    func registerToggleHotkey(keyCode: UInt32, modifiers: UInt32, action: @escaping () -> Void) {
+    func registerToggleHotkey(
+        keyCode: UInt32,
+        modifiers: UInt32,
+        action: @escaping () -> Void
+    ) -> RegistrationResult {
         registerHotkey(id: 1, keyCode: keyCode, modifiers: modifiers, action: action)
     }
 
     /// Registers (or replaces) the translate hotkey (id = 2).
-    func registerTranslateHotkey(keyCode: UInt32, modifiers: UInt32, action: @escaping () -> Void) {
+    func registerTranslateHotkey(
+        keyCode: UInt32,
+        modifiers: UInt32,
+        action: @escaping () -> Void
+    ) -> RegistrationResult {
         registerHotkey(id: 2, keyCode: keyCode, modifiers: modifiers, action: action)
     }
 
     func unregister() {
-        for ref in hotKeyRefs.values { UnregisterEventHotKey(ref) }
-        hotKeyRefs.removeAll()
-        callbacks.removeAll()
+        for hotKey in hotKeys.values { UnregisterEventHotKey(hotKey.ref) }
+        hotKeys.removeAll()
         if let eventHandlerRef {
             RemoveEventHandler(eventHandlerRef)
             self.eventHandlerRef = nil
@@ -766,16 +789,19 @@ final class HotkeyService: @unchecked Sendable {
         guard status == noErr else { return noErr }
         let callbackID = hotKeyID.id
         DispatchQueue.main.async { [weak self] in
-            self?.callbacks[callbackID]?()
+            self?.hotKeys[callbackID]?.action()
         }
         return noErr
     }
 
     // MARK: - Private
 
-    private func registerHotkey(id: UInt32, keyCode: UInt32, modifiers: UInt32, action: @escaping () -> Void) {
-        callbacks[id] = action
-
+    private func registerHotkey(
+        id: UInt32,
+        keyCode: UInt32,
+        modifiers: UInt32,
+        action: @escaping () -> Void
+    ) -> RegistrationResult {
         if eventHandlerRef == nil {
             var eventType = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
             let status = InstallEventHandler(
@@ -788,13 +814,27 @@ final class HotkeyService: @unchecked Sendable {
             )
             guard status == noErr else {
                 NSLog("[Meow] Failed to install hotkey event handler: \(status)")
-                return
+                return .failed(status)
             }
         }
 
-        if let existing = hotKeyRefs[id] {
-            UnregisterEventHotKey(existing)
-            hotKeyRefs[id] = nil
+        if let existing = hotKeys[id],
+           existing.keyCode == keyCode,
+           existing.modifiers == modifiers
+        {
+            hotKeys[id] = RegisteredHotkey(
+                keyCode: keyCode,
+                modifiers: modifiers,
+                ref: existing.ref,
+                action: action
+            )
+            return .registered
+        }
+
+        let previous = hotKeys[id]
+        if let previous {
+            UnregisterEventHotKey(previous.ref)
+            hotKeys[id] = nil
         }
 
         let hotKeyID = EventHotKeyID(signature: fourCharCode("MEOW"), id: id)
@@ -809,9 +849,39 @@ final class HotkeyService: @unchecked Sendable {
         )
 
         if registerStatus == noErr, let ref = hotKeyRef {
-            hotKeyRefs[id] = ref
+            hotKeys[id] = RegisteredHotkey(keyCode: keyCode, modifiers: modifiers, ref: ref, action: action)
+            return .registered
+        }
+
+        if let previous {
+            restorePreviousHotkey(previous, id: id)
+        }
+
+        NSLog("[Meow] Failed to register hotkey id=\(id): \(registerStatus)")
+        return .failed(registerStatus)
+    }
+
+    private func restorePreviousHotkey(_ previous: RegisteredHotkey, id: UInt32) {
+        let hotKeyID = EventHotKeyID(signature: fourCharCode("MEOW"), id: id)
+        var restoredRef: EventHotKeyRef?
+        let restoreStatus = RegisterEventHotKey(
+            previous.keyCode,
+            previous.modifiers,
+            hotKeyID,
+            GetApplicationEventTarget(),
+            0,
+            &restoredRef
+        )
+
+        if restoreStatus == noErr, let restoredRef {
+            hotKeys[id] = RegisteredHotkey(
+                keyCode: previous.keyCode,
+                modifiers: previous.modifiers,
+                ref: restoredRef,
+                action: previous.action
+            )
         } else {
-            NSLog("[Meow] Failed to register hotkey id=\(id): \(registerStatus)")
+            NSLog("[Meow] Failed to restore previous hotkey id=\(id): \(restoreStatus)")
         }
     }
 }

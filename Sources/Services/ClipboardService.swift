@@ -344,34 +344,15 @@ final class ClipboardStore {
             let imageExtensions = ["png", "jpg", "jpeg", "gif", "bmp", "tiff", "heic", "webp", "ico"]
             let ext = firstURL.pathExtension.lowercased()
             if imageExtensions.contains(ext) {
-                // Read original file data directly to preserve format
-                if let fileData = try? Data(contentsOf: firstURL),
-                   let image = NSImage(contentsOf: firstURL)
-                {
-                    if let imageContent = ClipboardImageCache.shared.saveImageFromFile(
-                        data: fileData,
-                        sourceName: firstURL.lastPathComponent,
-                        image: image
-                    ) {
-                        let entry = ClipboardEntry(
-                            id: UUID().uuidString,
-                            content: .image(imageContent),
-                            copiedAt: Date()
-                        )
-                        addEntry(entry)
-                        return
-                    }
-                }
+                addImageFileEntryAsync(
+                    url: firstURL,
+                    observedChangeCount: currentCount
+                )
+                return
             }
 
             // Not an image file, store as regular file
-            let fileContent = FileClipboardContent(url: firstURL, name: firstURL.lastPathComponent)
-            let entry = ClipboardEntry(
-                id: UUID().uuidString,
-                content: .file(fileContent),
-                copiedAt: Date()
-            )
-            addEntry(entry)
+            addFileEntry(url: firstURL)
             return
         }
 
@@ -390,31 +371,14 @@ final class ClipboardStore {
 
                     let imageExtensions = ["png", "jpg", "jpeg", "gif", "bmp", "tiff", "heic", "webp", "ico"]
                     let ext = url.pathExtension.lowercased()
-                    if imageExtensions.contains(ext),
-                       let fileData = try? Data(contentsOf: url),
-                       let image = NSImage(contentsOf: url)
-                    {
-                        if let imageContent = ClipboardImageCache.shared.saveImageFromFile(
-                            data: fileData,
-                            sourceName: url.lastPathComponent,
-                            image: image
-                        ) {
-                            let entry = ClipboardEntry(
-                                id: UUID().uuidString,
-                                content: .image(imageContent),
-                                copiedAt: Date()
-                            )
-                            addEntry(entry)
-                            return
-                        }
+                    if imageExtensions.contains(ext) {
+                        addImageFileEntryAsync(
+                            url: url,
+                            observedChangeCount: currentCount
+                        )
+                        return
                     }
-                    let fileContent = FileClipboardContent(url: url, name: url.lastPathComponent)
-                    let entry = ClipboardEntry(
-                        id: UUID().uuidString,
-                        content: .file(fileContent),
-                        copiedAt: Date()
-                    )
-                    addEntry(entry)
+                    addFileEntry(url: url)
                     return
                 }
             }
@@ -457,6 +421,51 @@ final class ClipboardStore {
             )
             addEntry(entry)
         }
+    }
+
+    private func addImageFileEntryAsync(url: URL, observedChangeCount: Int) {
+        Task { [weak self] in
+            let fileData = await Self.readFileData(from: url)
+
+            guard let self,
+                  self.lastChangeCount == observedChangeCount
+            else { return }
+
+            if let fileData,
+               let image = NSImage(data: fileData),
+               let imageContent = ClipboardImageCache.shared.saveImageFromFile(
+                data: fileData,
+                sourceName: url.lastPathComponent,
+                image: image
+               )
+            {
+                let entry = ClipboardEntry(
+                    id: UUID().uuidString,
+                    content: .image(imageContent),
+                    copiedAt: Date()
+                )
+                self.addEntry(entry)
+                return
+            }
+
+            self.addFileEntry(url: url)
+        }
+    }
+
+    private nonisolated static func readFileData(from url: URL) async -> Data? {
+        await Task.detached(priority: .utility) {
+            try? Data(contentsOf: url)
+        }.value
+    }
+
+    private func addFileEntry(url: URL) {
+        let fileContent = FileClipboardContent(url: url, name: url.lastPathComponent)
+        let entry = ClipboardEntry(
+            id: UUID().uuidString,
+            content: .file(fileContent),
+            copiedAt: Date()
+        )
+        addEntry(entry)
     }
 
     private func addEntry(_ entry: ClipboardEntry) {

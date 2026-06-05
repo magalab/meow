@@ -4,6 +4,7 @@ import SwiftUI
 enum PreferenceSection: String, CaseIterable, Identifiable {
     case dock
     case general
+    case keyboard
     case ai
     case appearance
     case about
@@ -16,6 +17,7 @@ enum PreferenceSection: String, CaseIterable, Identifiable {
         switch self {
         case .dock: return L10n.prefsSectionDock
         case .general: return L10n.prefsSectionGeneral
+        case .keyboard: return L10n.prefsSectionKeyboard
         case .ai: return L10n.prefsSectionAI
         case .appearance: return L10n.prefsSectionAppearance
         case .about: return L10n.prefsSectionAbout
@@ -26,6 +28,7 @@ enum PreferenceSection: String, CaseIterable, Identifiable {
         switch self {
         case .dock: return "dock.rectangle"
         case .general: return "gearshape"
+        case .keyboard: return "keyboard"
         case .ai: return "sparkles"
         case .appearance: return "paintpalette"
         case .about: return "info.circle"
@@ -42,6 +45,7 @@ struct PreferencesView: View {
     @ObservedObject var viewModel: LauncherViewModel
     @ObservedObject var navigation: PreferencesNavigationState
     @ObservedObject var aiChatHistoryStore: AIChatHistoryStore
+    @ObservedObject var keystrokeVisualizerService: KeystrokeVisualizerService
     @ObservedObject private var lang = LanguageManager.shared
     @Environment(\.colorScheme) private var colorScheme
 
@@ -71,10 +75,12 @@ struct PreferencesView: View {
                                     .font(.system(size: 12, weight: .semibold))
                                     .foregroundStyle(navigation.selectedSection == section ? palette.preferencesAccent : Color.secondary)
                                 Text(section.localizedTitle)
-                                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                    .lineLimit(1)
+                                    .fixedSize(horizontal: true, vertical: false)
                             }
                             .foregroundStyle(navigation.selectedSection == section ? Color.primary : Color.secondary)
-                            .padding(.horizontal, 12)
+                            .padding(.horizontal, 9)
                             .padding(.vertical, 8)
                             .background(
                                 navigation.selectedSection == section
@@ -204,6 +210,48 @@ struct PreferencesView: View {
                                 theme: Binding(
                                     get: { viewModel.settings.theme },
                                     set: { viewModel.settings.theme = $0 }
+                                )
+                            )
+                            .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+                        }
+
+                        if navigation.selectedSection == .keyboard {
+                            PreferenceKeystrokeVisualizerSection(
+                                theme: viewModel.settings.theme,
+                                visualizerService: keystrokeVisualizerService,
+                                enabled: animatedBinding(for: \.keystrokeVisualizerEnabled),
+                                showModifierOnly: animatedBinding(for: \.keystrokeVisualizerShowModifierOnly),
+                                style: Binding(
+                                    get: { viewModel.settings.keystrokeVisualizerStyle },
+                                    set: { viewModel.settings.keystrokeVisualizerStyle = $0 }
+                                ),
+                                overlayPosition: Binding(
+                                    get: { viewModel.settings.keystrokeVisualizerOverlayPosition },
+                                    set: { viewModel.settings.keystrokeVisualizerOverlayPosition = $0 }
+                                ),
+                                displayDuration: Binding(
+                                    get: { viewModel.settings.keystrokeVisualizerDisplayDuration },
+                                    set: { viewModel.settings.keystrokeVisualizerDisplayDuration = $0 }
+                                ),
+                                customDisplayDuration: Binding(
+                                    get: { viewModel.settings.keystrokeVisualizerCustomDisplayDuration },
+                                    set: { viewModel.settings.keystrokeVisualizerCustomDisplayDuration = $0 }
+                                ),
+                                opacity: Binding(
+                                    get: { viewModel.settings.keystrokeVisualizerOpacity },
+                                    set: { viewModel.settings.keystrokeVisualizerOpacity = $0 }
+                                ),
+                                historyCount: Binding(
+                                    get: { viewModel.settings.keystrokeVisualizerHistoryCount },
+                                    set: { viewModel.settings.keystrokeVisualizerHistoryCount = $0 }
+                                ),
+                                displayMode: Binding(
+                                    get: { viewModel.settings.keystrokeVisualizerDisplayMode },
+                                    set: { viewModel.settings.keystrokeVisualizerDisplayMode = $0 }
+                                ),
+                                overlayPoint: Binding(
+                                    get: { viewModel.settings.keystrokeVisualizerOverlayPoint },
+                                    set: { viewModel.settings.keystrokeVisualizerOverlayPoint = $0 }
                                 )
                             )
                             .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))

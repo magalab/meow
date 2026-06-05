@@ -224,6 +224,10 @@ enum L10n {
         loc("prefs.section.general")
     }
 
+    static var prefsSectionKeyboard: String {
+        loc("prefs.section.keyboard")
+    }
+
     static var prefsSectionAI: String {
         loc("prefs.section.ai")
     }
@@ -350,6 +354,166 @@ enum L10n {
 
     static var prefsThemeSubtitle: String {
         loc("prefs.theme.subtitle")
+    }
+
+    static var prefsKeystrokeEnabledTitle: String {
+        loc("prefs.keystroke.enabled.title")
+    }
+
+    static var prefsKeystrokeEnabledSubtitle: String {
+        loc("prefs.keystroke.enabled.subtitle")
+    }
+
+    static var prefsKeystrokeModifierTitle: String {
+        loc("prefs.keystroke.modifier.title")
+    }
+
+    static var prefsKeystrokeModifierSubtitle: String {
+        loc("prefs.keystroke.modifier.subtitle")
+    }
+
+    static var prefsKeystrokeDisplayModeTitle: String {
+        loc("prefs.keystroke.display.mode.title")
+    }
+
+    static var prefsKeystrokeDisplayModeSubtitle: String {
+        loc("prefs.keystroke.display.mode.subtitle")
+    }
+
+    static var prefsKeystrokePermissionTitle: String {
+        loc("prefs.keystroke.permission.title")
+    }
+
+    static var prefsKeystrokePermissionSubtitle: String {
+        loc("prefs.keystroke.permission.subtitle")
+    }
+
+    static var prefsKeystrokePermissionOpen: String {
+        loc("prefs.keystroke.permission.open")
+    }
+
+    static var prefsKeystrokeStyleTitle: String {
+        loc("prefs.keystroke.style.title")
+    }
+
+    static var prefsKeystrokeStyleSubtitle: String {
+        loc("prefs.keystroke.style.subtitle")
+    }
+
+    static var prefsKeystrokePositionTitle: String {
+        loc("prefs.keystroke.position.title")
+    }
+
+    static var prefsKeystrokeDurationTitle: String {
+        loc("prefs.keystroke.duration.title")
+    }
+
+    static var prefsKeystrokeDurationSubtitle: String {
+        loc("prefs.keystroke.duration.subtitle")
+    }
+
+    static var prefsKeystrokePositionSubtitle: String {
+        loc("prefs.keystroke.position.subtitle")
+    }
+
+    static var prefsKeystrokePositionReset: String {
+        loc("prefs.keystroke.position.reset")
+    }
+
+    static var prefsKeystrokeOpacityTitle: String {
+        loc("prefs.keystroke.opacity.title")
+    }
+
+    static var prefsKeystrokeOpacitySubtitle: String {
+        loc("prefs.keystroke.opacity.subtitle")
+    }
+
+    static var prefsKeystrokeHistoryCountTitle: String {
+        loc("prefs.keystroke.history.count.title")
+    }
+
+    static var prefsKeystrokeHistoryCountSubtitle: String {
+        loc("prefs.keystroke.history.count.subtitle")
+    }
+
+    static var keystrokeStyleCompact: String {
+        loc("keystroke.style.compact")
+    }
+
+    static var keystrokeStyleProminent: String {
+        loc("keystroke.style.prominent")
+    }
+
+    static var keystrokeDurationShort: String {
+        loc("keystroke.duration.short")
+    }
+
+    static var keystrokeDurationNormal: String {
+        loc("keystroke.duration.normal")
+    }
+
+    static var keystrokeDurationLong: String {
+        loc("keystroke.duration.long")
+    }
+
+    static var keystrokeDurationPersistent: String {
+        loc("keystroke.duration.persistent")
+    }
+
+    static var keystrokeDurationCustom: String {
+        loc("keystroke.duration.custom")
+    }
+
+    static var keystrokePositionBottomCenter: String {
+        loc("keystroke.position.bottom-center")
+    }
+
+    static var keystrokePositionTopCenter: String {
+        loc("keystroke.position.top-center")
+    }
+
+    static var keystrokePositionBottomLeft: String {
+        loc("keystroke.position.bottom-left")
+    }
+
+    static var keystrokePositionBottomRight: String {
+        loc("keystroke.position.bottom-right")
+    }
+
+    static var keystrokePositionTopLeft: String {
+        loc("keystroke.position.top-left")
+    }
+
+    static var keystrokePositionTopRight: String {
+        loc("keystroke.position.top-right")
+    }
+
+    static var keystrokePositionCustom: String {
+        loc("keystroke.position.custom")
+    }
+
+    static var keystrokeHistoryCountOne: String {
+        loc("keystroke.history.count.one")
+    }
+
+    static var keystrokeHistoryCountTwo: String {
+        loc("keystroke.history.count.two")
+    }
+
+    static var keystrokeHistoryCountThree: String {
+        loc("keystroke.history.count.three")
+    }
+
+    static var keystrokeDisplayModeShortcutsAndSpecial: String {
+        loc("keystroke.display.mode.shortcuts-special")
+    }
+
+    static var keystrokeDisplayModeShortcutsOnly: String {
+        loc("keystroke.display.mode.shortcuts-only")
+    }
+
+    static var keystrokeDisplayModeAllKeys: String {
+        loc("keystroke.display.mode.all-keys")
     }
 
     static var prefsLanguageTitle: String {

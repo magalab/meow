@@ -145,6 +145,16 @@ struct AppSettings: Codable {
     var dateIconStyle: DateIconStyle
     var dockIconStyle: DockIconStyle
     var ai: AISettings
+    var keystrokeVisualizerEnabled: Bool
+    var keystrokeVisualizerShowModifierOnly: Bool
+    var keystrokeVisualizerOverlayPosition: KeystrokeOverlayPosition
+    var keystrokeVisualizerOverlayPoint: KeystrokeOverlayPoint?
+    var keystrokeVisualizerStyle: KeystrokeOverlayStyle
+    var keystrokeVisualizerDisplayDuration: KeystrokeDisplayDuration
+    var keystrokeVisualizerCustomDisplayDuration: Double
+    var keystrokeVisualizerOpacity: Double
+    var keystrokeVisualizerHistoryCount: KeystrokeHistoryCount
+    var keystrokeVisualizerDisplayMode: KeystrokeDisplayMode
 
     init(
         autoLaunch: Bool,
@@ -159,7 +169,17 @@ struct AppSettings: Codable {
         theme: AppTheme,
         dateIconStyle: DateIconStyle = .pawPrint,
         dockIconStyle: DockIconStyle = .calendar,
-        ai: AISettings = .default
+        ai: AISettings = .default,
+        keystrokeVisualizerEnabled: Bool = false,
+        keystrokeVisualizerShowModifierOnly: Bool = true,
+        keystrokeVisualizerOverlayPosition: KeystrokeOverlayPosition = .bottomCenter,
+        keystrokeVisualizerOverlayPoint: KeystrokeOverlayPoint? = nil,
+        keystrokeVisualizerStyle: KeystrokeOverlayStyle = .compact,
+        keystrokeVisualizerDisplayDuration: KeystrokeDisplayDuration = .normal,
+        keystrokeVisualizerCustomDisplayDuration: Double = 1.4,
+        keystrokeVisualizerOpacity: Double = 0.82,
+        keystrokeVisualizerHistoryCount: KeystrokeHistoryCount = .one,
+        keystrokeVisualizerDisplayMode: KeystrokeDisplayMode = .shortcutsAndSpecialKeys
     ) {
         self.autoLaunch = autoLaunch
         self.clipboardHistoryEnabled = clipboardHistoryEnabled
@@ -174,6 +194,16 @@ struct AppSettings: Codable {
         self.dateIconStyle = dateIconStyle
         self.dockIconStyle = dockIconStyle
         self.ai = ai
+        self.keystrokeVisualizerEnabled = keystrokeVisualizerEnabled
+        self.keystrokeVisualizerShowModifierOnly = keystrokeVisualizerShowModifierOnly
+        self.keystrokeVisualizerOverlayPosition = keystrokeVisualizerOverlayPosition
+        self.keystrokeVisualizerOverlayPoint = keystrokeVisualizerOverlayPoint
+        self.keystrokeVisualizerStyle = keystrokeVisualizerStyle
+        self.keystrokeVisualizerDisplayDuration = keystrokeVisualizerDisplayDuration
+        self.keystrokeVisualizerCustomDisplayDuration = keystrokeVisualizerCustomDisplayDuration
+        self.keystrokeVisualizerOpacity = keystrokeVisualizerOpacity
+        self.keystrokeVisualizerHistoryCount = keystrokeVisualizerHistoryCount
+        self.keystrokeVisualizerDisplayMode = keystrokeVisualizerDisplayMode
     }
 
     static let `default` = AppSettings(
@@ -205,6 +235,16 @@ extension AppSettings {
         case dateIconStyle
         case dockIconStyle
         case ai
+        case keystrokeVisualizerEnabled
+        case keystrokeVisualizerShowModifierOnly
+        case keystrokeVisualizerOverlayPosition
+        case keystrokeVisualizerOverlayPoint
+        case keystrokeVisualizerStyle
+        case keystrokeVisualizerDisplayDuration
+        case keystrokeVisualizerCustomDisplayDuration
+        case keystrokeVisualizerOpacity
+        case keystrokeVisualizerHistoryCount
+        case keystrokeVisualizerDisplayMode
     }
 
     init(from decoder: Decoder) throws {
@@ -222,5 +262,45 @@ extension AppSettings {
         dateIconStyle = try container.decodeIfPresent(DateIconStyle.self, forKey: .dateIconStyle) ?? Self.default.dateIconStyle
         dockIconStyle = try container.decodeIfPresent(DockIconStyle.self, forKey: .dockIconStyle) ?? Self.default.dockIconStyle
         ai = try container.decodeIfPresent(AISettings.self, forKey: .ai) ?? Self.default.ai
+        keystrokeVisualizerEnabled = try container.decodeIfPresent(
+            Bool.self,
+            forKey: .keystrokeVisualizerEnabled
+        ) ?? Self.default.keystrokeVisualizerEnabled
+        keystrokeVisualizerShowModifierOnly = try container.decodeIfPresent(
+            Bool.self,
+            forKey: .keystrokeVisualizerShowModifierOnly
+        ) ?? Self.default.keystrokeVisualizerShowModifierOnly
+        keystrokeVisualizerOverlayPoint = try container.decodeIfPresent(
+            KeystrokeOverlayPoint.self,
+            forKey: .keystrokeVisualizerOverlayPoint
+        ) ?? Self.default.keystrokeVisualizerOverlayPoint
+        keystrokeVisualizerOverlayPosition = try container.decodeIfPresent(
+            KeystrokeOverlayPosition.self,
+            forKey: .keystrokeVisualizerOverlayPosition
+        ) ?? (keystrokeVisualizerOverlayPoint == nil ? Self.default.keystrokeVisualizerOverlayPosition : .custom)
+        keystrokeVisualizerStyle = try container.decodeIfPresent(
+            KeystrokeOverlayStyle.self,
+            forKey: .keystrokeVisualizerStyle
+        ) ?? Self.default.keystrokeVisualizerStyle
+        keystrokeVisualizerDisplayDuration = try container.decodeIfPresent(
+            KeystrokeDisplayDuration.self,
+            forKey: .keystrokeVisualizerDisplayDuration
+        ) ?? Self.default.keystrokeVisualizerDisplayDuration
+        keystrokeVisualizerCustomDisplayDuration = try container.decodeIfPresent(
+            Double.self,
+            forKey: .keystrokeVisualizerCustomDisplayDuration
+        ) ?? Self.default.keystrokeVisualizerCustomDisplayDuration
+        keystrokeVisualizerOpacity = try container.decodeIfPresent(
+            Double.self,
+            forKey: .keystrokeVisualizerOpacity
+        ) ?? Self.default.keystrokeVisualizerOpacity
+        keystrokeVisualizerHistoryCount = try container.decodeIfPresent(
+            KeystrokeHistoryCount.self,
+            forKey: .keystrokeVisualizerHistoryCount
+        ) ?? Self.default.keystrokeVisualizerHistoryCount
+        keystrokeVisualizerDisplayMode = try container.decodeIfPresent(
+            KeystrokeDisplayMode.self,
+            forKey: .keystrokeVisualizerDisplayMode
+        ) ?? Self.default.keystrokeVisualizerDisplayMode
     }
 }
