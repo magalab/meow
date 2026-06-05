@@ -9,7 +9,8 @@
 │   ├── Models/
 │   │   ├── AppModels.swift          # AppEntry, CommandEntry
 │   │   ├── AppSettings.swift        # AppSettings, AISettings, enums (theme, lang, dock/date icon)
-│   │   └── ClipboardModels.swift    # ClipboardEntry, ClipboardContent, SearchItem
+│   │   ├── ClipboardModels.swift    # ClipboardEntry, ClipboardContent, SearchItem
+│   │   └── KeystrokeModels.swift    # Keystroke visualizer settings and display models
 │   ├── Services/
 │   │   ├── SystemServices.swift     # DockService, StatusItemService, AppDiscoveryService, AutoLaunchService, HotkeyService
 │   │   ├── SettingsStore.swift      # UserDefaults-based persistence
@@ -18,6 +19,8 @@
 │   │   ├── AIChatService.swift      # OpenAI-compatible chat completions
 │   │   ├── AIChatHistoryStore.swift  # File-based conversation persistence
 │   │   ├── CalendarService.swift    # Lunisolar calendar, solar terms, holidays, EventKit
+│   │   ├── KeyDisplayFormatter.swift # Keyboard-layout-aware key labels
+│   │   ├── KeystrokeVisualizerService.swift # Global key event tap + overlay window
 │   │   └── LaunchHistoryStore.swift # Launch frequency/recency tracking
 │   ├── ViewModels/
 │   │   └── LauncherViewModel.swift  # Search, ranking, app dispatch, clipboard management
@@ -25,6 +28,8 @@
 │   │   ├── LauncherView.swift       # Main search panel
 │   │   ├── TranslationView.swift    # Floating translation panel
 │   │   ├── AIChatView.swift         # AI chat with history sidebar
+│   │   ├── KeystrokeOverlayLayout.swift # Overlay sizing
+│   │   ├── KeystrokeOverlayView.swift # Keystroke overlay SwiftUI view
 │   │   ├── PreferencesView.swift    # Tabbed settings window
 │   │   └── Components/
 │   │       ├── ActionMenu.swift     # Contextual action menu overlay
@@ -76,7 +81,8 @@
   - `LauncherView`: Main search panel (borderless NSPanel with blur)
   - `TranslationView`: Floating translation panel using `Translation` framework
   - `AIChatView`: Chat window with conversation sidebar, markdown rendering
-  - `PreferencesView`: 5-tab settings window (Dock, General, AI, Appearance, About)
+  - `PreferencesView`: 6-tab settings window (Dock, General, Keyboard, AI, Appearance, About)
+  - `KeystrokeOverlayView`: Draggable global keystroke overlay rendered in a non-activating panel
   - `Components/`: Reusable pieces — `ActionMenu`, `CalendarView`, `ItemComponents`, `PreferenceRows`
   - All views reactive to language changes via `.id(lang.refreshToken)`
 
@@ -92,6 +98,8 @@
 - **TranslationService.swift**: AX API text capture + Cmd+C fallback
 - **AIChatService.swift**: `Sendable` async OpenAPI-compatible client
 - **AIChatHistoryStore.swift**: `@MainActor ObservableObject`, file-based persistence
+- **KeystrokeVisualizerService.swift**: Accessibility-gated global key event tap, overlay window, drag persistence
+- **KeyDisplayFormatter.swift**: Current keyboard layout label lookup with fixed special-key fallback
 - **CalendarService.swift** / **CalendarEventService.swift**: Lunisolar calendar, EventKit integration
 - **LaunchHistoryStore.swift**: UserDefaults-based history scoring
 
@@ -201,7 +209,7 @@ Use the manual checklist below plus build verification commands.
 - [ ] Translation panel captures selected text (with and without AX permission)
 - [ ] AI chat sends messages, renders markdown, streams response
 - [ ] AI chat history creates, renames, deletes conversations
-- [ ] Preferences window opens/closes, all 5 tabs functional
+- [ ] Preferences window opens/closes, all 6 tabs functional
 - [ ] Language switching (EN/ZH) at runtime
 - [ ] Hotkey recording and global trigger works
 - [ ] Status bar menu items functional
@@ -210,6 +218,10 @@ Use the manual checklist below plus build verification commands.
 - [ ] Dock icon style switching (default/calendar/flat)
 - [ ] Date icon style switching (7 styles)
 - [ ] Theme switching (4 themes)
+- [ ] Keystroke visualizer permission denied/granted states work
+- [ ] Keystroke visualizer overlay displays shortcuts/special keys/all keys correctly
+- [ ] Keystroke visualizer drag, reset, opacity, duration, style, and history settings work
+- [ ] Key labels follow non-US keyboard layouts where possible
 - [ ] Action menu on clipboard entries (paste/copy/delete/ask AI)
 
 ### Build Verification

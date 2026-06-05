@@ -13,6 +13,7 @@ A lightweight macOS launcher with gadgets, built with SwiftUI + AppKit.
 - OpenAI-compatible AI chat assistant with local chat history
 - Ask AI from clipboard entries
 - Translation panel for selected text (requires Accessibility permission)
+- Keystroke visualizer with draggable overlay, display modes, duration, opacity, and history count
 - Menu bar calendar with Chinese lunisolar dates, solar terms, and Calendar.app events
 - 7 menu bar date icon styles (paw print, outlined day, rounded outline, day only, month+day, weekday+day, lunar date)
 - 3 Dock icon styles (default, calendar, flat)
@@ -56,7 +57,16 @@ APP_BUNDLE_ID=tech.lury.meow bash scripts/build-dmg.sh
 2. Type to search apps or commands.
 3. Use `Up/Down` to select and press Enter to launch or run a command.
 4. Use the action menu on clipboard entries to paste, copy, delete, reveal files, or ask AI.
-5. Open Preferences to adjust language, theme, hotkeys, Dock, menu bar, clipboard, and AI settings.
+5. Open Preferences to adjust language, theme, hotkeys, Dock, menu bar, clipboard, keyboard overlay, and AI settings.
+
+## Keystroke Visualizer
+
+Meow can show global keystrokes in a draggable overlay. Configure it from Preferences -> Keyboard.
+
+- Requires Accessibility permission for global key monitoring
+- Supports shortcut-only, shortcuts + special keys, and all-keys display modes
+- Supports compact/prominent styles, preset or custom overlay position, opacity, display time, and 1-3 item history
+- Key labels follow the current macOS keyboard layout when possible
 
 ## AI Assistant
 
@@ -88,4 +98,5 @@ API keys remain in Meow's local settings storage. Chat history can be disabled, 
 
 - There is currently no automated test target; validation is mainly manual.
 - For AI changes, manually check configured and unconfigured states, model fetch/manual entry, Enter send, Shift+Enter newline, chat history, and opening the history folder.
+- For keyboard overlay changes, manually check Accessibility permission denied/granted states, hotkey conflict behavior, dragging/resetting the overlay, and non-US keyboard layouts.
 - See [DEVELOPMENT.md](DEVELOPMENT.md) for development details.
