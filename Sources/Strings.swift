@@ -228,6 +228,10 @@ enum L10n {
         loc("prefs.section.keyboard")
     }
 
+    static var prefsSectionHealth: String {
+        loc("prefs.section.health")
+    }
+
     static var prefsSectionAI: String {
         loc("prefs.section.ai")
     }
@@ -354,6 +358,78 @@ enum L10n {
 
     static var prefsThemeSubtitle: String {
         loc("prefs.theme.subtitle")
+    }
+
+    static var prefsHealthEnabledTitle: String {
+        loc("prefs.health.enabled.title")
+    }
+
+    static var prefsHealthEnabledSubtitle: String {
+        loc("prefs.health.enabled.subtitle")
+    }
+
+    static var prefsHealthTodayTitle: String {
+        loc("prefs.health.today.title")
+    }
+
+    static var prefsHealthDurationTitle: String {
+        loc("prefs.health.duration.title")
+    }
+
+    static var prefsHealthDurationSubtitle: String {
+        loc("prefs.health.duration.subtitle")
+    }
+
+    static var prefsHealthGoalTitle: String {
+        loc("prefs.health.goal.title")
+    }
+
+    static var prefsHealthGoalSubtitle: String {
+        loc("prefs.health.goal.subtitle")
+    }
+
+    static var prefsHealthModeTitle: String {
+        loc("prefs.health.mode.title")
+    }
+
+    static var prefsHealthModeSubtitle: String {
+        loc("prefs.health.mode.subtitle")
+    }
+
+    static var prefsHealthActivityTitle: String {
+        loc("prefs.health.activity.title")
+    }
+
+    static var prefsHealthActivitySubtitle: String {
+        loc("prefs.health.activity.subtitle")
+    }
+
+    static var prefsHealthSoundTitle: String {
+        loc("prefs.health.sound.title")
+    }
+
+    static var prefsHealthSoundSubtitle: String {
+        loc("prefs.health.sound.subtitle")
+    }
+
+    static var healthBreakModeGentle: String {
+        loc("health.break.mode.gentle")
+    }
+
+    static var healthBreakModeStrict: String {
+        loc("health.break.mode.strict")
+    }
+
+    static var healthWorkMinutesValue: String {
+        loc("health.work.minutes.value")
+    }
+
+    static var healthBreakSecondsValue: String {
+        loc("health.break.seconds.value")
+    }
+
+    static var healthGoalValue: String {
+        loc("health.goal.value")
     }
 
     static var prefsKeystrokeEnabledTitle: String {
@@ -706,6 +782,50 @@ enum L10n {
         loc("menu.menubar")
     }
 
+    static var menuHealthStart: String {
+        loc("menu.health.start")
+    }
+
+    static var menuHealthPause: String {
+        loc("menu.health.pause")
+    }
+
+    static var menuHealthResume: String {
+        loc("menu.health.resume")
+    }
+
+    static var menuHealthStartBreak: String {
+        loc("menu.health.start.break")
+    }
+
+    static var menuHealthSettings: String {
+        loc("menu.health.settings")
+    }
+
+    static var healthStatusIdle: String {
+        loc("health.status.idle")
+    }
+
+    static var healthStatusWorking: String {
+        loc("health.status.working")
+    }
+
+    static var healthStatusBreakReady: String {
+        loc("health.status.break.ready")
+    }
+
+    static var healthStatusBreaking: String {
+        loc("health.status.breaking")
+    }
+
+    static var healthStatusActivityPaused: String {
+        loc("health.status.activity.paused")
+    }
+
+    static var healthStatusPaused: String {
+        loc("health.status.paused")
+    }
+
     // MARK: - Built-in commands
 
     static var cmdPreferencesTitle: String {
@@ -722,6 +842,38 @@ enum L10n {
 
     static var cmdAIChatSubtitle: String {
         loc("cmd.ai.chat.subtitle")
+    }
+
+    static var cmdHealthStartTitle: String {
+        loc("cmd.health.start.title")
+    }
+
+    static var cmdHealthStartSubtitle: String {
+        loc("cmd.health.start.subtitle")
+    }
+
+    static var cmdHealthPauseTitle: String {
+        loc("cmd.health.pause.title")
+    }
+
+    static var cmdHealthPauseSubtitle: String {
+        loc("cmd.health.pause.subtitle")
+    }
+
+    static var cmdHealthBreakTitle: String {
+        loc("cmd.health.break.title")
+    }
+
+    static var cmdHealthBreakSubtitle: String {
+        loc("cmd.health.break.subtitle")
+    }
+
+    static var cmdHealthSkipTitle: String {
+        loc("cmd.health.skip.title")
+    }
+
+    static var cmdHealthSkipSubtitle: String {
+        loc("cmd.health.skip.subtitle")
     }
 
     static var cmdQuitTitle: String {
@@ -758,6 +910,48 @@ enum L10n {
 
     static var translateNeedAccessibility: String {
         loc("translate.need.accessibility")
+    }
+
+    // MARK: - Health reminder
+
+    static var healthBreakReadyTitle: String {
+        loc("health.break.ready.title")
+    }
+
+    static var healthBreakingTitle: String {
+        loc("health.breaking.title")
+    }
+
+    static var healthTodayProgress: String {
+        loc("health.today.progress")
+    }
+
+    static var healthSkippedToday: String {
+        loc("health.skipped.today")
+    }
+
+    static var healthBreakReadyMessage: String {
+        loc("health.break.ready.message")
+    }
+
+    static var healthBreakingMessage: String {
+        loc("health.breaking.message")
+    }
+
+    static var healthActivityPausedMessage: String {
+        loc("health.activity.paused.message")
+    }
+
+    static var healthStartBreak: String {
+        loc("health.start.break")
+    }
+
+    static var healthDoneBreak: String {
+        loc("health.done.break")
+    }
+
+    static var healthSkipBreak: String {
+        loc("health.skip.break")
     }
 
     static var translateOpenPrivacy: String {

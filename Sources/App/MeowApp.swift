@@ -45,6 +45,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let autoLaunchService = AutoLaunchService()
     private let hotkeyService = HotkeyService()
     private let keystrokeVisualizerService = KeystrokeVisualizerService()
+    private let healthReminderService = HealthReminderService()
     private let clipboardStore = ClipboardStore()
     private let preferencesNavigation = PreferencesNavigationState()
     private let aiChatHistoryStore = AIChatHistoryStore()
@@ -82,6 +83,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         viewModel.onOpenAIChat = { [weak self] prompt in
             self?.showAIChat(initialPrompt: prompt)
+        }
+        viewModel.onHealthCommand = { [weak self] command in
+            self?.handleHealthCommand(command)
         }
         viewModel.onSettingsChanged = { [weak self] settings in
             self?.apply(settings: settings)
@@ -130,6 +134,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_: Notification) {
         hotkeyService.unregister()
         keystrokeVisualizerService.stop()
+        healthReminderService.stop()
         clipboardStore.stopMonitoring()
         dockIconService.stop()
         if let globalMouseMonitor {
@@ -246,6 +251,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItemService.updateDateIconStyle(settings.dateIconStyle)
         aiChatHistoryStore.setPersistenceEnabled(settings.ai.chatHistoryEnabled)
         keystrokeVisualizerService.apply(settings: settings)
+        healthReminderService.apply(settings: settings)
         let actualAutoLaunchEnabled = autoLaunchService.apply(enabled: settings.autoLaunch)
         let toggleHotkeyResult = hotkeyService.registerToggleHotkey(
             keyCode: settings.hotkeyKeyCode,
@@ -326,6 +332,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.async {
                 restore(previous.keyCode, previous.modifiers)
             }
+        }
+    }
+
+    private func handleHealthCommand(_ command: HealthReminderCommand) {
+        switch command {
+        case .start:
+            if !viewModel.settings.healthReminder.enabled {
+                viewModel.settings.healthReminder.enabled = true
+            }
+            healthReminderService.startWorking()
+        case .pauseResume:
+            if !viewModel.settings.healthReminder.enabled {
+                viewModel.settings.healthReminder.enabled = true
+                return
+            }
+            healthReminderService.pauseOrResume()
+        case .startBreak:
+            if !viewModel.settings.healthReminder.enabled {
+                viewModel.settings.healthReminder.enabled = true
+            }
+            healthReminderService.startBreak()
+        case .skipBreak:
+            guard viewModel.settings.healthReminder.enabled else { return }
+            healthReminderService.skipBreak()
         }
     }
 
@@ -601,23 +631,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 viewModel: viewModel,
                 navigation: preferencesNavigation,
                 aiChatHistoryStore: aiChatHistoryStore,
-                keystrokeVisualizerService: keystrokeVisualizerService
+                keystrokeVisualizerService: keystrokeVisualizerService,
+                healthReminderService: healthReminderService
             )
             let hosting = NSHostingController(rootView: prefs)
 
             let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 680, height: 448),
+                contentRect: NSRect(x: 0, y: 0, width: 760, height: 448),
                 styleMask: [.titled, .closable, .fullSizeContentView],
                 backing: .buffered,
                 defer: false
             )
-            window.setContentSize(NSSize(width: 680, height: 448))
+            window.setContentSize(NSSize(width: 760, height: 448))
             centerWindowOnScreen(window, on: activeScreen())
             window.title = L10n.windowPrefsTitle
             window.titleVisibility = .hidden
             window.titlebarAppearsTransparent = true
             window.toolbarStyle = .preference
-            window.minSize = NSSize(width: 680, height: 420)
+            window.minSize = NSSize(width: 760, height: 420)
             window.contentViewController = hosting
             window.isReleasedWhenClosed = false
             window.isMovableByWindowBackground = true
@@ -677,9 +708,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let initialSize = NSSize(width: 320, height: 314)
         popover.contentSize = initialSize
 
-        let view = CalendarPopoverView(theme: viewModel.settings.theme) { [weak popover] size in
-            popover?.contentSize = size
-        }
+        let view = CalendarPopoverView(
+            theme: viewModel.settings.theme,
+            healthReminderService: healthReminderService,
+            onHealthCommand: { [weak self] command in
+                self?.handleHealthCommand(command)
+            },
+            onOpenHealthPreferences: { [weak self] in
+                self?.showPreferences(section: .health)
+            },
+            onContentSizeChanged: { [weak popover] size in
+                popover?.contentSize = size
+            }
+        )
         let hosting = NSHostingController(rootView: view)
         popover.contentViewController = hosting
 

@@ -14,6 +14,7 @@ A lightweight macOS launcher with gadgets, built with SwiftUI + AppKit.
 - Ask AI from clipboard entries
 - Translation panel for selected text (requires Accessibility permission)
 - Keystroke visualizer with draggable overlay, display modes, duration, opacity, and history count
+- Health reminder with work/break timer, break overlay, daily goal, and light activity detection
 - Menu bar calendar with Chinese lunisolar dates, solar terms, and Calendar.app events
 - 7 menu bar date icon styles (paw print, outlined day, rounded outline, day only, month+day, weekday+day, lunar date)
 - 3 Dock icon styles (default, calendar, flat)
@@ -57,7 +58,17 @@ APP_BUNDLE_ID=tech.lury.meow bash scripts/build-dmg.sh
 2. Type to search apps or commands.
 3. Use `Up/Down` to select and press Enter to launch or run a command.
 4. Use the action menu on clipboard entries to paste, copy, delete, reveal files, or ask AI.
-5. Open Preferences to adjust language, theme, hotkeys, Dock, menu bar, clipboard, keyboard overlay, and AI settings.
+5. Open Preferences to adjust language, theme, hotkeys, Dock, menu bar, clipboard, health reminders, keyboard overlay, and AI settings.
+
+## Health Reminder
+
+Meow can alternate focused work sessions with short breaks. Configure it from Preferences -> Health.
+
+- Starts a work timer and prompts you when it is time to rest
+- Shows controls in the menu bar calendar panel plus a floating break overlay
+- Tracks today's completed and skipped breaks locally
+- Can pause the break countdown when keyboard or mouse activity is detected
+- Supports gentle and strict break window modes
 
 ## Keystroke Visualizer
 
@@ -98,5 +109,6 @@ API keys remain in Meow's local settings storage. Chat history can be disabled, 
 
 - There is currently no automated test target; validation is mainly manual.
 - For AI changes, manually check configured and unconfigured states, model fetch/manual entry, Enter send, Shift+Enter newline, chat history, and opening the history folder.
+- For health reminder changes, manually check timer start/pause/resume, break start/skip/done, daily goal progress, activity-paused countdown, and menu bar calendar controls.
 - For keyboard overlay changes, manually check Accessibility permission denied/granted states, hotkey conflict behavior, dragging/resetting the overlay, and non-US keyboard layouts.
 - See [DEVELOPMENT.md](DEVELOPMENT.md) for development details.

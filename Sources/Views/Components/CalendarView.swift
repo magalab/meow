@@ -5,6 +5,9 @@ import AppKit
 
 struct CalendarPopoverView: View {
     let theme: AppTheme
+    @ObservedObject var healthReminderService: HealthReminderService
+    let onHealthCommand: (HealthReminderCommand) -> Void
+    let onOpenHealthPreferences: () -> Void
     let onContentSizeChanged: (NSSize) -> Void
     @State private var currentYear: Int
     @State private var currentMonth: Int
@@ -18,8 +21,17 @@ struct CalendarPopoverView: View {
         MeowTheme.palette(theme: theme, scheme: colorScheme)
     }
 
-    init(theme: AppTheme, onContentSizeChanged: @escaping (NSSize) -> Void = { _ in }) {
+    init(
+        theme: AppTheme,
+        healthReminderService: HealthReminderService,
+        onHealthCommand: @escaping (HealthReminderCommand) -> Void,
+        onOpenHealthPreferences: @escaping () -> Void,
+        onContentSizeChanged: @escaping (NSSize) -> Void = { _ in }
+    ) {
         self.theme = theme
+        self.healthReminderService = healthReminderService
+        self.onHealthCommand = onHealthCommand
+        self.onOpenHealthPreferences = onOpenHealthPreferences
         self.onContentSizeChanged = onContentSizeChanged
         let now = Date()
         let cal = Calendar(identifier: .gregorian)
@@ -36,7 +48,7 @@ struct CalendarPopoverView: View {
     }
 
     private var contentHeight: CGFloat {
-        currentGridRows > 5 ? 318 : 282
+        currentGridRows > 5 ? 420 : 384
     }
 
     private var contentSize: NSSize {
@@ -48,6 +60,12 @@ struct CalendarPopoverView: View {
             VStack(spacing: 16) {
                 headerView
                 calendarGrid
+                HealthReminderCalendarCard(
+                    theme: theme,
+                    service: healthReminderService,
+                    onCommand: onHealthCommand,
+                    onOpenSettings: onOpenHealthPreferences
+                )
             }
             .frame(width: 288)
 
@@ -231,6 +249,130 @@ struct CalendarPopoverView: View {
                 currentYear -= 1
             }
         }
+    }
+}
+
+private struct HealthReminderCalendarCard: View {
+    let theme: AppTheme
+    @ObservedObject var service: HealthReminderService
+    let onCommand: (HealthReminderCommand) -> Void
+    let onOpenSettings: () -> Void
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: ThemePalette {
+        MeowTheme.palette(theme: theme, scheme: colorScheme)
+    }
+
+    private var state: HealthReminderState {
+        service.state
+    }
+
+    private var goal: Int {
+        max(1, service.currentSettings.dailyGoal)
+    }
+
+    private var progressText: String {
+        "\(min(state.completedBreaksToday, goal))/\(goal)"
+    }
+
+    private var primaryActionTitle: String {
+        switch state.phase {
+        case .idle:
+            return L10n.menuHealthStart
+        case .paused:
+            return L10n.menuHealthResume
+        case .working, .breakReady, .breaking:
+            return L10n.menuHealthPause
+        }
+    }
+
+    private var primaryAction: HealthReminderCommand {
+        switch state.phase {
+        case .idle:
+            return .start
+        case .paused, .working, .breakReady, .breaking:
+            return .pauseResume
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            HStack(spacing: 8) {
+                Image(systemName: "figure.mind.and.body")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(palette.preferencesAccent)
+                    .frame(width: 24, height: 24)
+                    .background(palette.iconChipBackground, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(L10n.prefsSectionHealth)
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                    Text(service.statusText())
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .foregroundStyle(state.activityPaused ? .orange : .secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                }
+
+                Spacer(minLength: 8)
+
+                Button {
+                    onOpenSettings()
+                } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 11, weight: .semibold))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .help(L10n.menuHealthSettings)
+            }
+
+            HStack(spacing: 8) {
+                Text(String(format: L10n.healthTodayProgress, progressText))
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+
+                Spacer(minLength: 8)
+
+                if state.skippedBreaksToday > 0 {
+                    Text(String(format: L10n.healthSkippedToday, state.skippedBreaksToday))
+                        .font(.system(size: 10, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+
+            HStack(spacing: 7) {
+                Button(primaryActionTitle) {
+                    onCommand(primaryAction)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(palette.preferencesAccent)
+
+                if state.phase == .working || state.phase == .breakReady {
+                    Button(L10n.menuHealthStartBreak) {
+                        onCommand(.startBreak)
+                    }
+                    .buttonStyle(.bordered)
+                }
+
+                if state.phase == .breakReady || state.phase == .breaking {
+                    Button(L10n.healthSkipBreak) {
+                        onCommand(.skipBreak)
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+            .controlSize(.mini)
+        }
+        .padding(10)
+        .background(palette.surfaceBackground, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(palette.surfaceStroke, lineWidth: 1)
+        )
     }
 }
 

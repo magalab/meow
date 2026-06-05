@@ -10,6 +10,7 @@
 │   │   ├── AppModels.swift          # AppEntry, CommandEntry
 │   │   ├── AppSettings.swift        # AppSettings, AISettings, enums (theme, lang, dock/date icon)
 │   │   ├── ClipboardModels.swift    # ClipboardEntry, ClipboardContent, SearchItem
+│   │   ├── HealthReminderModels.swift # Health reminder settings, state, records, commands
 │   │   └── KeystrokeModels.swift    # Keystroke visualizer settings and display models
 │   ├── Services/
 │   │   ├── SystemServices.swift     # DockService, StatusItemService, AppDiscoveryService, AutoLaunchService, HotkeyService
@@ -19,6 +20,7 @@
 │   │   ├── AIChatService.swift      # OpenAI-compatible chat completions
 │   │   ├── AIChatHistoryStore.swift  # File-based conversation persistence
 │   │   ├── CalendarService.swift    # Lunisolar calendar, solar terms, holidays, EventKit
+│   │   ├── HealthReminderService.swift # Work/break timer, daily records, break overlay
 │   │   ├── KeyDisplayFormatter.swift # Keyboard-layout-aware key labels
 │   │   ├── KeystrokeVisualizerService.swift # Global key event tap + overlay window
 │   │   └── LaunchHistoryStore.swift # Launch frequency/recency tracking
@@ -28,6 +30,7 @@
 │   │   ├── LauncherView.swift       # Main search panel
 │   │   ├── TranslationView.swift    # Floating translation panel
 │   │   ├── AIChatView.swift         # AI chat with history sidebar
+│   │   ├── HealthBreakOverlayView.swift # Health reminder break panel
 │   │   ├── KeystrokeOverlayLayout.swift # Overlay sizing
 │   │   ├── KeystrokeOverlayView.swift # Keystroke overlay SwiftUI view
 │   │   ├── PreferencesView.swift    # Tabbed settings window
@@ -81,7 +84,8 @@
   - `LauncherView`: Main search panel (borderless NSPanel with blur)
   - `TranslationView`: Floating translation panel using `Translation` framework
   - `AIChatView`: Chat window with conversation sidebar, markdown rendering
-  - `PreferencesView`: 6-tab settings window (Dock, General, Keyboard, AI, Appearance, About)
+  - `PreferencesView`: 7-tab settings window (Dock, General, Keyboard, Health, AI, Appearance, About)
+  - `HealthBreakOverlayView`: Floating break reminder with countdown, progress, and break actions
   - `KeystrokeOverlayView`: Draggable global keystroke overlay rendered in a non-activating panel
   - `Components/`: Reusable pieces — `ActionMenu`, `CalendarView`, `ItemComponents`, `PreferenceRows`
   - All views reactive to language changes via `.id(lang.refreshToken)`
@@ -98,6 +102,7 @@
 - **TranslationService.swift**: AX API text capture + Cmd+C fallback
 - **AIChatService.swift**: `Sendable` async OpenAPI-compatible client
 - **AIChatHistoryStore.swift**: `@MainActor ObservableObject`, file-based persistence
+- **HealthReminderService.swift**: Work/break timer, daily UserDefaults records, break overlay, light activity detection via system idle time
 - **KeystrokeVisualizerService.swift**: Accessibility-gated global key event tap, overlay window, drag persistence
 - **KeyDisplayFormatter.swift**: Current keyboard layout label lookup with fixed special-key fallback
 - **CalendarService.swift** / **CalendarEventService.swift**: Lunisolar calendar, EventKit integration
@@ -209,7 +214,7 @@ Use the manual checklist below plus build verification commands.
 - [ ] Translation panel captures selected text (with and without AX permission)
 - [ ] AI chat sends messages, renders markdown, streams response
 - [ ] AI chat history creates, renames, deletes conversations
-- [ ] Preferences window opens/closes, all 6 tabs functional
+- [ ] Preferences window opens/closes, all 7 tabs functional
 - [ ] Language switching (EN/ZH) at runtime
 - [ ] Hotkey recording and global trigger works
 - [ ] Status bar menu items functional
@@ -218,6 +223,10 @@ Use the manual checklist below plus build verification commands.
 - [ ] Dock icon style switching (default/calendar/flat)
 - [ ] Date icon style switching (7 styles)
 - [ ] Theme switching (4 themes)
+- [ ] Health reminder start, pause, resume, break start, skip, and done actions work
+- [ ] Health reminder daily progress and skipped count persist locally
+- [ ] Health reminder activity detection pauses break countdown during keyboard/mouse activity
+- [ ] Health reminder controls in the menu bar calendar panel mirror current timer state
 - [ ] Keystroke visualizer permission denied/granted states work
 - [ ] Keystroke visualizer overlay displays shortcuts/special keys/all keys correctly
 - [ ] Keystroke visualizer drag, reset, opacity, duration, style, and history settings work

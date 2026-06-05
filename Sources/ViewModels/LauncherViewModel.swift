@@ -26,6 +26,7 @@ final class LauncherViewModel: ObservableObject {
     var onPasteClipboard: ((ClipboardEntry) -> Void)?
     var onLaunchApplication: ((AppEntry) -> Void)?
     var onOpenAIChat: ((String?) -> Void)?
+    var onHealthCommand: ((HealthReminderCommand) -> Void)?
 
     private let settingsStore: SettingsStore
     private let discoveryService: AppDiscoveryService
@@ -53,6 +54,34 @@ final class LauncherViewModel: ObservableObject {
                 subtitle: L10n.cmdAIChatSubtitle,
                 keywords: ["ai", "chat", "ask", "assistant", "summarize", "rewrite",
                            "人工智能", "聊天", "助手", "总结", "改写"]
+            ),
+            CommandEntry(
+                id: "meow.health.start",
+                title: L10n.cmdHealthStartTitle,
+                subtitle: L10n.cmdHealthStartSubtitle,
+                keywords: ["health", "focus", "timer", "work", "break", "start",
+                           "健康", "专注", "计时", "休息", "开始"]
+            ),
+            CommandEntry(
+                id: "meow.health.pause",
+                title: L10n.cmdHealthPauseTitle,
+                subtitle: L10n.cmdHealthPauseSubtitle,
+                keywords: ["health", "pause", "resume", "focus", "timer",
+                           "健康", "暂停", "继续", "专注", "计时"]
+            ),
+            CommandEntry(
+                id: "meow.health.break",
+                title: L10n.cmdHealthBreakTitle,
+                subtitle: L10n.cmdHealthBreakSubtitle,
+                keywords: ["health", "break", "rest", "stretch",
+                           "健康", "休息", "伸展"]
+            ),
+            CommandEntry(
+                id: "meow.health.skip",
+                title: L10n.cmdHealthSkipTitle,
+                subtitle: L10n.cmdHealthSkipSubtitle,
+                keywords: ["health", "skip", "break", "rest",
+                           "健康", "跳过", "休息"]
             ),
             CommandEntry(
                 id: "meow.quit",
@@ -178,6 +207,14 @@ final class LauncherViewModel: ObservableObject {
             onOpenPreferences?()
         case "meow.ai.chat":
             onOpenAIChat?(nil)
+        case "meow.health.start":
+            onHealthCommand?(.start)
+        case "meow.health.pause":
+            onHealthCommand?(.pauseResume)
+        case "meow.health.break":
+            onHealthCommand?(.startBreak)
+        case "meow.health.skip":
+            onHealthCommand?(.skipBreak)
         case "meow.quit":
             NSApp.terminate(nil)
         default:
