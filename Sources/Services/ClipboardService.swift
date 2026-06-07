@@ -1,4 +1,5 @@
 import AppKit
+@preconcurrency import ApplicationServices
 import Foundation
 
 @MainActor
@@ -202,6 +203,10 @@ extension NSImage {
 
 @MainActor
 final class ClipboardStore {
+    private struct PasteboardItemSnapshot {
+        let values: [(type: NSPasteboard.PasteboardType, data: Data)]
+    }
+
     private static let maxEntries = 50
     private static let maxTextLength = 100_000
 
@@ -316,6 +321,57 @@ final class ClipboardStore {
         }
 
         lastChangeCount = pasteboard.changeCount
+    }
+
+    /// Pastes text into the focused app without adding the temporary text to clipboard history.
+    /// When Accessibility permission is unavailable, the text remains on the clipboard.
+    func performTemporaryTextPaste(_ text: String) -> Bool {
+        let pasteboard = NSPasteboard.general
+        let snapshots = pasteboard.pasteboardItems?.compactMap { item -> PasteboardItemSnapshot? in
+            let values = item.types.compactMap { type -> (NSPasteboard.PasteboardType, Data)? in
+                guard let data = item.data(forType: type) else { return nil }
+                return (type, data)
+            }
+            return values.isEmpty ? nil : PasteboardItemSnapshot(values: values)
+        } ?? []
+
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+        lastChangeCount = pasteboard.changeCount
+        let temporaryChangeCount = pasteboard.changeCount
+
+        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
+        guard AXIsProcessTrustedWithOptions(options) else {
+            return false
+        }
+
+        let source = CGEventSource(stateID: .hidSystemState)
+        let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true)
+        keyDown?.flags = .maskCommand
+        let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false)
+        keyUp?.flags = .maskCommand
+        keyDown?.post(tap: .cghidEventTap)
+        keyUp?.post(tap: .cghidEventTap)
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            guard pasteboard.changeCount == temporaryChangeCount else {
+                self?.lastChangeCount = pasteboard.changeCount
+                return
+            }
+            pasteboard.clearContents()
+            let restoredItems = snapshots.map { snapshot in
+                let item = NSPasteboardItem()
+                for value in snapshot.values {
+                    item.setData(value.data, forType: value.type)
+                }
+                return item
+            }
+            if !restoredItems.isEmpty {
+                pasteboard.writeObjects(restoredItems)
+            }
+            self?.lastChangeCount = pasteboard.changeCount
+        }
+        return true
     }
 
     private func checkClipboard() {

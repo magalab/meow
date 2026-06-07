@@ -13,6 +13,7 @@ A lightweight macOS launcher with gadgets, built with SwiftUI + AppKit.
 - OpenAI-compatible AI chat assistant with local chat history
 - Ask AI from clipboard entries
 - Translation panel for selected text (requires Accessibility permission)
+- Offline speech recognition with a hold-to-talk shortcut, automatic paste, and local WAV history
 - Keystroke visualizer with draggable overlay, display modes, duration, opacity, and history count
 - Health reminder with work/break timer, break overlay, daily goal, and light activity detection
 - Menu bar calendar with Chinese lunisolar dates, solar terms, and Calendar.app events
@@ -60,6 +61,24 @@ APP_BUNDLE_ID=tech.lury.meow bash scripts/build-dmg.sh
 4. Use the action menu on clipboard entries to paste, copy, delete, reveal files, or ask AI.
 5. Open Preferences to adjust language, theme, hotkeys, Dock, menu bar, clipboard, health reminders, keyboard overlay, and AI settings.
 
+## Offline Speech Recognition
+
+Configure speech recognition from Preferences -> Speech.
+
+- Enable the feature, then hold `Option+R` for up to 30 seconds and release to recognize and paste
+- Uses sherpa-onnx and on-device speech models, including multilingual SenseVoice Small int8 and English Parakeet int8
+- Downloads the approximately 230 MB model only after confirmation in Preferences
+- Supports Chinese, English, Japanese, Korean, and Cantonese
+- Saves successful transcripts and WAV recordings locally for 30 days by default
+- Requires Microphone permission; automatic paste also requires Accessibility permission
+
+Speech history and models are stored under:
+
+```text
+~/Library/Application Support/Meow/ASRHistory/
+~/Library/Application Support/Meow/Models/ASR/
+```
+
 ## Health Reminder
 
 Meow can alternate focused work sessions with short breaks. Configure it from Preferences -> Health.
@@ -101,7 +120,7 @@ API keys remain in Meow's local settings storage. Chat history can be disabled, 
 - `Sources/ViewModels/LauncherViewModel.swift`: search and ranking logic
 - `Sources/Views/`: launcher, AI chat, preferences, translation, and UI components
 - `Sources/Theme.swift`: theme palette system
-- `Sources/Services/`: hotkey, status item, auto-launch, clipboard, translation, AI chat, and persistence
+- `Sources/Services/`: hotkey, status item, auto-launch, clipboard, translation, speech recognition, AI chat, and persistence
 - `Sources/Models/`: app, clipboard, and settings models
 - `Sources/Resources/`: localization resources
 

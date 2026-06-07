@@ -55,8 +55,16 @@ if [ ! -d "$BUILD_RELEASE_DIR" ]; then
 fi
 
 rm -rf "$APP_DIR"
-mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources"
+mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources" "$APP_DIR/Contents/Frameworks"
 cp "$BUILD_RELEASE_DIR/$BINARY_NAME" "$APP_DIR/Contents/MacOS/$BINARY_NAME"
+
+ONNXRUNTIME_DYLIB="$BUILD_RELEASE_DIR/libonnxruntime.1.24.4.dylib"
+if [ ! -f "$ONNXRUNTIME_DYLIB" ]; then
+    echo "Error: ONNX Runtime library not found at $ONNXRUNTIME_DYLIB"
+    exit 1
+fi
+cp "$ONNXRUNTIME_DYLIB" "$APP_DIR/Contents/Frameworks/"
+install_name_tool -add_rpath "@loader_path/../Frameworks" "$APP_DIR/Contents/MacOS/$BINARY_NAME"
 
 # Copy app icon
 if [ -f "AppIcon.icns" ]; then
@@ -66,16 +74,18 @@ else
     echo "⚠ App icon not found"
 fi
 
+if [ -f "THIRD_PARTY_NOTICES.md" ]; then
+    cp "THIRD_PARTY_NOTICES.md" "$APP_DIR/Contents/Resources/"
+fi
+if [ -d "THIRD_PARTY_LICENSES" ]; then
+    cp -R "THIRD_PARTY_LICENSES" "$APP_DIR/Contents/Resources/"
+fi
+
 # Copy localization resources from the build bundle
 RESOURCE_BUNDLE="$BUILD_RELEASE_DIR/Meow_Meow.bundle"
 if [ -d "$RESOURCE_BUNDLE" ]; then
     echo "Copying SwiftPM resource bundle from $RESOURCE_BUNDLE..."
     cp -R "$RESOURCE_BUNDLE" "$APP_DIR/Contents/Resources/"
-    # SwiftPM's generated Bundle.module accessor for executable targets looks
-    # beside the .app bundle root, while macOS resources conventionally live in
-    # Contents/Resources. Keep both paths valid.
-    rm -rf "$APP_DIR/Meow_Meow.bundle"
-    cp -R "$RESOURCE_BUNDLE" "$APP_DIR/"
     # Keep .lproj directories at the app resource root for LanguageManager's
     # explicit app-bundle lookup path.
     find "$RESOURCE_BUNDLE" -maxdepth 1 -type d -name "*.lproj" -exec cp -R {} "$APP_DIR/Contents/Resources/" \;
@@ -106,14 +116,16 @@ cat > "$APP_DIR/Contents/Info.plist" <<EOF
   <key>NSRequiresIPhoneOS</key><false/>
   <key>NSCalendarsFullAccessUsageDescription</key>
   <string>Meow shows calendar events for the selected day in the menu bar calendar.</string>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>Meow records audio while you hold the speech shortcut for offline transcription.</string>
 </dict>
 </plist>
 EOF
 
-if [ -n "${MACOS_SIGN_IDENTITY:-}" ]; then
-    echo "Signing app bundle with identity: ${MACOS_SIGN_IDENTITY}"
-    codesign --force --deep --sign "${MACOS_SIGN_IDENTITY}" "$APP_DIR"
-fi
+SIGN_IDENTITY="${MACOS_SIGN_IDENTITY:--}"
+echo "Signing app bundle with identity: ${SIGN_IDENTITY}"
+codesign --force --sign "${SIGN_IDENTITY}" "$APP_DIR/Contents/Frameworks/libonnxruntime.1.24.4.dylib"
+codesign --force --deep --entitlements "$SCRIPT_DIR/Meow.entitlements" --sign "${SIGN_IDENTITY}" "$APP_DIR"
 
 rm -f "$DMG_PATH"
 

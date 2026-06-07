@@ -11,7 +11,8 @@
 │   │   ├── AppSettings.swift        # AppSettings, AISettings, enums (theme, lang, dock/date icon)
 │   │   ├── ClipboardModels.swift    # ClipboardEntry, ClipboardContent, SearchItem
 │   │   ├── HealthReminderModels.swift # Health reminder settings, state, records, commands
-│   │   └── KeystrokeModels.swift    # Keystroke visualizer settings and display models
+│   │   ├── KeystrokeModels.swift    # Keystroke visualizer settings and display models
+│   │   └── SpeechModels.swift       # Speech settings, runtime state, history entries
 │   ├── Services/
 │   │   ├── SystemServices.swift     # DockService, StatusItemService, AppDiscoveryService, AutoLaunchService, HotkeyService
 │   │   ├── SettingsStore.swift      # UserDefaults-based persistence
@@ -23,6 +24,10 @@
 │   │   ├── HealthReminderService.swift # Work/break timer, daily records, break overlay
 │   │   ├── KeyDisplayFormatter.swift # Keyboard-layout-aware key labels
 │   │   ├── KeystrokeVisualizerService.swift # Global key event tap + overlay window
+│   │   ├── SpeechRecognitionService.swift # Audio capture, offline ASR, paste workflow
+│   │   ├── SpeechModelStore.swift   # Speech model download, SHA-256 verification, and switching
+│   │   ├── SpeechHistoryStore.swift # Transcript index and WAV persistence
+│   │   ├── SherpaOnnxRecognizer.swift # sherpa-onnx C API wrapper
 │   │   └── LaunchHistoryStore.swift # Launch frequency/recency tracking
 │   ├── ViewModels/
 │   │   └── LauncherViewModel.swift  # Search, ranking, app dispatch, clipboard management
@@ -33,6 +38,8 @@
 │   │   ├── HealthBreakOverlayView.swift # Health reminder break panel
 │   │   ├── KeystrokeOverlayLayout.swift # Overlay sizing
 │   │   ├── KeystrokeOverlayView.swift # Keystroke overlay SwiftUI view
+│   │   ├── SpeechOverlayView.swift  # Non-activating speech status panel
+│   │   ├── SpeechPreferencesView.swift # Speech model, permission, and history settings
 │   │   ├── PreferencesView.swift    # Tabbed settings window
 │   │   └── Components/
 │   │       ├── ActionMenu.swift     # Contextual action menu overlay
@@ -92,7 +99,7 @@
 
 ### Services
 - **SystemServices.swift** (`Sources/Services/`):
-  - `HotkeyService`: Carbon-based global hotkeys (toggle + translate), `@unchecked Sendable`
+  - `HotkeyService`: Carbon-based global hotkeys (toggle, translate, and speech press/release), `@unchecked Sendable`
   - `StatusItemService`: NSStatusItem with custom date icons, calendar popover, menu
   - `DockService` / `DockIconService`: Activation policy toggle, runtime icon rendering
   - `AppDiscoveryService`: Scans system app directories
@@ -104,6 +111,8 @@
 - **AIChatHistoryStore.swift**: `@MainActor ObservableObject`, file-based persistence
 - **HealthReminderService.swift**: Work/break timer, daily UserDefaults records, break overlay, light activity detection via system idle time
 - **KeystrokeVisualizerService.swift**: Accessibility-gated global key event tap, overlay window, drag persistence
+- **SpeechRecognitionService.swift**: AVAudioEngine capture, 16 kHz mono conversion, sherpa-onnx inference, history, and temporary pasteboard restoration
+- **SpeechModelStore.swift**: downloads only `model.int8.onnx` and `tokens.txt`, then verifies SHA-256 before installation
 - **KeyDisplayFormatter.swift**: Current keyboard layout label lookup with fixed special-key fallback
 - **CalendarService.swift** / **CalendarEventService.swift**: Lunisolar calendar, EventKit integration
 - **LaunchHistoryStore.swift**: UserDefaults-based history scoring
@@ -136,7 +145,31 @@ This will:
 1. Generate icon from `logo.png` if needed
 2. Build release binary
 3. Create `.app` bundle with resources
-4. Create `.dmg` installer
+4. Embed and sign ONNX Runtime in `Contents/Frameworks`
+5. Create `.dmg` installer
+
+### Speech Native Dependencies
+
+The package vendors universal macOS binaries in `Vendor/`:
+
+- sherpa-onnx 1.13.2 static xcframework
+- ONNX Runtime 1.24.4 dynamic xcframework
+
+Speech models are not committed. They are downloaded on demand from the
+configured source and checked against these SHA-256 values before being
+installed into the user's Application Support directory:
+
+```text
+model.int8.onnx c71f0ce00bec95b07744e116345e33d8cbbe08cef896382cf907bf4b51a2cd51
+tokens.txt       f449eb28dc567533d7fa59be34e2abca8784f771850c78a47fb731a31429a1dc
+```
+
+Release bundles include `THIRD_PARTY_NOTICES.md` and the complete pinned
+license texts under `THIRD_PARTY_LICENSES/`, including ONNX Runtime dependency
+notices and the FunASR Model Open Source License Agreement 1.1.
+
+Installed speech models can be switched in Preferences -> Speech between the
+default multilingual SenseVoice model and the English Parakeet model.
 
 Notes:
 - Minimum supported macOS version is 15.0 (`Package.swift` and generated `Info.plist`).
@@ -214,7 +247,11 @@ Use the manual checklist below plus build verification commands.
 - [ ] Translation panel captures selected text (with and without AX permission)
 - [ ] AI chat sends messages, renders markdown, streams response
 - [ ] AI chat history creates, renames, deletes conversations
-- [ ] Preferences window opens/closes, all 7 tabs functional
+- [ ] Preferences window opens/closes, all 8 tabs functional
+- [ ] Speech model download, cancellation, checksum verification, and deletion work
+- [ ] Hold/release speech hotkey records, recognizes, pastes, and restores the clipboard
+- [ ] Speech handles denied microphone/Accessibility permissions and Esc cancellation
+- [ ] Speech history playback, copy, delete, clear, retention, and folder opening work
 - [ ] Language switching (EN/ZH) at runtime
 - [ ] Hotkey recording and global trigger works
 - [ ] Status bar menu items functional

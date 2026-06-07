@@ -65,3 +65,7 @@ logs/
 
 # Swift Tracing (used by some profiling tools)
 *.trace
+
+# Vendored native dependencies are intentional package inputs.
+!Vendor/**/*.a
+!Vendor/**/*.dylib

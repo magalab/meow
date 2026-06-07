@@ -13,6 +13,7 @@
 - 兼容 OpenAI Chat Completions 的 AI 聊天助手，并支持本地聊天历史
 - 可从剪贴板条目直接询问 AI
 - 选中文本翻译面板（需要辅助功能权限）
+- 离线语音识别，支持按住说话、自动粘贴和本地 WAV 历史
 - 按键可视化叠层，支持拖拽、显示模式、显示时长、透明度与历史数量
 - 健康提醒，支持工作/休息计时、休息叠层、每日目标与轻量键鼠活跃检测
 - 菜单栏日历，含农历日期、节气、节假日及 Calendar.app 事件
@@ -60,6 +61,24 @@ APP_BUNDLE_ID=tech.lury.meow bash scripts/build-dmg.sh
 4. 在剪贴板条目上使用操作菜单，可粘贴、复制、删除、在 Finder 中显示，或询问 AI。
 5. 在偏好设置中调整语言、主题、快捷键、Dock、菜单栏、剪贴板、健康提醒、按键叠层与 AI 设置。
 
+## 离线语音识别
+
+可在「偏好设置 -> 语音」中配置。
+
+- 启用功能后，按住 `Option+R` 录音（最长 30 秒），松开后识别并粘贴到当前应用
+- 使用 sherpa-onnx 与本地语音模型，全程本地运行，支持多语言 SenseVoice Small int8 和英文 Parakeet int8
+- 仅在偏好设置中确认后下载约 230 MB 模型
+- 支持中文、英语、日语、韩语和粤语
+- 成功识别的文本与 WAV 录音默认在本机保留 30 天
+- 需要麦克风权限；自动粘贴还需要辅助功能权限
+
+语音历史和模型保存在：
+
+```text
+~/Library/Application Support/Meow/ASRHistory/
+~/Library/Application Support/Meow/Models/ASR/
+```
+
 ## 健康提醒
 
 Meow 可以在专注工作和短暂休息之间循环提醒。可在「偏好设置 -> 健康」中配置。
@@ -101,7 +120,7 @@ API Key 仍保存在 Meow 的本地设置中。聊天历史可在 AI 设置页�
 - `Sources/ViewModels/LauncherViewModel.swift`: 搜索与排序逻辑
 - `Sources/Views/`: 启动器、AI 聊天、偏好设置、翻译面板与 UI 组件
 - `Sources/Theme.swift`: 主题配色系统
-- `Sources/Services/`: 快捷键、状态栏、自动启动、剪贴板、翻译、AI 聊天与持久化
+- `Sources/Services/`: 快捷键、状态栏、自动启动、剪贴板、翻译、语音识别、AI 聊天与持久化
 - `Sources/Models/`: 应用、剪贴板与设置模型
 - `Sources/Resources/`: 本地化资源
 

@@ -145,6 +145,7 @@ struct AppSettings: Codable {
     var dateIconStyle: DateIconStyle
     var dockIconStyle: DockIconStyle
     var ai: AISettings
+    var speech: SpeechSettings
     var healthReminder: HealthReminderSettings
     var keystrokeVisualizerEnabled: Bool
     var keystrokeVisualizerShowModifierOnly: Bool
@@ -171,6 +172,7 @@ struct AppSettings: Codable {
         dateIconStyle: DateIconStyle = .pawPrint,
         dockIconStyle: DockIconStyle = .calendar,
         ai: AISettings = .default,
+        speech: SpeechSettings = .default,
         healthReminder: HealthReminderSettings = .default,
         keystrokeVisualizerEnabled: Bool = false,
         keystrokeVisualizerShowModifierOnly: Bool = true,
@@ -196,6 +198,7 @@ struct AppSettings: Codable {
         self.dateIconStyle = dateIconStyle
         self.dockIconStyle = dockIconStyle
         self.ai = ai
+        self.speech = speech
         self.healthReminder = healthReminder
         self.keystrokeVisualizerEnabled = keystrokeVisualizerEnabled
         self.keystrokeVisualizerShowModifierOnly = keystrokeVisualizerShowModifierOnly
@@ -238,6 +241,7 @@ extension AppSettings {
         case dateIconStyle
         case dockIconStyle
         case ai
+        case speech
         case healthReminder
         case keystrokeVisualizerEnabled
         case keystrokeVisualizerShowModifierOnly
@@ -266,6 +270,7 @@ extension AppSettings {
         dateIconStyle = try container.decodeIfPresent(DateIconStyle.self, forKey: .dateIconStyle) ?? Self.default.dateIconStyle
         dockIconStyle = try container.decodeIfPresent(DockIconStyle.self, forKey: .dockIconStyle) ?? Self.default.dockIconStyle
         ai = try container.decodeIfPresent(AISettings.self, forKey: .ai) ?? Self.default.ai
+        speech = try container.decodeIfPresent(SpeechSettings.self, forKey: .speech) ?? Self.default.speech
         healthReminder = try container.decodeIfPresent(
             HealthReminderSettings.self,
             forKey: .healthReminder

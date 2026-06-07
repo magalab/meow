@@ -5,6 +5,7 @@ enum PreferenceSection: String, CaseIterable, Identifiable {
     case dock
     case general
     case keyboard
+    case speech
     case health
     case ai
     case appearance
@@ -19,6 +20,7 @@ enum PreferenceSection: String, CaseIterable, Identifiable {
         case .dock: return L10n.prefsSectionDock
         case .general: return L10n.prefsSectionGeneral
         case .keyboard: return L10n.prefsSectionKeyboard
+        case .speech: return L10n.prefsSectionSpeech
         case .health: return L10n.prefsSectionHealth
         case .ai: return L10n.prefsSectionAI
         case .appearance: return L10n.prefsSectionAppearance
@@ -31,6 +33,7 @@ enum PreferenceSection: String, CaseIterable, Identifiable {
         case .dock: return "dock.rectangle"
         case .general: return "gearshape"
         case .keyboard: return "keyboard"
+        case .speech: return "waveform"
         case .health: return "figure.mind.and.body"
         case .ai: return "sparkles"
         case .appearance: return "paintpalette"
@@ -50,6 +53,9 @@ struct PreferencesView: View {
     @ObservedObject var aiChatHistoryStore: AIChatHistoryStore
     @ObservedObject var keystrokeVisualizerService: KeystrokeVisualizerService
     @ObservedObject var healthReminderService: HealthReminderService
+    @ObservedObject var speechModelStore: SpeechModelStore
+    @ObservedObject var speechHistoryStore: SpeechHistoryStore
+    @ObservedObject var speechRecognitionService: SpeechRecognitionService
     @ObservedObject private var lang = LanguageManager.shared
     @Environment(\.colorScheme) private var colorScheme
 
@@ -219,6 +225,20 @@ struct PreferencesView: View {
                             .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
                         }
 
+                        if navigation.selectedSection == .speech {
+                            PreferenceSpeechSection(
+                                theme: viewModel.settings.theme,
+                                settings: Binding(
+                                    get: { viewModel.settings.speech },
+                                    set: { viewModel.settings.speech = $0 }
+                                ),
+                                modelStore: speechModelStore,
+                                historyStore: speechHistoryStore,
+                                recognitionService: speechRecognitionService
+                            )
+                            .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+                        }
+
                         if navigation.selectedSection == .health {
                             PreferenceHealthReminderSection(
                                 theme: viewModel.settings.theme,
@@ -297,7 +317,7 @@ struct PreferencesView: View {
             }
             .background(Color(nsColor: .windowBackgroundColor).opacity(colorScheme == .dark ? 0.76 : 0.84))
         }
-        .frame(width: 700, height: 448)
+        .frame(width: 760, height: 500)
         .id(lang.refreshToken)
     }
 
