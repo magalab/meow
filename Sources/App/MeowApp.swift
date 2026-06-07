@@ -49,6 +49,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let clipboardStore = ClipboardStore()
     private let preferencesNavigation = PreferencesNavigationState()
     private let aiChatHistoryStore = AIChatHistoryStore()
+    private let speechModelStore = SpeechModelStore()
+    private let speechHistoryStore = SpeechHistoryStore()
+    private lazy var speechRecognitionService = SpeechRecognitionService(
+        modelStore: speechModelStore,
+        historyStore: speechHistoryStore,
+        clipboardStore: clipboardStore
+    )
+    private let speechOverlayController = SpeechOverlayController()
 
     private let translationService = TranslationService()
 
@@ -67,6 +75,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var appliedLanguage: AppLanguage?
     private var lastRegisteredToggleHotkey: (keyCode: UInt32, modifiers: UInt32)?
     private var lastRegisteredTranslateHotkey: (keyCode: UInt32, modifiers: UInt32)?
+    private var lastRegisteredSpeechHotkey: (keyCode: UInt32, modifiers: UInt32)?
     private var clipboardMonitoringEnabled = false
     private var calendarPopover: NSPopover?
     private var calendarPopoverController: NSHostingController<CalendarPopoverView>?
@@ -98,6 +107,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
             self.viewModel.updateKeystrokeOverlayPlacement(position: position, point: point)
         }
+        speechRecognitionService.onNeedsModel = { [weak self] in
+            self?.showPreferences(section: .speech)
+        }
+        speechOverlayController.connect(to: speechRecognitionService)
         viewModel.onPasteClipboard = { [weak self] entry in
             guard let self else { return }
             // Hide launcher first so target app becomes frontmost
@@ -133,6 +146,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_: Notification) {
         hotkeyService.unregister()
+        speechRecognitionService.cancel()
+        speechOverlayController.hide()
         keystrokeVisualizerService.stop()
         healthReminderService.stop()
         clipboardStore.stopMonitoring()
@@ -157,6 +172,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidBecomeActive(_: Notification) {
         keystrokeVisualizerService.retryAfterPermissionChange()
+        speechRecognitionService.refreshPermissionState()
     }
 
     private func createLauncherWindow() {
@@ -252,6 +268,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         aiChatHistoryStore.setPersistenceEnabled(settings.ai.chatHistoryEnabled)
         keystrokeVisualizerService.apply(settings: settings)
         healthReminderService.apply(settings: settings)
+        speechModelStore.apply(selectedModel: settings.speech.model)
+        speechRecognitionService.apply(settings: settings.speech)
         let actualAutoLaunchEnabled = autoLaunchService.apply(enabled: settings.autoLaunch)
         let toggleHotkeyResult = hotkeyService.registerToggleHotkey(
             keyCode: settings.hotkeyKeyCode,
@@ -276,6 +294,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             modifiers: settings.translateHotkeyModifiers
         ) { [weak self] in
             self?.triggerTranslation()
+        }
+
+        if settings.speech.enabled {
+            let speechHotkeyResult = hotkeyService.registerSpeechHotkey(
+                keyCode: settings.speech.hotkeyKeyCode,
+                modifiers: settings.speech.hotkeyModifiers,
+                pressedAction: { [weak self] in
+                    self?.speechRecognitionService.hotkeyPressed()
+                },
+                releasedAction: { [weak self] in
+                    self?.speechRecognitionService.hotkeyReleased()
+                }
+            )
+            handleHotkeyRegistrationResult(
+                speechHotkeyResult,
+                name: "speech",
+                keyCode: settings.speech.hotkeyKeyCode,
+                modifiers: settings.speech.hotkeyModifiers,
+                previous: lastRegisteredSpeechHotkey
+            ) { [weak self] keyCode, modifiers in
+                guard let self else { return }
+                self.viewModel.settings.speech.hotkeyKeyCode = keyCode
+                self.viewModel.settings.speech.hotkeyModifiers = modifiers
+            } onSuccess: { [weak self] in
+                self?.lastRegisteredSpeechHotkey = (
+                    settings.speech.hotkeyKeyCode,
+                    settings.speech.hotkeyModifiers
+                )
+            }
+        } else {
+            hotkeyService.unregisterSpeechHotkey()
+            lastRegisteredSpeechHotkey = nil
         }
         handleHotkeyRegistrationResult(
             translateHotkeyResult,
@@ -424,12 +474,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         globalKeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
+            if event.keyCode == 53, self?.speechRecognitionService.state.isActive == true {
+                self?.speechRecognitionService.cancel()
+                return
+            }
             self?.dismissTranslationIfEscape(event)
         }
 
         // Use a single app-level shortcut path for Cmd+, because command routing can
         // be unreliable when the launcher is a nonactivating panel.
         localKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
+            if event.keyCode == 53, self?.speechRecognitionService.state.isActive == true {
+                self?.speechRecognitionService.cancel()
+                return nil
+            }
             if self?.dismissTranslationIfEscape(event) == true {
                 return nil
             }
@@ -632,23 +690,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 navigation: preferencesNavigation,
                 aiChatHistoryStore: aiChatHistoryStore,
                 keystrokeVisualizerService: keystrokeVisualizerService,
-                healthReminderService: healthReminderService
+                healthReminderService: healthReminderService,
+                speechModelStore: speechModelStore,
+                speechHistoryStore: speechHistoryStore,
+                speechRecognitionService: speechRecognitionService
             )
             let hosting = NSHostingController(rootView: prefs)
 
             let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 760, height: 448),
+                contentRect: NSRect(x: 0, y: 0, width: 760, height: 500),
                 styleMask: [.titled, .closable, .fullSizeContentView],
                 backing: .buffered,
                 defer: false
             )
-            window.setContentSize(NSSize(width: 760, height: 448))
+            window.setContentSize(NSSize(width: 760, height: 500))
             centerWindowOnScreen(window, on: activeScreen())
             window.title = L10n.windowPrefsTitle
             window.titleVisibility = .hidden
             window.titlebarAppearsTransparent = true
             window.toolbarStyle = .preference
-            window.minSize = NSSize(width: 760, height: 420)
+            window.minSize = NSSize(width: 760, height: 460)
             window.contentViewController = hosting
             window.isReleasedWhenClosed = false
             window.isMovableByWindowBackground = true

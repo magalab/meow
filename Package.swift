@@ -11,11 +11,26 @@ let package = Package(
         .executable(name: "Meow", targets: ["Meow"]),
     ],
     targets: [
+        .binaryTarget(
+            name: "SherpaOnnxC",
+            path: "Vendor/SherpaOnnx.xcframework"
+        ),
+        .binaryTarget(
+            name: "ONNXRuntime",
+            path: "Vendor/ONNXRuntime.xcframework"
+        ),
         .executableTarget(
             name: "Meow",
+            dependencies: [
+                "SherpaOnnxC",
+                "ONNXRuntime",
+            ],
             path: "Sources",
             resources: [
                 .process("Resources"),
+            ],
+            linkerSettings: [
+                .linkedLibrary("c++"),
             ]
         ),
     ]

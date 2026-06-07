@@ -736,7 +736,8 @@ final class HotkeyService: @unchecked Sendable {
         let keyCode: UInt32
         let modifiers: UInt32
         let ref: EventHotKeyRef
-        let action: () -> Void
+        let pressedAction: () -> Void
+        let releasedAction: (() -> Void)?
     }
 
     private var hotKeys: [UInt32: RegisteredHotkey] = [:]
@@ -752,7 +753,7 @@ final class HotkeyService: @unchecked Sendable {
         modifiers: UInt32,
         action: @escaping () -> Void
     ) -> RegistrationResult {
-        registerHotkey(id: 1, keyCode: keyCode, modifiers: modifiers, action: action)
+        registerHotkey(id: 1, keyCode: keyCode, modifiers: modifiers, pressedAction: action)
     }
 
     /// Registers (or replaces) the translate hotkey (id = 2).
@@ -761,7 +762,27 @@ final class HotkeyService: @unchecked Sendable {
         modifiers: UInt32,
         action: @escaping () -> Void
     ) -> RegistrationResult {
-        registerHotkey(id: 2, keyCode: keyCode, modifiers: modifiers, action: action)
+        registerHotkey(id: 2, keyCode: keyCode, modifiers: modifiers, pressedAction: action)
+    }
+
+    /// Registers (or replaces) the hold-to-record speech hotkey (id = 3).
+    func registerSpeechHotkey(
+        keyCode: UInt32,
+        modifiers: UInt32,
+        pressedAction: @escaping () -> Void,
+        releasedAction: @escaping () -> Void
+    ) -> RegistrationResult {
+        registerHotkey(
+            id: 3,
+            keyCode: keyCode,
+            modifiers: modifiers,
+            pressedAction: pressedAction,
+            releasedAction: releasedAction
+        )
+    }
+
+    func unregisterSpeechHotkey() {
+        unregisterHotkey(id: 3)
     }
 
     func unregister() {
@@ -788,8 +809,14 @@ final class HotkeyService: @unchecked Sendable {
 
         guard status == noErr else { return noErr }
         let callbackID = hotKeyID.id
+        let eventKind = GetEventKind(event)
         DispatchQueue.main.async { [weak self] in
-            self?.hotKeys[callbackID]?.action()
+            guard let hotkey = self?.hotKeys[callbackID] else { return }
+            if eventKind == UInt32(kEventHotKeyReleased) {
+                hotkey.releasedAction?()
+            } else {
+                hotkey.pressedAction()
+            }
         }
         return noErr
     }
@@ -800,15 +827,19 @@ final class HotkeyService: @unchecked Sendable {
         id: UInt32,
         keyCode: UInt32,
         modifiers: UInt32,
-        action: @escaping () -> Void
+        pressedAction: @escaping () -> Void,
+        releasedAction: (() -> Void)? = nil
     ) -> RegistrationResult {
         if eventHandlerRef == nil {
-            var eventType = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
+            var eventTypes = [
+                EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed)),
+                EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyReleased)),
+            ]
             let status = InstallEventHandler(
                 GetApplicationEventTarget(),
                 hotkeyHandler,
-                1,
-                &eventType,
+                eventTypes.count,
+                &eventTypes,
                 UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque()),
                 &eventHandlerRef
             )
@@ -826,7 +857,8 @@ final class HotkeyService: @unchecked Sendable {
                 keyCode: keyCode,
                 modifiers: modifiers,
                 ref: existing.ref,
-                action: action
+                pressedAction: pressedAction,
+                releasedAction: releasedAction
             )
             return .registered
         }
@@ -849,7 +881,13 @@ final class HotkeyService: @unchecked Sendable {
         )
 
         if registerStatus == noErr, let ref = hotKeyRef {
-            hotKeys[id] = RegisteredHotkey(keyCode: keyCode, modifiers: modifiers, ref: ref, action: action)
+            hotKeys[id] = RegisteredHotkey(
+                keyCode: keyCode,
+                modifiers: modifiers,
+                ref: ref,
+                pressedAction: pressedAction,
+                releasedAction: releasedAction
+            )
             return .registered
         }
 
@@ -878,11 +916,17 @@ final class HotkeyService: @unchecked Sendable {
                 keyCode: previous.keyCode,
                 modifiers: previous.modifiers,
                 ref: restoredRef,
-                action: previous.action
+                pressedAction: previous.pressedAction,
+                releasedAction: previous.releasedAction
             )
         } else {
             NSLog("[Meow] Failed to restore previous hotkey id=\(id): \(restoreStatus)")
         }
+    }
+
+    private func unregisterHotkey(id: UInt32) {
+        guard let hotkey = hotKeys.removeValue(forKey: id) else { return }
+        UnregisterEventHotKey(hotkey.ref)
     }
 }
 
