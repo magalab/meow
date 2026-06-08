@@ -12,7 +12,7 @@ final class SpeechHistoryStore: ObservableObject {
     private var audioPlayer: AVAudioPlayer?
 
     init(fileManager: FileManager = .default) {
-        let appSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let appSupport = Self.appSupportDirectory(fileManager: fileManager)
         storageDirectory = appSupport
             .appendingPathComponent("Meow", isDirectory: true)
             .appendingPathComponent("ASRHistory", isDirectory: true)
@@ -104,11 +104,13 @@ final class SpeechHistoryStore: ObservableObject {
               let decoded = try? JSONDecoder().decode([SpeechHistoryEntry].self, from: data)
         else {
             entries = []
+            cleanupOrphanedRecordings(keeping: [])
             return
         }
         entries = decoded
             .filter { FileManager.default.fileExists(atPath: audioURL(for: $0).path) }
             .sorted { $0.createdAt > $1.createdAt }
+        cleanupOrphanedRecordings(keeping: Set(entries.map(\.audioFileName)))
         try? save()
     }
 
@@ -121,6 +123,27 @@ final class SpeechHistoryStore: ObservableObject {
 
     private func audioURL(for entry: SpeechHistoryEntry) -> URL {
         recordingsDirectory.appendingPathComponent(entry.audioFileName)
+    }
+
+    private nonisolated static func appSupportDirectory(fileManager: FileManager) -> URL {
+        fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first ??
+            fileManager.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library", isDirectory: true)
+            .appendingPathComponent("Application Support", isDirectory: true)
+    }
+
+    private func cleanupOrphanedRecordings(keeping audioFileNames: Set<String>) {
+        guard let recordingURLs = try? FileManager.default.contentsOfDirectory(
+            at: recordingsDirectory,
+            includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles]
+        ) else { return }
+
+        for url in recordingURLs where url.pathExtension.lowercased() == "wav" {
+            if !audioFileNames.contains(url.lastPathComponent) {
+                try? FileManager.default.removeItem(at: url)
+            }
+        }
     }
 
     private nonisolated static func writeWAV(samples: [Float], sampleRate: UInt32, to url: URL) throws {

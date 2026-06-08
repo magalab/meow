@@ -20,7 +20,7 @@ final class SpeechModelStore: ObservableObject {
     private var downloadID: UUID?
 
     init(fileManager: FileManager = .default) {
-        let appSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let appSupport = Self.appSupportDirectory(fileManager: fileManager)
         modelsRootDirectory = appSupport
             .appendingPathComponent("Meow", isDirectory: true)
             .appendingPathComponent("Models", isDirectory: true)
@@ -133,6 +133,13 @@ final class SpeechModelStore: ObservableObject {
 
     private func directory(for model: SpeechModelKind) -> URL {
         modelsRootDirectory.appendingPathComponent(model.storageDirectoryName, isDirectory: true)
+    }
+
+    private nonisolated static func appSupportDirectory(fileManager: FileManager) -> URL {
+        fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first ??
+            fileManager.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library", isDirectory: true)
+            .appendingPathComponent("Application Support", isDirectory: true)
     }
 
     private func performDownload(for model: SpeechModelKind, downloadID: UUID) async throws {
@@ -281,9 +288,11 @@ private enum SpeechModelError: LocalizedError {
 
 private final class SpeechDownloadDelegate: NSObject, URLSessionDownloadDelegate, @unchecked Sendable {
     private let progress: @Sendable (Double) -> Void
+    private let lock = NSLock()
     private var continuation: CheckedContinuation<URL, Error>?
     private var session: URLSession?
     private var downloadedURL: URL?
+    private var isFinished = false
 
     init(progress: @escaping @Sendable (Double) -> Void) {
         self.progress = progress
@@ -292,13 +301,25 @@ private final class SpeechDownloadDelegate: NSObject, URLSessionDownloadDelegate
     func download(from url: URL) async throws -> URL {
         try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
-                self.continuation = continuation
                 let session = URLSession(configuration: .default, delegate: self, delegateQueue: nil)
-                self.session = session
+                lock.lock()
+                let isFinished = self.isFinished
+                if !isFinished {
+                    self.continuation = continuation
+                    self.session = session
+                }
+                lock.unlock()
+
+                guard !isFinished else {
+                    session.invalidateAndCancel()
+                    continuation.resume(throwing: CancellationError())
+                    return
+                }
+
                 session.downloadTask(with: url).resume()
             }
         } onCancel: {
-            self.session?.invalidateAndCancel()
+            self.cancel()
         }
     }
 
@@ -322,7 +343,15 @@ private final class SpeechDownloadDelegate: NSObject, URLSessionDownloadDelegate
             .appendingPathComponent("Meow-download-\(UUID().uuidString)")
         do {
             try FileManager.default.moveItem(at: location, to: retainedURL)
-            downloadedURL = retainedURL
+            lock.lock()
+            let shouldKeep = !isFinished
+            if shouldKeep {
+                downloadedURL = retainedURL
+            }
+            lock.unlock()
+            if !shouldKeep {
+                try? FileManager.default.removeItem(at: retainedURL)
+            }
         } catch {
             finish(.failure(error))
         }
@@ -335,18 +364,70 @@ private final class SpeechDownloadDelegate: NSObject, URLSessionDownloadDelegate
     ) {
         if let error {
             finish(.failure(error))
-        } else if let downloadedURL {
-            finish(.success(downloadedURL))
         } else {
-            finish(.failure(SpeechModelError.missingDownload))
+            lock.lock()
+            let downloadedURL = self.downloadedURL
+            lock.unlock()
+            if let downloadedURL {
+                finish(.success(downloadedURL))
+            } else {
+                finish(.failure(SpeechModelError.missingDownload))
+            }
         }
     }
 
-    private func finish(_ result: Result<URL, Error>) {
-        guard let continuation else { return }
+    private func cancel() {
+        let session: URLSession?
+        let continuation: CheckedContinuation<URL, Error>?
+        let downloadedURL: URL?
+
+        lock.lock()
+        guard !isFinished else {
+            lock.unlock()
+            return
+        }
+        isFinished = true
+        session = self.session
+        continuation = self.continuation
+        downloadedURL = self.downloadedURL
+        self.session = nil
         self.continuation = nil
+        self.downloadedURL = nil
+        lock.unlock()
+
+        session?.invalidateAndCancel()
+        if let downloadedURL {
+            try? FileManager.default.removeItem(at: downloadedURL)
+        }
+        continuation?.resume(throwing: CancellationError())
+    }
+
+    private func finish(_ result: Result<URL, Error>) {
+        let session: URLSession?
+        let continuation: CheckedContinuation<URL, Error>?
+        let downloadedURL: URL?
+
+        lock.lock()
+        guard !isFinished else {
+            lock.unlock()
+            if case let .success(url) = result {
+                try? FileManager.default.removeItem(at: url)
+            }
+            return
+        }
+        isFinished = true
+        session = self.session
+        continuation = self.continuation
+        downloadedURL = self.downloadedURL
+        self.downloadedURL = nil
+        self.continuation = nil
+        self.session = nil
+        lock.unlock()
+
         session?.finishTasksAndInvalidate()
-        session = nil
-        continuation.resume(with: result)
+        if case .failure = result, let downloadedURL {
+            try? FileManager.default.removeItem(at: downloadedURL)
+        }
+        continuation?.resume(with: result)
     }
 }

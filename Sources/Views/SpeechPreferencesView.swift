@@ -324,16 +324,7 @@ struct PreferenceSpeechSection: View {
             Spacer()
             if copiedEntryID == entry.id {
                 Button {
-                    historyStore.copyText(entry)
-                    copiedEntryID = entry.id
-                    copyResetTask?.cancel()
-                    copyResetTask = Task { @MainActor in
-                        try? await Task.sleep(for: .seconds(1.4))
-                        guard !Task.isCancelled else { return }
-                        if copiedEntryID == entry.id {
-                            copiedEntryID = nil
-                        }
-                    }
+                    copyHistoryEntry(entry)
                 } label: {
                     Image(systemName: "checkmark.circle.fill")
                 }
@@ -343,16 +334,7 @@ struct PreferenceSpeechSection: View {
                 .help(L10n.speechHistoryCopied)
             } else {
                 Button {
-                    historyStore.copyText(entry)
-                    copiedEntryID = entry.id
-                    copyResetTask?.cancel()
-                    copyResetTask = Task { @MainActor in
-                        try? await Task.sleep(for: .seconds(1.4))
-                        guard !Task.isCancelled else { return }
-                        if copiedEntryID == entry.id {
-                            copiedEntryID = nil
-                        }
-                    }
+                    copyHistoryEntry(entry)
                 } label: {
                     Image(systemName: "doc.on.doc")
                 }
@@ -369,6 +351,19 @@ struct PreferenceSpeechSection: View {
             }
             .buttonStyle(.borderless)
             .help(L10n.actionMenuDelete)
+        }
+    }
+
+    private func copyHistoryEntry(_ entry: SpeechHistoryEntry) {
+        historyStore.copyText(entry)
+        copiedEntryID = entry.id
+        copyResetTask?.cancel()
+        copyResetTask = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(1.4))
+            guard !Task.isCancelled else { return }
+            if copiedEntryID == entry.id {
+                copiedEntryID = nil
+            }
         }
     }
 

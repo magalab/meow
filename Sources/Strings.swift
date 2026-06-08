@@ -293,8 +293,6 @@ enum L10n {
     static var speechSoundTitle: String { loc("speech.sound.title") }
     static var speechSoundSubtitle: String { loc("speech.sound.subtitle") }
     static var speechModelSelectionTitle: String { loc("speech.model.selection.title") }
-    static var speechModelTitle: String { loc("speech.model.title") }
-    static var speechModelDescription: String { loc("speech.model.description") }
     static var speechModelSenseVoiceTitle: String { loc("speech.model.sensevoice.title") }
     static var speechModelSenseVoiceSubtitle: String { loc("speech.model.sensevoice.subtitle") }
     static var speechModelSenseVoiceDownloadConfirmTitle: String { loc("speech.model.sensevoice.download.confirm.title") }

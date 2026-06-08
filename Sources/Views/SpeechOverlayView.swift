@@ -14,6 +14,8 @@ final class SpeechOverlayController {
 
     func connect(to service: SpeechRecognitionService) {
         self.service = service
+        hostingController = nil
+        panel?.contentViewController = nil
         service.onStateChanged = { [weak self] state in
             self?.update(for: state)
         }
@@ -30,9 +32,11 @@ final class SpeechOverlayController {
         }
         guard let service else { return }
         let panel = createPanelIfNeeded()
-        let hosting = NSHostingController(rootView: SpeechOverlayView(service: service))
-        hostingController = hosting
-        panel.contentViewController = hosting
+        if hostingController == nil {
+            let hosting = NSHostingController(rootView: SpeechOverlayView(service: service))
+            hostingController = hosting
+            panel.contentViewController = hosting
+        }
         panel.setContentSize(NSSize(width: 320, height: 64))
         position(panel)
         panel.orderFrontRegardless()
