@@ -279,8 +279,6 @@
 "speech.sound.title" = "Start and Stop Sounds";
 "speech.sound.subtitle" = "Play a short sound when recording starts and stops";
 "speech.model.selection.title" = "Model";
-"speech.model.title" = "Recognition Model";
-"speech.model.description" = "SenseVoice Small int8 · Chinese, English, Japanese, Korean, Cantonese · about 230 MB";
 "speech.model.sensevoice.title" = "SenseVoice Small int8";
 "speech.model.sensevoice.subtitle" = "Chinese, English, Japanese, Korean, Cantonese · about 230 MB";
 "speech.model.sensevoice.download.confirm.title" = "Download SenseVoice?";

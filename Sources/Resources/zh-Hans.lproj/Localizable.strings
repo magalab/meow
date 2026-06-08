@@ -279,8 +279,6 @@
 "speech.sound.title" = "开始与结束提示音";
 "speech.sound.subtitle" = "录音开始和结束时播放简短提示音";
 "speech.model.selection.title" = "模型";
-"speech.model.title" = "识别模型";
-"speech.model.description" = "SenseVoice Small int8 · 中文、英语、日语、韩语、粤语 · 约 230 MB";
 "speech.model.sensevoice.title" = "SenseVoice Small int8";
 "speech.model.sensevoice.subtitle" = "中文、英语、日语、韩语、粤语 · 约 230 MB";
 "speech.model.sensevoice.download.confirm.title" = "下载 SenseVoice？";

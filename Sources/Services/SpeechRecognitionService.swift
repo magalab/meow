@@ -1,6 +1,5 @@
 import AppKit
-@preconcurrency import AVFAudio
-import AVFoundation
+@preconcurrency import AVFoundation
 import Foundation
 
 enum SpeechPermissionState: Equatable, Sendable {
@@ -43,12 +42,10 @@ final class SpeechRecognitionService: ObservableObject {
     }
 
     func apply(settings: SpeechSettings) {
-        if currentSettings.model != settings.model {
-            Task { await recognitionEngine.unload() }
-        }
+        let shouldCancel = !settings.enabled || currentSettings.model != settings.model
         currentSettings = settings
         historyStore.cleanup(retentionDays: settings.retentionDays)
-        if !settings.enabled {
+        if shouldCancel {
             cancel()
         }
     }
@@ -302,8 +299,8 @@ final class SpeechRecognitionService: ObservableObject {
         resetTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(2))
             guard !Task.isCancelled else { return }
-            await self?.recognitionEngine.unload()
             self?.setState(.idle)
+            await self?.recognitionEngine.unload()
         }
     }
 
@@ -418,11 +415,16 @@ private actor SpeechRecognitionEngine {
         tokensURL: URL
     ) throws -> SpeechRecognitionResult {
         try Task.checkCancellation()
-        if recognizer == nil || loadedModel != model {
-            recognizer = try SherpaOnnxRecognizer(model: model, modelURL: modelURL, tokensURL: tokensURL)
+        let activeRecognizer: SherpaOnnxRecognizer
+        if let recognizer, loadedModel == model {
+            activeRecognizer = recognizer
+        } else {
+            let recognizer = try SherpaOnnxRecognizer(model: model, modelURL: modelURL, tokensURL: tokensURL)
+            self.recognizer = recognizer
             loadedModel = model
+            activeRecognizer = recognizer
         }
-        let result = try recognizer!.recognize(samples: samples, sampleRate: 16_000)
+        let result = try activeRecognizer.recognize(samples: samples, sampleRate: 16_000)
         try Task.checkCancellation()
         return result
     }

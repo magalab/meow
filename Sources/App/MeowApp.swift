@@ -379,9 +379,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             guard let previous,
                   previous.keyCode != keyCode || previous.modifiers != modifiers
             else { return }
-            DispatchQueue.main.async {
-                restore(previous.keyCode, previous.modifiers)
-            }
+            restore(previous.keyCode, previous.modifiers)
         }
     }
 
@@ -476,7 +474,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         globalKeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
             if event.keyCode == 53, self?.speechRecognitionService.state.isActive == true {
                 self?.speechRecognitionService.cancel()
-                return
             }
             self?.dismissTranslationIfEscape(event)
         }
@@ -484,9 +481,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Use a single app-level shortcut path for Cmd+, because command routing can
         // be unreliable when the launcher is a nonactivating panel.
         localKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
-            if event.keyCode == 53, self?.speechRecognitionService.state.isActive == true {
-                self?.speechRecognitionService.cancel()
-                return nil
+            if event.keyCode == 53 {
+                var handled = false
+                if self?.speechRecognitionService.state.isActive == true {
+                    self?.speechRecognitionService.cancel()
+                    handled = true
+                }
+                if self?.dismissTranslationIfEscape(event) == true {
+                    handled = true
+                }
+                if handled {
+                    return nil
+                }
             }
             if self?.dismissTranslationIfEscape(event) == true {
                 return nil
