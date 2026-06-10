@@ -45,38 +45,38 @@ struct KeystrokeOverlayView: View {
     }
 
     var body: some View {
-        HStack(spacing: isProminent ? 10 : 7) {
+        HStack(spacing: isProminent ? 8 : 6) {
             Image(systemName: "keyboard")
-                .font(.system(size: isProminent ? 20 : 15, weight: .semibold))
+                .font(.system(size: isProminent ? 17 : 13, weight: .semibold))
                 .foregroundStyle(palette.launcherAccent)
-                .frame(width: isProminent ? 36 : 28, height: isProminent ? 36 : 28)
-                .background(palette.iconChipBackground, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .frame(width: isProminent ? 31 : 24, height: isProminent ? 31 : 24)
+                .background(palette.iconChipBackground, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
 
-            HStack(spacing: isProminent ? 8 : 5) {
+            HStack(spacing: isProminent ? 7 : 4) {
                 ForEach(viewModel.items) { item in
                     Text(item.label)
-                        .font(.system(size: isProminent ? 21 : 16, weight: .bold, design: .rounded))
+                        .font(.system(size: isProminent ? 18 : 14, weight: .bold, design: .rounded))
                         .lineLimit(1)
                         .minimumScaleFactor(0.55)
                         .foregroundStyle(.primary)
-                        .padding(.horizontal, isProminent ? 11 : 8)
-                        .frame(height: isProminent ? 37 : 28)
-                        .background(palette.selectionBackground, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .padding(.horizontal, isProminent ? 9 : 7)
+                        .frame(height: isProminent ? 32 : 24)
+                        .background(palette.selectionBackground, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            RoundedRectangle(cornerRadius: 7, style: .continuous)
                                 .stroke(palette.selectionStroke, lineWidth: 1)
                         )
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.horizontal, isProminent ? 12 : 9)
-        .padding(.vertical, isProminent ? 10 : 7)
+        .padding(.horizontal, isProminent ? 10 : 8)
+        .padding(.vertical, isProminent ? 8 : 6)
         .frame(width: overlaySize.width, height: overlaySize.height)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .background(palette.surfaceBackground, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .background(palette.surfaceBackground, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .stroke(palette.surfaceStroke, lineWidth: 1)
         )
         .opacity(viewModel.opacity)
