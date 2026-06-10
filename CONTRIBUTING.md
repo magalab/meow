@@ -18,6 +18,9 @@ swift build
 # Release build
 swift build -c release
 
+# Run automated tests
+swift test
+
 # Create distributable DMG
 bash scripts/build-dmg.sh
 ```
@@ -70,10 +73,11 @@ feat: add command palette search
 
 1. Fork and create a feature branch
 2. Make your changes with clear commits
-3. Ensure code compiles: `swift build`
-4. Optionally validate release build: `swift build -c release`
-5. Test your changes thoroughly (see checklist below)
-6. Submit a PR with:
+3. Run automated tests: `swift test`
+4. Ensure code compiles: `swift build`
+5. Validate the release build: `swift build -c release`
+6. Test your changes thoroughly (see checklist below)
+7. Submit a PR with:
    - Clear description of changes
    - Reference related issues
    - Screenshots if UI changes
@@ -98,6 +102,7 @@ static var myNewString: String {
 ## Validation Checklist
 
 - Build debug: `swift build`
+- Run tests: `swift test`
 - Build release: `swift build -c release`
 - Package app: `bash scripts/build-dmg.sh`
 - Verify these behaviors manually:

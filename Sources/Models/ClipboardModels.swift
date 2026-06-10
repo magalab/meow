@@ -169,6 +169,9 @@ enum SearchItem: Identifiable, Hashable {
             if command.id == "meow.quit" {
                 return "power"
             }
+            if command.id == "meow.authenticator" {
+                return AuthenticatorVisuals.symbol
+            }
             return "command"
         case let .clipboard(entry):
             return entry.symbolName

@@ -1139,6 +1139,83 @@ enum L10n {
         loc("ai.error.empty.response")
     }
 
+    // MARK: - Authenticator
+
+    static var prefsSectionAuthenticator: String { loc("prefs.section.authenticator") }
+    static var prefsAuthenticatorEnabledTitle: String { loc("prefs.authenticator.enabled.title") }
+    static var prefsAuthenticatorEnabledSubtitle: String { loc("prefs.authenticator.enabled.subtitle") }
+    static var prefsAuthenticatorSecurityTitle: String { loc("prefs.authenticator.security.title") }
+    static var prefsAuthenticatorSecuritySubtitle: String { loc("prefs.authenticator.security.subtitle") }
+    static var prefsAuthenticatorOpen: String { loc("prefs.authenticator.open") }
+    static var prefsAuthenticatorPageOverview: String { loc("prefs.authenticator.page.overview") }
+    static var prefsAuthenticatorPageImport: String { loc("prefs.authenticator.page.import") }
+    static var prefsAuthenticatorPageSync: String { loc("prefs.authenticator.page.sync") }
+    static var prefsAuthenticatorAccountsTitle: String { loc("prefs.authenticator.accounts.title") }
+    static var prefsAuthenticatorAccountsCount: String { loc("prefs.authenticator.accounts.count") }
+    static var prefsAuthenticatorImportTitle: String { loc("prefs.authenticator.import.title") }
+    static var prefsAuthenticatorImportSubtitle: String { loc("prefs.authenticator.import.subtitle") }
+    static var prefsAuthenticatorImportAction: String { loc("prefs.authenticator.import.action") }
+    static var prefsAuthenticatorImportSuccess: String { loc("prefs.authenticator.import.success") }
+    static var prefsAuthenticatorJSONTitle: String { loc("prefs.authenticator.json.title") }
+    static var prefsAuthenticatorJSONSubtitle: String { loc("prefs.authenticator.json.subtitle") }
+    static var prefsAuthenticatorJSONImport: String { loc("prefs.authenticator.json.import") }
+    static var prefsAuthenticatorJSONExport: String { loc("prefs.authenticator.json.export") }
+    static var prefsAuthenticatorJSONImportResult: String { loc("prefs.authenticator.json.import.result") }
+    static var prefsAuthenticatorJSONExportWarningTitle: String { loc("prefs.authenticator.json.export.warning.title") }
+    static var prefsAuthenticatorJSONExportWarningMessage: String { loc("prefs.authenticator.json.export.warning.message") }
+    static var prefsAuthenticatorJSONExportConfirm: String { loc("prefs.authenticator.json.export.confirm") }
+    static var prefsAuthenticatorJSONExportSuccess: String { loc("prefs.authenticator.json.export.success") }
+    static var prefsAuthenticatorICloudTitle: String { loc("prefs.authenticator.icloud.title") }
+    static var prefsAuthenticatorICloudSubtitle: String { loc("prefs.authenticator.icloud.subtitle") }
+    static var prefsAuthenticatorSyncNow: String { loc("prefs.authenticator.sync.now") }
+    static var prefsAuthenticatorSyncDisabledStatus: String { loc("prefs.authenticator.sync.disabled.status") }
+    static var prefsAuthenticatorSyncDisabledSubtitle: String { loc("prefs.authenticator.sync.disabled.subtitle") }
+    static var prefsAuthenticatorSyncChecking: String { loc("prefs.authenticator.sync.checking") }
+    static var prefsAuthenticatorSyncCheckingSubtitle: String { loc("prefs.authenticator.sync.checking.subtitle") }
+    static var prefsAuthenticatorSyncReady: String { loc("prefs.authenticator.sync.ready") }
+    static var prefsAuthenticatorSyncReadySubtitle: String { loc("prefs.authenticator.sync.ready.subtitle") }
+    static var prefsAuthenticatorSyncLastUpdated: String { loc("prefs.authenticator.sync.last.updated") }
+    static var prefsAuthenticatorSyncUnavailable: String { loc("prefs.authenticator.sync.unavailable") }
+    static var prefsAuthenticatorSyncDevelopmentTitle: String { loc("prefs.authenticator.sync.development.title") }
+    static var prefsAuthenticatorSyncDevelopmentSubtitle: String { loc("prefs.authenticator.sync.development.subtitle") }
+    static var prefsAuthenticatorSyncNeedsSigning: String { loc("prefs.authenticator.sync.needs.signing") }
+    static var prefsAuthenticatorSyncICloudUnavailable: String { loc("prefs.authenticator.sync.icloud.unavailable") }
+    static var prefsAuthenticatorSyncInvalidData: String { loc("prefs.authenticator.sync.invalid.data") }
+    static var prefsAuthenticatorDisabledTitle: String { loc("prefs.authenticator.disabled.title") }
+    static var prefsAuthenticatorDisabledSubtitle: String { loc("prefs.authenticator.disabled.subtitle") }
+    static var cmdAuthenticatorTitle: String { loc("cmd.authenticator.title") }
+    static var cmdAuthenticatorSubtitle: String { loc("cmd.authenticator.subtitle") }
+    static var authenticatorTitle: String { loc("authenticator.title") }
+    static var authenticatorUnknownAccount: String { loc("authenticator.unknown.account") }
+    static var authenticatorSearchPlaceholder: String { loc("authenticator.search.placeholder") }
+    static var authenticatorNoResults: String { loc("authenticator.no.results") }
+    static var authenticatorEmptyTitle: String { loc("authenticator.empty.title") }
+    static var authenticatorEmptySubtitle: String { loc("authenticator.empty.subtitle") }
+    static var authenticatorAddTitle: String { loc("authenticator.add.title") }
+    static var authenticatorAddURLMode: String { loc("authenticator.add.url.mode") }
+    static var authenticatorAddManualMode: String { loc("authenticator.add.manual.mode") }
+    static var authenticatorAddURLHelp: String { loc("authenticator.add.url.help") }
+    static var authenticatorPasteAction: String { loc("authenticator.paste.action") }
+    static var authenticatorIssuerField: String { loc("authenticator.issuer.field") }
+    static var authenticatorAccountField: String { loc("authenticator.account.field") }
+    static var authenticatorSecretField: String { loc("authenticator.secret.field") }
+    static var authenticatorAlgorithmField: String { loc("authenticator.algorithm.field") }
+    static var authenticatorDigitsField: String { loc("authenticator.digits.field") }
+    static var authenticatorPeriodField: String { loc("authenticator.period.field") }
+    static var authenticatorAddAction: String { loc("authenticator.add.action") }
+    static var authenticatorCopyAction: String { loc("authenticator.copy.action") }
+    static var authenticatorDeleteAction: String { loc("authenticator.delete.action") }
+    static var authenticatorDeleteTitle: String { loc("authenticator.delete.title") }
+    static var authenticatorDeleteMessage: String { loc("authenticator.delete.message") }
+    static var authenticatorOK: String { loc("authenticator.ok") }
+    static var authenticatorErrorDisabled: String { loc("authenticator.error.disabled") }
+    static var authenticatorErrorInvalidSecret: String { loc("authenticator.error.invalid.secret") }
+    static var authenticatorErrorInvalidURL: String { loc("authenticator.error.invalid.url") }
+    static var authenticatorErrorInvalidJSON: String { loc("authenticator.error.invalid.json") }
+    static var authenticatorErrorDuplicate: String { loc("authenticator.error.duplicate") }
+    static var authenticatorErrorSyncUnavailable: String { loc("authenticator.error.sync.unavailable") }
+    static var authenticatorErrorKeychain: String { loc("authenticator.error.keychain") }
+
     // MARK: - Private
 
     private static func loc(_ key: String) -> String {

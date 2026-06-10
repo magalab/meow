@@ -33,5 +33,10 @@ let package = Package(
                 .linkedLibrary("c++"),
             ]
         ),
+        .testTarget(
+            name: "MeowTests",
+            dependencies: ["Meow"],
+            path: "Tests"
+        ),
     ]
 )

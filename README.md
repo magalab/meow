@@ -17,6 +17,8 @@ A lightweight macOS launcher with gadgets, built with SwiftUI + AppKit.
 - Keystroke visualizer with draggable overlay, display modes, duration, opacity, and history count
 - Health reminder with work/break timer, break overlay, daily goal, and light activity detection
 - Menu bar calendar with Chinese lunisolar dates, solar terms, and Calendar.app events
+- TOTP authenticator with Keychain storage, `otpauth://` and JSON import, JSON backup, search, and one-click copy
+- Optional iCloud Keychain sync for authenticator accounts when using a properly signed build
 - 7 menu bar date icon styles (paw print, outlined day, rounded outline, day only, month+day, weekday+day, lunar date)
 - 3 Dock icon styles (default, calendar, flat)
 - Action menu on items (open, reveal in Finder, copy, paste, ask AI, delete)
@@ -59,7 +61,20 @@ APP_BUNDLE_ID=tech.lury.meow bash scripts/build-dmg.sh
 2. Type to search apps or commands.
 3. Use `Up/Down` to select and press Enter to launch or run a command.
 4. Use the action menu on clipboard entries to paste, copy, delete, reveal files, or ask AI.
-5. Open Preferences to adjust language, theme, hotkeys, Dock, menu bar, clipboard, health reminders, keyboard overlay, and AI settings.
+5. Open Preferences to adjust language, theme, hotkeys, Dock, menu bar, clipboard, authenticator, health reminders, keyboard overlay, and AI settings.
+
+## Authenticator
+
+Configure the TOTP authenticator from Preferences -> Authenticator.
+
+- Stores account secrets in macOS Keychain, not Meow settings
+- Supports manual Base32 secrets and standard `otpauth://` URLs
+- Imports Meow backups, token arrays, and Keyden vault JSON
+- Exports a versioned JSON backup after an explicit plaintext-secret warning
+- Excludes copied codes and imported secrets from Meow clipboard history
+- Can sync individual accounts through iCloud Keychain
+
+iCloud Keychain sync requires a stable Apple-signed build with the required entitlement. Unsigned or ad-hoc builds keep accounts local and report the missing capability. Exported JSON contains plaintext TOTP secrets and must be stored securely.
 
 ## Offline Speech Recognition
 
@@ -118,15 +133,17 @@ API keys remain in Meow's local settings storage. Chat history can be disabled, 
 
 - `Sources/App/MeowApp.swift`: app lifecycle and window management
 - `Sources/ViewModels/LauncherViewModel.swift`: search and ranking logic
-- `Sources/Views/`: launcher, AI chat, preferences, translation, and UI components
+- `Sources/Views/`: launcher, AI chat, authenticator, preferences, translation, and UI components
 - `Sources/Theme.swift`: theme palette system
-- `Sources/Services/`: hotkey, status item, auto-launch, clipboard, translation, speech recognition, AI chat, and persistence
-- `Sources/Models/`: app, clipboard, and settings models
+- `Sources/Services/`: hotkey, status item, auto-launch, clipboard, translation, speech recognition, authenticator, AI chat, and persistence
+- `Sources/Models/`: app, clipboard, authenticator, and settings models
 - `Sources/Resources/`: localization resources
+- `Tests/`: Swift Testing coverage
 
 ## Notes
 
-- There is currently no automated test target; validation is mainly manual.
+- Run `swift test`, `swift build`, and `swift build -c release` before submitting changes.
+- Authenticator changes require manual checks for Keychain storage, clipboard-history exclusion, JSON warnings, and local-only sync fallback.
 - For AI changes, manually check configured and unconfigured states, model fetch/manual entry, Enter send, Shift+Enter newline, chat history, and opening the history folder.
 - For health reminder changes, manually check timer start/pause/resume, break start/skip/done, daily goal progress, activity-paused countdown, and menu bar calendar controls.
 - For keyboard overlay changes, manually check Accessibility permission denied/granted states, hotkey conflict behavior, dragging/resetting the overlay, and non-US keyboard layouts.
