@@ -323,6 +323,25 @@ final class ClipboardStore {
         lastChangeCount = pasteboard.changeCount
     }
 
+    func writePrivateTextToPasteboard(_ text: String) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+        lastChangeCount = pasteboard.changeCount
+    }
+
+    func removePrivateTextFromHistory(_ text: String) {
+        let normalized = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let previousCount = entries.count
+        entries.removeAll { entry in
+            guard case let .text(existing) = entry.content else { return false }
+            return existing == normalized
+        }
+        if entries.count != previousCount {
+            onChange?()
+        }
+    }
+
     /// Pastes text into the focused app without adding the temporary text to clipboard history.
     /// When Accessibility permission is unavailable, the text remains on the clipboard.
     func performTemporaryTextPaste(_ text: String) -> Bool {
@@ -457,6 +476,12 @@ final class ClipboardStore {
         if let text = pasteboard.string(forType: .string) {
             let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else { return }
+            let lowercased = trimmed.lowercased()
+            guard !lowercased.hasPrefix("otpauth://"),
+                  !lowercased.hasPrefix("otpauth-migration://")
+            else {
+                return
+            }
 
             // Avoid recording our own writes
             if let last = entries.first,

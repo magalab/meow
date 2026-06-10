@@ -4,6 +4,7 @@ import SwiftUI
 enum PreferenceSection: String, CaseIterable, Identifiable {
     case dock
     case general
+    case authenticator
     case keyboard
     case speech
     case health
@@ -19,6 +20,7 @@ enum PreferenceSection: String, CaseIterable, Identifiable {
         switch self {
         case .dock: return L10n.prefsSectionDock
         case .general: return L10n.prefsSectionGeneral
+        case .authenticator: return L10n.prefsSectionAuthenticator
         case .keyboard: return L10n.prefsSectionKeyboard
         case .speech: return L10n.prefsSectionSpeech
         case .health: return L10n.prefsSectionHealth
@@ -32,6 +34,7 @@ enum PreferenceSection: String, CaseIterable, Identifiable {
         switch self {
         case .dock: return "dock.rectangle"
         case .general: return "gearshape"
+        case .authenticator: return AuthenticatorVisuals.symbol
         case .keyboard: return "keyboard"
         case .speech: return "waveform"
         case .health: return "figure.mind.and.body"
@@ -52,6 +55,7 @@ struct PreferencesView: View {
     @ObservedObject var navigation: PreferencesNavigationState
     @ObservedObject var aiChatHistoryStore: AIChatHistoryStore
     @ObservedObject var keystrokeVisualizerService: KeystrokeVisualizerService
+    @ObservedObject var authenticatorService: AuthenticatorService
     @ObservedObject var healthReminderService: HealthReminderService
     @ObservedObject var speechModelStore: SpeechModelStore
     @ObservedObject var speechHistoryStore: SpeechHistoryStore
@@ -73,40 +77,40 @@ struct PreferencesView: View {
             .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                HStack(spacing: 8) {
-                    ForEach(PreferenceSection.allCases) { section in
-                        Button {
-                            withAnimation(.snappy(duration: 0.22)) {
-                                navigation.selectedSection = section
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(PreferenceSection.allCases) { section in
+                            Button {
+                                withAnimation(.snappy(duration: 0.22)) {
+                                    navigation.selectedSection = section
+                                }
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: section.icon)
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundStyle(navigation.selectedSection == section ? palette.preferencesAccent : Color.secondary)
+                                    Text(section.localizedTitle)
+                                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                        .lineLimit(1)
+                                        .fixedSize(horizontal: true, vertical: false)
+                                }
+                                .foregroundStyle(navigation.selectedSection == section ? Color.primary : Color.secondary)
+                                .padding(.horizontal, 9)
+                                .padding(.vertical, 8)
+                                .background(
+                                    navigation.selectedSection == section
+                                        ? palette.preferencesPanelBackground
+                                        : Color.clear,
+                                    in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                        .stroke(navigation.selectedSection == section ? palette.preferencesPanelStroke : Color.clear, lineWidth: 1)
+                                )
                             }
-                        } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: section.icon)
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundStyle(navigation.selectedSection == section ? palette.preferencesAccent : Color.secondary)
-                                Text(section.localizedTitle)
-                                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                                    .lineLimit(1)
-                                    .fixedSize(horizontal: true, vertical: false)
-                            }
-                            .foregroundStyle(navigation.selectedSection == section ? Color.primary : Color.secondary)
-                            .padding(.horizontal, 9)
-                            .padding(.vertical, 8)
-                            .background(
-                                navigation.selectedSection == section
-                                    ? palette.preferencesPanelBackground
-                                    : Color.clear,
-                                in: RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                    .stroke(navigation.selectedSection == section ? palette.preferencesPanelStroke : Color.clear, lineWidth: 1)
-                            )
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
                     }
-
-                    Spacer()
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
@@ -213,6 +217,19 @@ struct PreferencesView: View {
                                 )
                             )
                             .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .opacity))
+                        }
+
+                        if navigation.selectedSection == .authenticator {
+                            AuthenticatorPreferencesView(
+                                theme: viewModel.settings.theme,
+                                service: authenticatorService,
+                                enabled: animatedBinding(for: \.authenticatorEnabled),
+                                iCloudSyncEnabled: Binding(
+                                    get: { viewModel.settings.authenticatorICloudSyncEnabled },
+                                    set: { viewModel.settings.authenticatorICloudSyncEnabled = $0 }
+                                )
+                            )
+                            .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
                         }
 
                         if navigation.selectedSection == .appearance {

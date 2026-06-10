@@ -147,6 +147,8 @@ struct AppSettings: Codable {
     var ai: AISettings
     var speech: SpeechSettings
     var healthReminder: HealthReminderSettings
+    var authenticatorEnabled: Bool
+    var authenticatorICloudSyncEnabled: Bool
     var keystrokeVisualizerEnabled: Bool
     var keystrokeVisualizerShowModifierOnly: Bool
     var keystrokeVisualizerOverlayPosition: KeystrokeOverlayPosition
@@ -174,6 +176,8 @@ struct AppSettings: Codable {
         ai: AISettings = .default,
         speech: SpeechSettings = .default,
         healthReminder: HealthReminderSettings = .default,
+        authenticatorEnabled: Bool = false,
+        authenticatorICloudSyncEnabled: Bool = false,
         keystrokeVisualizerEnabled: Bool = false,
         keystrokeVisualizerShowModifierOnly: Bool = true,
         keystrokeVisualizerOverlayPosition: KeystrokeOverlayPosition = .bottomCenter,
@@ -200,6 +204,8 @@ struct AppSettings: Codable {
         self.ai = ai
         self.speech = speech
         self.healthReminder = healthReminder
+        self.authenticatorEnabled = authenticatorEnabled
+        self.authenticatorICloudSyncEnabled = authenticatorICloudSyncEnabled
         self.keystrokeVisualizerEnabled = keystrokeVisualizerEnabled
         self.keystrokeVisualizerShowModifierOnly = keystrokeVisualizerShowModifierOnly
         self.keystrokeVisualizerOverlayPosition = keystrokeVisualizerOverlayPosition
@@ -243,6 +249,8 @@ extension AppSettings {
         case ai
         case speech
         case healthReminder
+        case authenticatorEnabled
+        case authenticatorICloudSyncEnabled
         case keystrokeVisualizerEnabled
         case keystrokeVisualizerShowModifierOnly
         case keystrokeVisualizerOverlayPosition
@@ -275,6 +283,14 @@ extension AppSettings {
             HealthReminderSettings.self,
             forKey: .healthReminder
         ) ?? Self.default.healthReminder
+        authenticatorEnabled = try container.decodeIfPresent(
+            Bool.self,
+            forKey: .authenticatorEnabled
+        ) ?? Self.default.authenticatorEnabled
+        authenticatorICloudSyncEnabled = try container.decodeIfPresent(
+            Bool.self,
+            forKey: .authenticatorICloudSyncEnabled
+        ) ?? Self.default.authenticatorICloudSyncEnabled
         keystrokeVisualizerEnabled = try container.decodeIfPresent(
             Bool.self,
             forKey: .keystrokeVisualizerEnabled

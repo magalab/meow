@@ -26,6 +26,7 @@ final class LauncherViewModel: ObservableObject {
     var onPasteClipboard: ((ClipboardEntry) -> Void)?
     var onLaunchApplication: ((AppEntry) -> Void)?
     var onOpenAIChat: ((String?) -> Void)?
+    var onOpenAuthenticator: (() -> Void)?
     var onHealthCommand: ((HealthReminderCommand) -> Void)?
 
     private let settingsStore: SettingsStore
@@ -40,7 +41,7 @@ final class LauncherViewModel: ObservableObject {
     private var isResettingForHide = false
 
     private var commands: [CommandEntry] {
-        [
+        var entries = [
             CommandEntry(
                 id: "meow.preferences",
                 title: L10n.cmdPreferencesTitle,
@@ -90,6 +91,19 @@ final class LauncherViewModel: ObservableObject {
                 keywords: ["quit", "exit", "退出"]
             ),
         ]
+        if settings.authenticatorEnabled {
+            entries.insert(
+                CommandEntry(
+                    id: "meow.authenticator",
+                    title: L10n.cmdAuthenticatorTitle,
+                    subtitle: L10n.cmdAuthenticatorSubtitle,
+                    keywords: ["totp", "2fa", "otp", "authenticator", "code",
+                               "验证码", "两步验证", "动态口令", "认证器", "身份验证器"]
+                ),
+                at: 2
+            )
+        }
+        return entries
     }
 
     init(
@@ -207,6 +221,8 @@ final class LauncherViewModel: ObservableObject {
             onOpenPreferences?()
         case "meow.ai.chat":
             onOpenAIChat?(nil)
+        case "meow.authenticator":
+            onOpenAuthenticator?()
         case "meow.health.start":
             onHealthCommand?(.start)
         case "meow.health.pause":

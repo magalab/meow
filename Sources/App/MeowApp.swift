@@ -45,6 +45,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let autoLaunchService = AutoLaunchService()
     private let hotkeyService = HotkeyService()
     private let keystrokeVisualizerService = KeystrokeVisualizerService()
+    private let authenticatorService = AuthenticatorService()
     private let healthReminderService = HealthReminderService()
     private let clipboardStore = ClipboardStore()
     private let preferencesNavigation = PreferencesNavigationState()
@@ -92,6 +93,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         viewModel.onOpenAIChat = { [weak self] prompt in
             self?.showAIChat(initialPrompt: prompt)
+        }
+        viewModel.onOpenAuthenticator = { [weak self] in
+            self?.hideLauncher()
+            self?.authenticatorService.showPanel()
+        }
+        authenticatorService.onCopyCode = { [weak self] code in
+            self?.clipboardStore.writePrivateTextToPasteboard(code)
+        }
+        authenticatorService.onSensitiveTextUsed = { [weak self] value in
+            self?.clipboardStore.removePrivateTextFromHistory(value)
+        }
+        authenticatorService.onICloudSyncPreferenceRejected = { [weak self] in
+            guard let self, self.viewModel.settings.authenticatorICloudSyncEnabled else { return }
+            self.viewModel.settings.authenticatorICloudSyncEnabled = false
         }
         viewModel.onHealthCommand = { [weak self] command in
             self?.handleHealthCommand(command)
@@ -266,6 +281,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItemService.updateToggleStates(settings)
         statusItemService.updateDateIconStyle(settings.dateIconStyle)
         aiChatHistoryStore.setPersistenceEnabled(settings.ai.chatHistoryEnabled)
+        authenticatorService.apply(
+            enabled: settings.authenticatorEnabled,
+            iCloudSyncEnabled: settings.authenticatorICloudSyncEnabled,
+            theme: settings.theme
+        )
         keystrokeVisualizerService.apply(settings: settings)
         healthReminderService.apply(settings: settings)
         speechModelStore.apply(selectedModel: settings.speech.model)
@@ -696,6 +716,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 navigation: preferencesNavigation,
                 aiChatHistoryStore: aiChatHistoryStore,
                 keystrokeVisualizerService: keystrokeVisualizerService,
+                authenticatorService: authenticatorService,
                 healthReminderService: healthReminderService,
                 speechModelStore: speechModelStore,
                 speechHistoryStore: speechHistoryStore,

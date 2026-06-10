@@ -9,6 +9,7 @@
 │   ├── Models/
 │   │   ├── AppModels.swift          # AppEntry, CommandEntry
 │   │   ├── AppSettings.swift        # AppSettings, AISettings, enums (theme, lang, dock/date icon)
+│   │   ├── AuthenticatorModels.swift # TOTP accounts, OTPAuth parsing, JSON backup models
 │   │   ├── ClipboardModels.swift    # ClipboardEntry, ClipboardContent, SearchItem
 │   │   ├── HealthReminderModels.swift # Health reminder settings, state, records, commands
 │   │   ├── KeystrokeModels.swift    # Keystroke visualizer settings and display models
@@ -20,6 +21,8 @@
 │   │   ├── TranslationService.swift # AX text capture + fallback copy
 │   │   ├── AIChatService.swift      # OpenAI-compatible chat completions
 │   │   ├── AIChatHistoryStore.swift  # File-based conversation persistence
+│   │   ├── AuthenticatorService.swift # TOTP lifecycle, Keychain storage, import/export
+│   │   ├── AuthenticatorSyncService.swift # Optional iCloud Keychain synchronization
 │   │   ├── CalendarService.swift    # Lunisolar calendar, solar terms, holidays, EventKit
 │   │   ├── HealthReminderService.swift # Work/break timer, daily records, break overlay
 │   │   ├── KeyDisplayFormatter.swift # Keyboard-layout-aware key labels
@@ -35,6 +38,8 @@
 │   │   ├── LauncherView.swift       # Main search panel
 │   │   ├── TranslationView.swift    # Floating translation panel
 │   │   ├── AIChatView.swift         # AI chat with history sidebar
+│   │   ├── AuthenticatorPanelView.swift # Search and copy TOTP accounts
+│   │   ├── AuthenticatorPreferencesView.swift # Import, export, sync, account management
 │   │   ├── HealthBreakOverlayView.swift # Health reminder break panel
 │   │   ├── KeystrokeOverlayLayout.swift # Overlay sizing
 │   │   ├── KeystrokeOverlayView.swift # Keystroke overlay SwiftUI view
@@ -52,6 +57,8 @@
 │       ├── en.lproj/                # English strings
 │       ├── zh-Hans.lproj/           # Chinese strings
 │       └── solar_terms.json         # Solar term dates
+├── Tests/
+│   └── AuthenticatorTests.swift     # TOTP, parsing, JSON, settings, and sync merge tests
 ├── Package.swift                    # Swift Package manifest (Swift 6, macOS 15+)
 ├── scripts/
 │   ├── build-dmg.sh                 # Create distributable DMG
@@ -91,7 +98,9 @@
   - `LauncherView`: Main search panel (borderless NSPanel with blur)
   - `TranslationView`: Floating translation panel using `Translation` framework
   - `AIChatView`: Chat window with conversation sidebar, markdown rendering
-  - `PreferencesView`: 7-tab settings window (Dock, General, Keyboard, Health, AI, Appearance, About)
+  - `AuthenticatorPanelView`: Search, inspect, and copy current TOTP codes
+  - `AuthenticatorPreferencesView`: Account import/export, deletion, and sync controls
+  - `PreferencesView`: Tabbed settings window, including a dedicated Authenticator tab
   - `HealthBreakOverlayView`: Floating break reminder with countdown, progress, and break actions
   - `KeystrokeOverlayView`: Draggable global keystroke overlay rendered in a non-activating panel
   - `Components/`: Reusable pieces — `ActionMenu`, `CalendarView`, `ItemComponents`, `PreferenceRows`
@@ -109,6 +118,8 @@
 - **TranslationService.swift**: AX API text capture + Cmd+C fallback
 - **AIChatService.swift**: `Sendable` async OpenAPI-compatible client
 - **AIChatHistoryStore.swift**: `@MainActor ObservableObject`, file-based persistence
+- **AuthenticatorService.swift**: TOTP generation, Keychain-backed account storage, clipboard-history exclusion, and JSON import/export
+- **AuthenticatorSyncService.swift**: Optional synchronizable Keychain storage, merge behavior, and deletion tombstones
 - **HealthReminderService.swift**: Work/break timer, daily UserDefaults records, break overlay, light activity detection via system idle time
 - **KeystrokeVisualizerService.swift**: Accessibility-gated global key event tap, overlay window, drag persistence
 - **SpeechRecognitionService.swift**: AVAudioEngine capture, 16 kHz mono conversion, sherpa-onnx inference, history, and temporary pasteboard restoration
@@ -134,6 +145,11 @@ swift build
 ### Release Build
 ```bash
 swift build -c release
+```
+
+### Automated Tests
+```bash
+swift test
 ```
 
 ### Create DMG Package
@@ -236,8 +252,7 @@ The app will:
 
 ## Testing
 
-There is currently no SwiftPM test target in this package.
-Use the manual checklist below plus build verification commands.
+Run the Swift Testing suite plus the manual checklist and build verification commands below.
 
 ### Manual Testing Checklist
 - [ ] App launches with status item in menu bar
@@ -247,7 +262,13 @@ Use the manual checklist below plus build verification commands.
 - [ ] Translation panel captures selected text (with and without AX permission)
 - [ ] AI chat sends messages, renders markdown, streams response
 - [ ] AI chat history creates, renames, deletes conversations
-- [ ] Preferences window opens/closes, all 8 tabs functional
+- [ ] Preferences window opens/closes and every tab is functional
+- [ ] Authenticator can be disabled/enabled and opened from the launcher without leaving the launcher visible
+- [ ] Manual Base32 and `otpauth://` imports work; unsupported algorithms are rejected
+- [ ] Imported secrets and copied TOTP codes do not remain in Meow clipboard history
+- [ ] JSON import/export shows the plaintext-secret warning and handles duplicates
+- [ ] Account deletion persists after sync is disabled and re-enabled
+- [ ] Unsigned builds fall back to local Keychain storage with a clear sync capability error
 - [ ] Speech model download, cancellation, checksum verification, and deletion work
 - [ ] Hold/release speech hotkey records, recognizes, pastes, and restores the clipboard
 - [ ] Speech handles denied microphone/Accessibility permissions and Esc cancellation
@@ -272,6 +293,9 @@ Use the manual checklist below plus build verification commands.
 
 ### Build Verification
 ```bash
+# Run automated tests
+swift test
+
 # Check compilation
 swift build -v
 

@@ -48,6 +48,46 @@ struct PreferenceToggleRow: View {
     }
 }
 
+struct PreferenceInfoRow: View {
+    let title: String
+    let subtitle: String
+    let symbol: String
+    let theme: AppTheme
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: ThemePalette {
+        MeowTheme.palette(theme: theme, scheme: colorScheme)
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: symbol)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(palette.preferencesAccent)
+                .frame(width: 30, height: 30)
+                .background(palette.iconChipBackground, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.primary)
+                Text(subtitle)
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(palette.surfaceBackground, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(palette.surfaceStroke, lineWidth: 1)
+        )
+    }
+}
+
 struct PreferenceHotkeyRecorderRow: View {
     let title: String
     let subtitle: String
