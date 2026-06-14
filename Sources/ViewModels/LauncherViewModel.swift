@@ -25,9 +25,17 @@ final class LauncherViewModel: ObservableObject {
     var onSettingsChanged: ((AppSettings) -> Void)?
     var onPasteClipboard: ((ClipboardEntry) -> Void)?
     var onLaunchApplication: ((AppEntry) -> Void)?
-    var onOpenAIChat: ((String?) -> Void)?
+    var onOpenAIChat: ((AIChatInitialInput?) -> Void)?
     var onOpenAuthenticator: (() -> Void)?
     var onHealthCommand: ((HealthReminderCommand) -> Void)?
+    var onScreenshotCommand: ((ScreenshotCommand) -> Void)?
+    var onPinClipboardImage: ((ImageClipboardContent) -> Void)?
+    var onRecognizeClipboardImage: ((ImageClipboardContent) -> Void)?
+    var onTranslateClipboardImage: ((ImageClipboardContent) -> Void)?
+    var onScanClipboardImageQRCode: ((ImageClipboardContent) -> Void)?
+    var onEditClipboardImage: ((ImageClipboardContent) -> Void)?
+    var onOpenClipboardImage: ((ImageClipboardContent) -> Void)?
+    var onSaveClipboardImage: ((ImageClipboardContent) -> Void)?
 
     private let settingsStore: SettingsStore
     private let discoveryService: AppDiscoveryService
@@ -103,6 +111,66 @@ final class LauncherViewModel: ObservableObject {
                 at: 2
             )
         }
+        if settings.screenshot.enabled {
+            entries.insert(
+                contentsOf: [
+                    CommandEntry(
+                        id: "meow.screenshot.region",
+                        title: L10n.cmdScreenshotRegionTitle,
+                        subtitle: L10n.cmdScreenshotRegionSubtitle,
+                        keywords: ["screenshot", "capture", "region", "area", "截图", "截屏", "区域截图"]
+                    ),
+                    CommandEntry(
+                        id: "meow.screenshot.window",
+                        title: L10n.cmdScreenshotWindowTitle,
+                        subtitle: L10n.cmdScreenshotWindowSubtitle,
+                        keywords: ["screenshot", "capture", "window", "截图", "截屏", "窗口截图"]
+                    ),
+                    CommandEntry(
+                        id: "meow.screenshot.edit",
+                        title: L10n.cmdScreenshotEditTitle,
+                        subtitle: L10n.cmdScreenshotEditSubtitle,
+                        keywords: ["screenshot", "capture", "edit", "annotate",
+                                   "截图", "编辑截图", "标注"]
+                    ),
+                    CommandEntry(
+                        id: "meow.screenshot.display",
+                        title: L10n.cmdScreenshotDisplayTitle,
+                        subtitle: L10n.cmdScreenshotDisplaySubtitle,
+                        keywords: ["screenshot", "capture", "display", "screen", "full screen",
+                                   "截图", "截屏", "全屏截图", "显示器"]
+                    ),
+                    CommandEntry(
+                        id: "meow.screenshot.history",
+                        title: L10n.cmdScreenshotHistoryTitle,
+                        subtitle: L10n.cmdScreenshotHistorySubtitle,
+                        keywords: ["screenshot", "capture", "history", "截图", "截图历史"]
+                    ),
+                    CommandEntry(
+                        id: "meow.screenshot.ocr.latest",
+                        title: L10n.cmdScreenshotOCRTitle,
+                        subtitle: L10n.cmdScreenshotOCRSubtitle,
+                        keywords: ["screenshot", "image", "ocr", "recognize", "text",
+                                   "截图", "图片", "文字识别", "提取文字"]
+                    ),
+                    CommandEntry(
+                        id: "meow.screenshot.translate.latest",
+                        title: L10n.cmdScreenshotTranslateTitle,
+                        subtitle: L10n.cmdScreenshotTranslateSubtitle,
+                        keywords: ["screenshot", "image", "ocr", "translate",
+                                   "截图", "图片", "翻译", "识别翻译"]
+                    ),
+                    CommandEntry(
+                        id: "meow.screenshot.pin.latest",
+                        title: L10n.cmdScreenshotPinTitle,
+                        subtitle: L10n.cmdScreenshotPinSubtitle,
+                        keywords: ["screenshot", "image", "clipboard", "pin", "float",
+                                   "截图", "图片", "剪贴板", "贴图", "置顶"]
+                    ),
+                ],
+                at: min(2, entries.count)
+            )
+        }
         return entries
     }
 
@@ -171,8 +239,65 @@ final class LauncherViewModel: ObservableObject {
         clipboardStore.writeToPasteboard(entry)
     }
 
+    func pinClipboardImage(_ item: SearchItem) {
+        guard case let .clipboard(entry) = item,
+              case let .image(image) = entry.content
+        else { return }
+        onPinClipboardImage?(image)
+    }
+
+    func recognizeClipboardImage(_ item: SearchItem) {
+        guard case let .clipboard(entry) = item,
+              case let .image(image) = entry.content
+        else { return }
+        onRecognizeClipboardImage?(image)
+    }
+
+    func translateClipboardImage(_ item: SearchItem) {
+        guard case let .clipboard(entry) = item,
+              case let .image(image) = entry.content
+        else { return }
+        onTranslateClipboardImage?(image)
+    }
+
+    func scanClipboardImageQRCode(_ item: SearchItem) {
+        guard case let .clipboard(entry) = item,
+              case let .image(image) = entry.content
+        else { return }
+        onScanClipboardImageQRCode?(image)
+    }
+
+    func editClipboardImage(_ item: SearchItem) {
+        guard case let .clipboard(entry) = item,
+              case let .image(image) = entry.content
+        else { return }
+        onEditClipboardImage?(image)
+    }
+
+    func openClipboardImage(_ item: SearchItem) {
+        guard case let .clipboard(entry) = item,
+              case let .image(image) = entry.content
+        else { return }
+        onOpenClipboardImage?(image)
+    }
+
+    func saveClipboardImage(_ item: SearchItem) {
+        guard case let .clipboard(entry) = item,
+              case let .image(image) = entry.content
+        else { return }
+        onSaveClipboardImage?(image)
+    }
+
     func openAIChat(prompt: String?) {
-        onOpenAIChat?(prompt)
+        guard let prompt else {
+            onOpenAIChat?(nil)
+            return
+        }
+        onOpenAIChat?(AIChatInitialInput(text: prompt))
+    }
+
+    func openAIChat(prompt: String, imagePath: String) {
+        onOpenAIChat?(AIChatInitialInput(text: prompt, imagePath: imagePath))
     }
 
     func updateKeystrokeOverlayPlacement(position: KeystrokeOverlayPosition, point: KeystrokeOverlayPoint?) {
@@ -231,6 +356,28 @@ final class LauncherViewModel: ObservableObject {
             onHealthCommand?(.startBreak)
         case "meow.health.skip":
             onHealthCommand?(.skipBreak)
+        case "meow.screenshot.region":
+            onScreenshotCommand?(.captureRegion)
+        case "meow.screenshot.edit":
+            onScreenshotCommand?(.captureAndEdit)
+        case "meow.screenshot.window":
+            onScreenshotCommand?(.captureWindow)
+        case "meow.screenshot.display":
+            onScreenshotCommand?(.captureDisplay)
+        case "meow.screenshot.history":
+            onScreenshotCommand?(.openHistory)
+        case "meow.screenshot.ocr.latest":
+            if let image = latestClipboardImage() {
+                onRecognizeClipboardImage?(image)
+            }
+        case "meow.screenshot.translate.latest":
+            if let image = latestClipboardImage() {
+                onTranslateClipboardImage?(image)
+            }
+        case "meow.screenshot.pin.latest":
+            if let image = latestClipboardImage() {
+                onPinClipboardImage?(image)
+            }
         case "meow.quit":
             NSApp.terminate(nil)
         default:
@@ -288,6 +435,15 @@ final class LauncherViewModel: ObservableObject {
         if text.hasPrefix(query) { return 90 }
         if text.contains(" \(query)") { return 70 }
         return 50
+    }
+
+    private func latestClipboardImage() -> ImageClipboardContent? {
+        for entry in clipboardStore.getEntries() {
+            if case let .image(image) = entry.content {
+                return image
+            }
+        }
+        return nil
     }
 
     private func isCurrentApp(_ app: AppEntry) -> Bool {

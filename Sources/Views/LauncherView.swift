@@ -442,8 +442,16 @@ struct LauncherView: View {
         switch item {
         case .app:
             return [.open, .showInFinder, .copyPath]
-        case .clipboard:
-            return [.paste, .copy, .askAI, .delete]
+        case let .clipboard(entry):
+            var actions: [ActionMenuAction] = [.paste, .copy]
+            if case .image = entry.content {
+                actions += [
+                    .openImage, .saveImageAs, .edit, .pin,
+                    .recognizeText, .translateImageText, .scanQRCode,
+                ]
+            }
+            actions += [.askAI, .delete]
+            return actions
         case .command:
             return [.execute]
         }
@@ -470,7 +478,12 @@ struct LauncherView: View {
         switch (selectedItem, action) {
         case (.app, .open), (.app, .showInFinder), (.app, .copyPath):
             return true
-        case (.clipboard, .paste), (.clipboard, .copy), (.clipboard, .askAI), (.clipboard, .delete):
+        case (.clipboard, .paste), (.clipboard, .copy), (.clipboard, .askAI),
+             (.clipboard, .openImage), (.clipboard, .saveImageAs),
+             (.clipboard, .pin), (.clipboard, .recognizeText),
+             (.clipboard, .translateImageText), (.clipboard, .scanQRCode),
+             (.clipboard, .edit),
+             (.clipboard, .delete):
             return true
         case (.command, .execute):
             return true
@@ -483,6 +496,10 @@ struct LauncherView: View {
         switch action {
         case .open, .execute, .paste:
             viewModel.activate(selected)
+        case .openImage:
+            viewModel.openClipboardImage(selected)
+        case .saveImageAs:
+            viewModel.saveClipboardImage(selected)
         case .showInFinder:
             revealSelectedInFinder()
         case .copyPath:
@@ -491,6 +508,16 @@ struct LauncherView: View {
             copyClipboardContent()
         case .askAI:
             askAIAboutClipboard(selected)
+        case .pin:
+            viewModel.pinClipboardImage(selected)
+        case .recognizeText:
+            viewModel.recognizeClipboardImage(selected)
+        case .translateImageText:
+            viewModel.translateClipboardImage(selected)
+        case .scanQRCode:
+            viewModel.scanClipboardImageQRCode(selected)
+        case .edit:
+            viewModel.editClipboardImage(selected)
         case .delete:
             viewModel.deleteClipboardItem(selected)
         }
@@ -499,6 +526,11 @@ struct LauncherView: View {
 
     private func askAIAboutClipboard(_ selected: SearchItem) {
         guard case let .clipboard(entry) = selected else { return }
+        if case let .image(image) = entry.content {
+            let path = image.originalPath ?? image.thumbnailPath
+            viewModel.openAIChat(prompt: L10n.aiImagePrompt, imagePath: path)
+            return
+        }
         let prompt = "\(L10n.aiClipboardPrompt)\n\n\(entry.content.aiContextText)"
         viewModel.openAIChat(prompt: prompt)
     }

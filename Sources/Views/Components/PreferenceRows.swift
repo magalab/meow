@@ -740,6 +740,7 @@ struct PreferenceAISettingsSection: View {
             )
             apiKeyRow
             modelRow
+            visionRow
             historyRow
         }
         .alert(L10n.prefsAIHistoryClearTitle, isPresented: $showsClearHistoryConfirmation) {
@@ -906,6 +907,51 @@ struct PreferenceAISettingsSection: View {
             .padding(5)
         }
         .frame(width: 260, height: min(CGFloat(max(modelOptions.count, 1)) * 34 + 10, 220))
+    }
+
+    private var visionRow: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 12) {
+                rowIcon("photo.badge.checkmark")
+                rowText(
+                    title: L10n.prefsAIVisionTitle,
+                    subtitle: L10n.prefsAIVisionSubtitle
+                )
+                Toggle("", isOn: $settings.supportsVision)
+                    .labelsHidden()
+            }
+
+            if settings.supportsVision {
+                HStack(spacing: 12) {
+                    Text(L10n.prefsAIImageMaxDimension)
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(.secondary)
+                    Picker("", selection: $settings.imageMaxDimension) {
+                        ForEach([1024, 1600, 2048, 3072], id: \.self) { dimension in
+                            Text("\(dimension) px").tag(dimension)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 110)
+
+                    Text(L10n.prefsAIImageQuality)
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(.secondary)
+                    Slider(value: $settings.imageJPEGQuality, in: 0.4...1, step: 0.05)
+                        .frame(width: 110)
+                    Text("\(Int(settings.imageJPEGQuality * 100))%")
+                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                        .frame(width: 36, alignment: .trailing)
+                }
+                .padding(.leading, 42)
+
+                Text(L10n.prefsAIVisionPrivacy)
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundStyle(.secondary)
+                    .padding(.leading, 42)
+            }
+        }
+        .modifier(PreferencePanelRowStyle(palette: palette))
     }
 
     private var historyRow: some View {

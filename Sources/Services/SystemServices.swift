@@ -785,6 +785,45 @@ final class HotkeyService: @unchecked Sendable {
         unregisterHotkey(id: 3)
     }
 
+    func registerScreenshotRegionHotkey(
+        keyCode: UInt32,
+        modifiers: UInt32,
+        action: @escaping () -> Void
+    ) -> RegistrationResult {
+        registerHotkey(id: 4, keyCode: keyCode, modifiers: modifiers, pressedAction: action)
+    }
+
+    func registerScreenshotWindowHotkey(
+        keyCode: UInt32,
+        modifiers: UInt32,
+        action: @escaping () -> Void
+    ) -> RegistrationResult {
+        registerHotkey(id: 5, keyCode: keyCode, modifiers: modifiers, pressedAction: action)
+    }
+
+    func registerScreenshotEditHotkey(
+        keyCode: UInt32,
+        modifiers: UInt32,
+        action: @escaping () -> Void
+    ) -> RegistrationResult {
+        registerHotkey(id: 7, keyCode: keyCode, modifiers: modifiers, pressedAction: action)
+    }
+
+    func registerScreenshotDisplayHotkey(
+        keyCode: UInt32,
+        modifiers: UInt32,
+        action: @escaping () -> Void
+    ) -> RegistrationResult {
+        registerHotkey(id: 6, keyCode: keyCode, modifiers: modifiers, pressedAction: action)
+    }
+
+    func unregisterScreenshotHotkeys() {
+        unregisterHotkey(id: 4)
+        unregisterHotkey(id: 5)
+        unregisterHotkey(id: 6)
+        unregisterHotkey(id: 7)
+    }
+
     func unregister() {
         for hotKey in hotKeys.values { UnregisterEventHotKey(hotKey.ref) }
         hotKeys.removeAll()

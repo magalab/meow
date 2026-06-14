@@ -94,6 +94,9 @@ struct AISettings: Codable, Equatable, Sendable {
     var model: String
     var systemPrompt: String
     var chatHistoryEnabled: Bool
+    var supportsVision: Bool
+    var imageMaxDimension: Int
+    var imageJPEGQuality: Double
 
     var isConfigured: Bool {
         !endpoint.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
@@ -106,7 +109,10 @@ struct AISettings: Codable, Equatable, Sendable {
         apiKey: "",
         model: "gpt-4o-mini",
         systemPrompt: "You are a concise, helpful assistant inside a lightweight macOS launcher.",
-        chatHistoryEnabled: true
+        chatHistoryEnabled: true,
+        supportsVision: true,
+        imageMaxDimension: 1600,
+        imageJPEGQuality: 0.82
     )
 }
 
@@ -117,6 +123,9 @@ extension AISettings {
         case model
         case systemPrompt
         case chatHistoryEnabled
+        case supportsVision
+        case imageMaxDimension
+        case imageJPEGQuality
     }
 
     init(from decoder: Decoder) throws {
@@ -126,6 +135,18 @@ extension AISettings {
         model = try container.decodeIfPresent(String.self, forKey: .model) ?? Self.default.model
         systemPrompt = try container.decodeIfPresent(String.self, forKey: .systemPrompt) ?? Self.default.systemPrompt
         chatHistoryEnabled = try container.decodeIfPresent(Bool.self, forKey: .chatHistoryEnabled) ?? Self.default.chatHistoryEnabled
+        supportsVision = try container.decodeIfPresent(
+            Bool.self,
+            forKey: .supportsVision
+        ) ?? Self.default.supportsVision
+        imageMaxDimension = try container.decodeIfPresent(
+            Int.self,
+            forKey: .imageMaxDimension
+        ) ?? Self.default.imageMaxDimension
+        imageJPEGQuality = try container.decodeIfPresent(
+            Double.self,
+            forKey: .imageJPEGQuality
+        ) ?? Self.default.imageJPEGQuality
     }
 }
 
@@ -145,6 +166,7 @@ struct AppSettings: Codable {
     var dateIconStyle: DateIconStyle
     var dockIconStyle: DockIconStyle
     var ai: AISettings
+    var screenshot: ScreenshotSettings
     var speech: SpeechSettings
     var healthReminder: HealthReminderSettings
     var authenticatorEnabled: Bool
@@ -174,6 +196,7 @@ struct AppSettings: Codable {
         dateIconStyle: DateIconStyle = .pawPrint,
         dockIconStyle: DockIconStyle = .calendar,
         ai: AISettings = .default,
+        screenshot: ScreenshotSettings = .default,
         speech: SpeechSettings = .default,
         healthReminder: HealthReminderSettings = .default,
         authenticatorEnabled: Bool = false,
@@ -202,6 +225,7 @@ struct AppSettings: Codable {
         self.dateIconStyle = dateIconStyle
         self.dockIconStyle = dockIconStyle
         self.ai = ai
+        self.screenshot = screenshot
         self.speech = speech
         self.healthReminder = healthReminder
         self.authenticatorEnabled = authenticatorEnabled
@@ -247,6 +271,7 @@ extension AppSettings {
         case dateIconStyle
         case dockIconStyle
         case ai
+        case screenshot
         case speech
         case healthReminder
         case authenticatorEnabled
@@ -278,6 +303,10 @@ extension AppSettings {
         dateIconStyle = try container.decodeIfPresent(DateIconStyle.self, forKey: .dateIconStyle) ?? Self.default.dateIconStyle
         dockIconStyle = try container.decodeIfPresent(DockIconStyle.self, forKey: .dockIconStyle) ?? Self.default.dockIconStyle
         ai = try container.decodeIfPresent(AISettings.self, forKey: .ai) ?? Self.default.ai
+        screenshot = try container.decodeIfPresent(
+            ScreenshotSettings.self,
+            forKey: .screenshot
+        ) ?? Self.default.screenshot
         speech = try container.decodeIfPresent(SpeechSettings.self, forKey: .speech) ?? Self.default.speech
         healthReminder = try container.decodeIfPresent(
             HealthReminderSettings.self,

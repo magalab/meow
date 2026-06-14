@@ -3,7 +3,7 @@ import SwiftUI
 
 struct AIChatPanelView: View {
     @ObservedObject var viewModel: LauncherViewModel
-    let initialPrompt: String?
+    let initialInput: AIChatInitialInput?
     @ObservedObject var historyStore: AIChatHistoryStore
     let onOpenPreferences: () -> Void
 
@@ -12,6 +12,7 @@ struct AIChatPanelView: View {
     @State private var isSending = false
     @State private var errorMessage: String?
     @State private var didSeedInitialPrompt = false
+    @State private var pendingImagePath: String?
     @State private var keyMonitor: Any?
 
     private let service = AIChatService()
@@ -259,10 +260,10 @@ struct AIChatPanelView: View {
                 Spacer(minLength: 50)
 
                 ViewThatFits(in: .horizontal) {
-                    userMessageBubble(message.content)
+                    userMessageBubble(message)
                         .fixedSize(horizontal: true, vertical: false)
 
-                    userMessageBubble(message.content)
+                    userMessageBubble(message)
                         .frame(width: 420, alignment: .leading)
                 }
             }
@@ -301,13 +302,23 @@ struct AIChatPanelView: View {
         }
     }
 
-    private func userMessageBubble(_ content: String) -> some View {
+    private func userMessageBubble(_ message: AIChatMessage) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(L10n.aiChatYou)
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .foregroundStyle(.secondary)
 
-            Text(content)
+            if let imagePath = message.imagePath,
+               let image = NSImage(contentsOfFile: imagePath)
+            {
+                Image(nsImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(maxWidth: 320, maxHeight: 220)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            }
+
+            Text(message.content)
                 .font(.system(size: 13, weight: .regular, design: .rounded))
                 .textSelection(.enabled)
                 .fixedSize(horizontal: false, vertical: true)
@@ -386,13 +397,14 @@ struct AIChatPanelView: View {
         guard !didSeedInitialPrompt else { return }
         didSeedInitialPrompt = true
 
-        guard let initialPrompt = initialPrompt?.trimmingCharacters(in: .whitespacesAndNewlines),
+        guard let initialPrompt = initialInput?.text.trimmingCharacters(in: .whitespacesAndNewlines),
               !initialPrompt.isEmpty,
               settings.isConfigured
         else { return }
 
         historyStore.createConversation()
         inputText = initialPrompt
+        pendingImagePath = initialInput?.imagePath
         sendInput()
     }
 
@@ -436,7 +448,12 @@ struct AIChatPanelView: View {
         inputText = ""
         errorMessage = nil
         let conversationID = historyStore.ensureSelectedConversation()
-        historyStore.append(AIChatMessage(role: .user, content: trimmed), to: conversationID)
+        let imagePath = pendingImagePath
+        pendingImagePath = nil
+        historyStore.append(
+            AIChatMessage(role: .user, content: trimmed, imagePath: imagePath),
+            to: conversationID
+        )
         let outgoingMessages = historyStore.messages(for: conversationID)
         isSending = true
 

@@ -2,11 +2,18 @@ import SwiftUI
 
 enum ActionMenuAction: String, Hashable {
     case open
+    case openImage
+    case saveImageAs
     case showInFinder
     case copyPath
     case paste
     case copy
     case askAI
+    case pin
+    case recognizeText
+    case translateImageText
+    case scanQRCode
+    case edit
     case delete
     case execute
 }
@@ -24,9 +31,18 @@ struct ActionMenu: View {
                 menuRow(action: .showInFinder, title: L10n.actionMenuShowInFinder, systemImage: "folder", shortcuts: ["⌘", "↩"])
                 menuRow(action: .copyPath, title: L10n.actionMenuCopyPath, systemImage: "doc.on.clipboard", shortcuts: ["⌘", "⇧", "C"])
 
-            case .clipboard:
+            case let .clipboard(entry):
                 menuRow(action: .paste, title: L10n.actionMenuPaste, systemImage: "doc.on.clipboard", shortcuts: ["↩"])
                 menuRow(action: .copy, title: L10n.actionMenuCopy, systemImage: "doc.on.clipboard.fill", shortcuts: ["⌘", "C"])
+                if case .image = entry.content {
+                    menuRow(action: .openImage, title: L10n.actionMenuOpen, systemImage: "arrow.up.right.square", shortcuts: [])
+                    menuRow(action: .saveImageAs, title: L10n.actionMenuSaveAs, systemImage: "square.and.arrow.down", shortcuts: [])
+                    menuRow(action: .edit, title: L10n.actionMenuEditImage, systemImage: "pencil.and.outline", shortcuts: [])
+                    menuRow(action: .pin, title: L10n.actionMenuPinImage, systemImage: "pin", shortcuts: [])
+                    menuRow(action: .recognizeText, title: L10n.actionMenuRecognizeText, systemImage: "text.viewfinder", shortcuts: [])
+                    menuRow(action: .translateImageText, title: L10n.actionMenuTranslateImage, systemImage: "translate", shortcuts: [])
+                    menuRow(action: .scanQRCode, title: L10n.actionMenuScanQRCode, systemImage: "qrcode.viewfinder", shortcuts: [])
+                }
                 menuRow(action: .askAI, title: L10n.actionMenuAskAI, systemImage: "sparkles", shortcuts: ["⌘", "A"])
                 menuRow(action: .delete, title: L10n.actionMenuDelete, systemImage: "trash", shortcuts: ["⌘", "⌫"], isDanger: true)
 

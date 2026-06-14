@@ -4,6 +4,7 @@ import SwiftUI
 enum PreferenceSection: String, CaseIterable, Identifiable {
     case dock
     case general
+    case screenshot
     case authenticator
     case keyboard
     case speech
@@ -20,6 +21,7 @@ enum PreferenceSection: String, CaseIterable, Identifiable {
         switch self {
         case .dock: return L10n.prefsSectionDock
         case .general: return L10n.prefsSectionGeneral
+        case .screenshot: return L10n.prefsSectionScreenshot
         case .authenticator: return L10n.prefsSectionAuthenticator
         case .keyboard: return L10n.prefsSectionKeyboard
         case .speech: return L10n.prefsSectionSpeech
@@ -34,6 +36,7 @@ enum PreferenceSection: String, CaseIterable, Identifiable {
         switch self {
         case .dock: return "dock.rectangle"
         case .general: return "gearshape"
+        case .screenshot: return "camera.viewfinder"
         case .authenticator: return AuthenticatorVisuals.symbol
         case .keyboard: return "keyboard"
         case .speech: return "waveform"
@@ -227,6 +230,17 @@ struct PreferencesView: View {
                                 iCloudSyncEnabled: Binding(
                                     get: { viewModel.settings.authenticatorICloudSyncEnabled },
                                     set: { viewModel.settings.authenticatorICloudSyncEnabled = $0 }
+                                )
+                            )
+                            .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+                        }
+
+                        if navigation.selectedSection == .screenshot {
+                            ScreenshotPreferencesView(
+                                theme: viewModel.settings.theme,
+                                settings: Binding(
+                                    get: { viewModel.settings.screenshot },
+                                    set: { viewModel.settings.screenshot = $0 }
                                 )
                             )
                             .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
