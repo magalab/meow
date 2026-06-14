@@ -98,14 +98,23 @@ struct ImageClipboardContent: Hashable {
     let width: Int
     let height: Int
     let previewText: String
+    let ownsCachedFiles: Bool
 
-    init(thumbnailPath: String, originalPath: String?, sourceName: String, width: Int, height: Int) {
+    init(
+        thumbnailPath: String,
+        originalPath: String?,
+        sourceName: String,
+        width: Int,
+        height: Int,
+        ownsCachedFiles: Bool = true
+    ) {
         self.thumbnailPath = thumbnailPath
         self.originalPath = originalPath
         self.sourceName = sourceName
         self.width = width
         self.height = height
         previewText = sourceName
+        self.ownsCachedFiles = ownsCachedFiles
     }
 }
 
@@ -171,6 +180,9 @@ enum SearchItem: Identifiable, Hashable {
             }
             if command.id == "meow.authenticator" {
                 return AuthenticatorVisuals.symbol
+            }
+            if command.id.hasPrefix("meow.screenshot.") {
+                return "camera.viewfinder"
             }
             return "command"
         case let .clipboard(entry):

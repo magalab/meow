@@ -1,6 +1,7 @@
 import AppKit
 @preconcurrency import ApplicationServices
 import SwiftUI
+import UniformTypeIdentifiers
 
 enum MeowWindowIdentifiers {
     static let aiChat = NSUserInterfaceItemIdentifier("meow.ai.chat.window")
@@ -48,6 +49,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let authenticatorService = AuthenticatorService()
     private let healthReminderService = HealthReminderService()
     private let clipboardStore = ClipboardStore()
+    private let screenCaptureService = ScreenCaptureService()
+    private let captureOverlayController = CaptureOverlayController()
+    private let captureStore = CaptureStore()
+    private let captureEditorController = CaptureEditorController()
+    private let postCaptureActionsController = PostCaptureActionsController()
+    private let pinnedImageController = PinnedImageController()
+    private let imageRecognitionService = ImageRecognitionService()
     private let preferencesNavigation = PreferencesNavigationState()
     private let aiChatHistoryStore = AIChatHistoryStore()
     private let speechModelStore = SpeechModelStore()
@@ -68,6 +76,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var aiChatWindow: NSWindow?
     private var aiChatHostingController: NSHostingController<AnyView>?
     private var preferencesWindow: NSWindow?
+    private var captureHistoryWindow: NSWindow?
+    private var captureHistoryHostingController: NSHostingController<CaptureHistoryView>?
     private var viewModel: LauncherViewModel!
     private var globalMouseMonitor: Any?
     private var localMouseMonitor: Any?
@@ -77,6 +87,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var lastRegisteredToggleHotkey: (keyCode: UInt32, modifiers: UInt32)?
     private var lastRegisteredTranslateHotkey: (keyCode: UInt32, modifiers: UInt32)?
     private var lastRegisteredSpeechHotkey: (keyCode: UInt32, modifiers: UInt32)?
+    private var lastRegisteredScreenshotRegionHotkey: (keyCode: UInt32, modifiers: UInt32)?
+    private var lastRegisteredScreenshotEditHotkey: (keyCode: UInt32, modifiers: UInt32)?
+    private var lastRegisteredScreenshotWindowHotkey: (keyCode: UInt32, modifiers: UInt32)?
+    private var lastRegisteredScreenshotDisplayHotkey: (keyCode: UInt32, modifiers: UInt32)?
+    private var captureTask: Task<Void, Never>?
     private var clipboardMonitoringEnabled = false
     private var calendarPopover: NSPopover?
     private var calendarPopoverController: NSHostingController<CalendarPopoverView>?
@@ -91,8 +106,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         viewModel.onOpenPreferences = { [weak self] in
             self?.showPreferences()
         }
-        viewModel.onOpenAIChat = { [weak self] prompt in
-            self?.showAIChat(initialPrompt: prompt)
+        viewModel.onOpenAIChat = { [weak self] input in
+            self?.openAIChat(input)
         }
         viewModel.onOpenAuthenticator = { [weak self] in
             self?.hideLauncher()
@@ -111,8 +126,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         viewModel.onHealthCommand = { [weak self] command in
             self?.handleHealthCommand(command)
         }
+        viewModel.onScreenshotCommand = { [weak self] command in
+            self?.handleScreenshotCommand(command)
+        }
+        viewModel.onPinClipboardImage = { [weak self] image in
+            self?.hideLauncher()
+            self?.pinnedImageController.pin(image)
+        }
+        viewModel.onRecognizeClipboardImage = { [weak self] image in
+            self?.recognizeClipboardImage(image, translate: false)
+        }
+        viewModel.onTranslateClipboardImage = { [weak self] image in
+            self?.recognizeClipboardImage(image, translate: true)
+        }
+        viewModel.onScanClipboardImageQRCode = { [weak self] image in
+            self?.scanClipboardImageQRCode(image)
+        }
+        viewModel.onEditClipboardImage = { [weak self] image in
+            self?.editClipboardImage(image)
+        }
+        viewModel.onOpenClipboardImage = { [weak self] image in
+            self?.openClipboardImage(image)
+        }
+        viewModel.onSaveClipboardImage = { [weak self] image in
+            self?.saveClipboardImageAs(image)
+        }
         viewModel.onSettingsChanged = { [weak self] settings in
             self?.apply(settings: settings)
+        }
+        captureStore.onArtifactsRemoved = { [weak self] ids in
+            guard let self else { return }
+            clipboardStore.removeCaptureEntries(ids: ids)
+            viewModel.refresh()
         }
         keystrokeVisualizerService.onOverlayPlacementChanged = { [weak self] position, point in
             guard let self else { return }
@@ -161,6 +206,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_: Notification) {
         hotkeyService.unregister()
+        captureTask?.cancel()
+        captureOverlayController.cancel()
+        captureEditorController.cancel()
+        postCaptureActionsController.close()
+        pinnedImageController.closeAll()
         speechRecognitionService.cancel()
         speechOverlayController.hide()
         keystrokeVisualizerService.stop()
@@ -281,6 +331,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItemService.updateToggleStates(settings)
         statusItemService.updateDateIconStyle(settings.dateIconStyle)
         aiChatHistoryStore.setPersistenceEnabled(settings.ai.chatHistoryEnabled)
+        captureStore.applyRetention(
+            historyLimit: settings.screenshot.historyLimit,
+            retentionDays: settings.screenshot.retentionDays,
+            maxStorageMB: settings.screenshot.maxStorageMB
+        )
         authenticatorService.apply(
             enabled: settings.authenticatorEnabled,
             iCloudSyncEnabled: settings.authenticatorICloudSyncEnabled,
@@ -362,6 +417,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             )
         }
 
+        applyScreenshotHotkeys(settings.screenshot)
+
         if settings.clipboardHistoryEnabled != clipboardMonitoringEnabled {
             if settings.clipboardHistoryEnabled {
                 clipboardStore.startMonitoring { [weak self] in
@@ -425,6 +482,334 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             guard viewModel.settings.healthReminder.enabled else { return }
             healthReminderService.skipBreak()
         }
+    }
+
+    private func handleScreenshotCommand(_ command: ScreenshotCommand) {
+        switch command {
+        case .captureRegion:
+            triggerScreenshot(mode: .region)
+        case .captureAndEdit:
+            triggerScreenshot(
+                mode: viewModel.settings.screenshot.defaultCaptureMode,
+                editAfterCapture: true
+            )
+        case .captureWindow:
+            triggerScreenshot(mode: .window)
+        case .captureDisplay:
+            triggerScreenshot(mode: .display)
+        case .openHistory:
+            showCaptureHistory()
+        }
+    }
+
+    private func applyScreenshotHotkeys(_ settings: ScreenshotSettings) {
+        guard settings.enabled else {
+            hotkeyService.unregisterScreenshotHotkeys()
+            lastRegisteredScreenshotRegionHotkey = nil
+            lastRegisteredScreenshotEditHotkey = nil
+            lastRegisteredScreenshotWindowHotkey = nil
+            lastRegisteredScreenshotDisplayHotkey = nil
+            return
+        }
+
+        let regionResult = hotkeyService.registerScreenshotRegionHotkey(
+            keyCode: settings.regionHotkeyKeyCode,
+            modifiers: settings.regionHotkeyModifiers
+        ) { [weak self] in
+            guard let self else { return }
+            triggerScreenshot(mode: viewModel.settings.screenshot.defaultCaptureMode)
+        }
+        handleHotkeyRegistrationResult(
+            regionResult,
+            name: "screenshot region",
+            keyCode: settings.regionHotkeyKeyCode,
+            modifiers: settings.regionHotkeyModifiers,
+            previous: lastRegisteredScreenshotRegionHotkey
+        ) { [weak self] keyCode, modifiers in
+            self?.viewModel.settings.screenshot.regionHotkeyKeyCode = keyCode
+            self?.viewModel.settings.screenshot.regionHotkeyModifiers = modifiers
+        } onSuccess: { [weak self] in
+            self?.lastRegisteredScreenshotRegionHotkey = (
+                settings.regionHotkeyKeyCode,
+                settings.regionHotkeyModifiers
+            )
+        }
+
+        let windowResult = hotkeyService.registerScreenshotWindowHotkey(
+            keyCode: settings.windowHotkeyKeyCode,
+            modifiers: settings.windowHotkeyModifiers
+        ) { [weak self] in
+            self?.triggerScreenshot(mode: .window)
+        }
+
+        let editResult = hotkeyService.registerScreenshotEditHotkey(
+            keyCode: settings.editHotkeyKeyCode,
+            modifiers: settings.editHotkeyModifiers
+        ) { [weak self] in
+            guard let self else { return }
+            triggerScreenshot(
+                mode: viewModel.settings.screenshot.defaultCaptureMode,
+                editAfterCapture: true
+            )
+        }
+        handleHotkeyRegistrationResult(
+            editResult,
+            name: "screenshot edit",
+            keyCode: settings.editHotkeyKeyCode,
+            modifiers: settings.editHotkeyModifiers,
+            previous: lastRegisteredScreenshotEditHotkey
+        ) { [weak self] keyCode, modifiers in
+            self?.viewModel.settings.screenshot.editHotkeyKeyCode = keyCode
+            self?.viewModel.settings.screenshot.editHotkeyModifiers = modifiers
+        } onSuccess: { [weak self] in
+            self?.lastRegisteredScreenshotEditHotkey = (
+                settings.editHotkeyKeyCode,
+                settings.editHotkeyModifiers
+            )
+        }
+        handleHotkeyRegistrationResult(
+            windowResult,
+            name: "screenshot window",
+            keyCode: settings.windowHotkeyKeyCode,
+            modifiers: settings.windowHotkeyModifiers,
+            previous: lastRegisteredScreenshotWindowHotkey
+        ) { [weak self] keyCode, modifiers in
+            self?.viewModel.settings.screenshot.windowHotkeyKeyCode = keyCode
+            self?.viewModel.settings.screenshot.windowHotkeyModifiers = modifiers
+        } onSuccess: { [weak self] in
+            self?.lastRegisteredScreenshotWindowHotkey = (
+                settings.windowHotkeyKeyCode,
+                settings.windowHotkeyModifiers
+            )
+        }
+
+        let displayResult = hotkeyService.registerScreenshotDisplayHotkey(
+            keyCode: settings.displayHotkeyKeyCode,
+            modifiers: settings.displayHotkeyModifiers
+        ) { [weak self] in
+            self?.triggerScreenshot(mode: .display)
+        }
+        handleHotkeyRegistrationResult(
+            displayResult,
+            name: "screenshot display",
+            keyCode: settings.displayHotkeyKeyCode,
+            modifiers: settings.displayHotkeyModifiers,
+            previous: lastRegisteredScreenshotDisplayHotkey
+        ) { [weak self] keyCode, modifiers in
+            self?.viewModel.settings.screenshot.displayHotkeyKeyCode = keyCode
+            self?.viewModel.settings.screenshot.displayHotkeyModifiers = modifiers
+        } onSuccess: { [weak self] in
+            self?.lastRegisteredScreenshotDisplayHotkey = (
+                settings.displayHotkeyKeyCode,
+                settings.displayHotkeyModifiers
+            )
+        }
+    }
+
+    private func triggerScreenshot(
+        mode: ScreenshotCaptureMode,
+        editAfterCapture: Bool = false
+    ) {
+        guard captureTask == nil else { return }
+        hideLauncher()
+        hideTranslationPanel()
+
+        captureTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            defer { self.captureTask = nil }
+
+            do {
+                let session = try await screenCaptureService.prepareSession()
+                guard !Task.isCancelled else { return }
+                guard let selection = await captureOverlayController.present(session: session, mode: mode) else {
+                    return
+                }
+                guard !Task.isCancelled else { return }
+
+                let (capturedImage, kind) = try await screenCaptureService.capture(
+                    selection,
+                    session: session,
+                    includeWindowShadow: viewModel.settings.screenshot.includeWindowShadow
+                )
+                let outputImage: CGImage
+                let outputKind: CaptureArtifactKind
+                if editAfterCapture {
+                    guard let edited = await captureEditorController.present(source: capturedImage) else {
+                        return
+                    }
+                    outputImage = edited
+                    outputKind = .edited
+                } else {
+                    outputImage = capturedImage
+                    outputKind = kind
+                }
+                let artifact = try processCapturedImage(outputImage, kind: outputKind)
+                showPostCaptureActionsIfNeeded(for: artifact)
+            } catch {
+                presentScreenshotError(error)
+            }
+        }
+    }
+
+    private func processCapturedImage(
+        _ image: CGImage,
+        kind: CaptureArtifactKind
+    ) throws -> CaptureArtifact {
+        let settings = viewModel.settings.screenshot
+        var externalURL: URL?
+
+        if settings.outputMode == .save || settings.outputMode == .copyAndSave {
+            externalURL = try captureStore.saveExternal(image: image, settings: settings)
+        }
+
+        let artifact: CaptureArtifact
+        do {
+            artifact = try captureStore.saveInternal(
+                image: image,
+                kind: kind,
+                historyLimit: settings.historyLimit,
+                retentionDays: settings.retentionDays,
+                maxStorageMB: settings.maxStorageMB
+            )
+        } catch {
+            if let externalURL {
+                try? FileManager.default.removeItem(at: externalURL)
+            }
+            throw error
+        }
+
+        if viewModel.settings.clipboardHistoryEnabled {
+            clipboardStore.insertCapture(artifact)
+        }
+        switch settings.outputMode {
+        case .copy:
+            clipboardStore.writeCaptureToPasteboard(artifact)
+        case .save:
+            break
+        case .copyAndSave:
+            clipboardStore.writeCaptureToPasteboard(artifact)
+        }
+
+        if settings.playSound {
+            NSSound(named: NSSound.Name("Grab"))?.play()
+        }
+        viewModel.refresh()
+        if settings.automaticallyIndexOCRText {
+            indexCaptureText(artifact)
+        }
+        return artifact
+    }
+
+    private func indexCaptureText(_ artifact: CaptureArtifact) {
+        let image = ImageClipboardContent(
+            thumbnailPath: artifact.thumbnailURL.path,
+            originalPath: artifact.imageURL.path,
+            sourceName: L10n.screenshotClipboardName,
+            width: artifact.width,
+            height: artifact.height,
+            ownsCachedFiles: false
+        )
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                let text = try await imageRecognitionService.recognizeText(
+                    in: image,
+                    languages: screenshotOCRLanguages
+                )
+                captureStore.updateOCRText(text, for: artifact.id)
+            } catch {
+                // Images without text remain valid history entries.
+            }
+        }
+    }
+
+    private func presentScreenshotError(_ error: Error) {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = L10n.screenshotErrorTitle
+        alert.informativeText = error.localizedDescription
+        alert.addButton(withTitle: L10n.actionOK)
+        if case .permissionDenied? = error as? ScreenCaptureError {
+            alert.addButton(withTitle: L10n.screenshotOpenSettings)
+        }
+        let response = alert.runModal()
+        if response == .alertSecondButtonReturn,
+           let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")
+        {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
+    private func showCaptureHistory() {
+        let view = CaptureHistoryView(
+            store: captureStore,
+            theme: viewModel.settings.theme,
+            onCopy: { [weak self] artifact in
+                self?.clipboardStore.writeCaptureToPasteboard(artifact)
+            },
+            onPin: { [weak self] artifact in
+                self?.pinnedImageController.pin(artifact)
+            },
+            onEdit: { [weak self] artifact in
+                self?.editImage(at: artifact.imageURL)
+            },
+            onRecognizeText: { [weak self] artifact in
+                guard let self else { return }
+                recognizeClipboardImage(captureImageContent(for: artifact), translate: false)
+            },
+            onTranslate: { [weak self] artifact in
+                guard let self else { return }
+                recognizeClipboardImage(captureImageContent(for: artifact), translate: true)
+            },
+            onScanQRCode: { [weak self] artifact in
+                guard let self else { return }
+                scanClipboardImageQRCode(captureImageContent(for: artifact))
+            },
+            onAskAI: { [weak self] artifact in
+                self?.viewModel.openAIChat(
+                    prompt: L10n.aiImagePrompt,
+                    imagePath: artifact.imageURL.path
+                )
+            },
+            onDelete: { [weak self] artifact in
+                guard let self else { return }
+                clipboardStore.removeCaptureEntries(ids: Set([artifact.id]))
+                captureStore.delete(artifact)
+                viewModel.refresh()
+            },
+            onClear: { [weak self] in
+                guard let self else { return }
+                let ids = Set(captureStore.artifacts.map(\.id))
+                clipboardStore.removeCaptureEntries(ids: ids)
+                captureStore.clear()
+                viewModel.refresh()
+            }
+        )
+        let hosting = NSHostingController(rootView: view)
+        captureHistoryHostingController = hosting
+
+        if captureHistoryWindow == nil {
+            let window = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 820, height: 600),
+                styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+                backing: .buffered,
+                defer: false
+            )
+            window.title = L10n.screenshotHistoryTitle
+            window.titleVisibility = .hidden
+            window.titlebarAppearsTransparent = true
+            window.toolbarStyle = .unified
+            window.minSize = NSSize(width: 720, height: 500)
+            window.isReleasedWhenClosed = false
+            captureHistoryWindow = window
+        }
+
+        guard let window = captureHistoryWindow else { return }
+        hideLauncher()
+        window.contentViewController = hosting
+        centerWindowOnScreen(window, on: activeScreen())
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     private func showLauncher() {
@@ -605,13 +990,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         aiChatWindow = window
     }
 
-    private func showAIChat(initialPrompt: String?) {
+    private func showAIChat(initialInput: AIChatInitialInput?) {
         createAIChatWindow()
 
         let view = AnyView(
             AIChatPanelView(
                 viewModel: viewModel,
-                initialPrompt: initialPrompt,
+                initialInput: initialInput,
                 historyStore: aiChatHistoryStore,
                 onOpenPreferences: { [weak self] in
                     self?.showPreferences(section: .ai)
@@ -627,6 +1012,51 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         centerWindowOnScreen(window, on: activeScreen())
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func openAIChat(_ input: AIChatInitialInput?) {
+        guard let input, input.imagePath != nil else {
+            showAIChat(initialInput: input)
+            return
+        }
+        guard viewModel.settings.ai.supportsVision else {
+            let alert = NSAlert()
+            alert.alertStyle = .warning
+            alert.messageText = L10n.aiErrorVisionUnsupportedTitle
+            alert.informativeText = L10n.aiErrorVisionUnsupported
+            alert.addButton(withTitle: L10n.prefsAIModelOpenSettings)
+            alert.addButton(withTitle: L10n.actionCancel)
+            if alert.runModal() == .alertFirstButtonReturn {
+                showPreferences(section: .ai)
+            }
+            return
+        }
+
+        let settings = viewModel.settings.ai
+        let alert = NSAlert()
+        alert.messageText = L10n.aiImagePrivacyTitle
+        alert.informativeText = String(
+            format: L10n.aiImagePrivacyMessage,
+            settings.endpoint,
+            settings.imageMaxDimension,
+            Int(settings.imageJPEGQuality * 100)
+        )
+        alert.addButton(withTitle: L10n.aiImagePrivacyConfirm)
+        alert.addButton(withTitle: L10n.actionCancel)
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        showAIChat(initialInput: persistedAIInput(input))
+    }
+
+    private func persistedAIInput(_ input: AIChatInitialInput?) -> AIChatInitialInput? {
+        guard let input, let imagePath = input.imagePath else { return input }
+        do {
+            let persistedPath = try aiChatHistoryStore.storeAttachment(
+                at: URL(fileURLWithPath: imagePath)
+            )
+            return AIChatInitialInput(text: input.text, imagePath: persistedPath)
+        } catch {
+            return input
+        }
     }
 
     private func createTranslationWindow() {
@@ -659,11 +1089,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Capture text while the user's app still has Accessibility focus
         // (the hotkey fires before Meow becomes active).
         let text = translationService.capture()
+        presentTranslationPanel(
+            text: text,
+            axPermissionDenied: translationService.axPermissionDenied
+        )
+    }
 
+    private func presentTranslationPanel(
+        text: String,
+        axPermissionDenied: Bool,
+        sourceImagePath: String? = nil
+    ) {
         let view = AnyView(
             TranslationPanelView(
                 sourceText: text,
-                axPermissionDenied: translationService.axPermissionDenied
+                axPermissionDenied: axPermissionDenied,
+                sourceImagePath: sourceImagePath
             ) { [weak self] in
                 self?.hideTranslationPanel()
             }
@@ -682,6 +1123,255 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.setContentSize(estimatedTranslationPanelSize(for: text))
         centerWindowOnScreen(panel, on: activeScreen())
         panel.orderFront(nil)   // non-activating — user's app keeps focus
+    }
+
+    private func recognizeClipboardImage(_ image: ImageClipboardContent, translate: Bool) {
+        hideLauncher()
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                let text = try await imageRecognitionService.recognizeText(
+                    in: image,
+                    languages: screenshotOCRLanguages
+                )
+                if translate {
+                    presentTranslationPanel(
+                        text: text,
+                        axPermissionDenied: false,
+                        sourceImagePath: image.originalPath ?? image.thumbnailPath
+                    )
+                } else {
+                    let pasteboard = NSPasteboard.general
+                    pasteboard.clearContents()
+                    pasteboard.setString(text, forType: .string)
+                    let alert = NSAlert()
+                    alert.messageText = L10n.screenshotOCRCopiedTitle
+                    alert.informativeText = L10n.screenshotOCRCopiedMessage
+                    alert.addButton(withTitle: L10n.actionOK)
+                    alert.runModal()
+                }
+            } catch {
+                let alert = NSAlert()
+                alert.alertStyle = .warning
+                alert.messageText = L10n.screenshotOCRErrorTitle
+                alert.informativeText = error.localizedDescription
+                alert.addButton(withTitle: L10n.actionOK)
+                alert.runModal()
+            }
+        }
+    }
+
+    private func scanClipboardImageQRCode(_ image: ImageClipboardContent) {
+        hideLauncher()
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                let payload = try await imageRecognitionService.detectQRCode(in: image)
+                if payload.lowercased().hasPrefix("otpauth://") {
+                    presentOTPAuthImport(payload)
+                } else {
+                    presentQRCodePayload(payload)
+                }
+            } catch {
+                let alert = NSAlert()
+                alert.alertStyle = .warning
+                alert.messageText = L10n.screenshotQRErrorTitle
+                alert.informativeText = error.localizedDescription
+                alert.addButton(withTitle: L10n.actionOK)
+                alert.runModal()
+            }
+        }
+    }
+
+    private var screenshotOCRLanguages: [String] {
+        viewModel.settings.screenshot.ocrLanguages.map(\.visionIdentifier)
+    }
+
+    private func editClipboardImage(_ image: ImageClipboardContent) {
+        let path = image.originalPath ?? image.thumbnailPath
+        editImage(at: URL(fileURLWithPath: path))
+    }
+
+    private func openClipboardImage(_ image: ImageClipboardContent) {
+        hideLauncher()
+        let path = image.originalPath ?? image.thumbnailPath
+        NSWorkspace.shared.open(URL(fileURLWithPath: path))
+    }
+
+    private func saveClipboardImageAs(_ imageContent: ImageClipboardContent) {
+        hideLauncher()
+        let path = imageContent.originalPath ?? imageContent.thumbnailPath
+        guard let image = NSImage(contentsOfFile: path) else {
+            presentScreenshotError(ImageRecognitionError.imageUnavailable)
+            return
+        }
+
+        let sourceExtension = URL(fileURLWithPath: path).pathExtension.lowercased()
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.png, .jpeg]
+        panel.nameFieldStringValue = sourceExtension == "jpg" || sourceExtension == "jpeg"
+            ? "\(imageContent.sourceName).jpg"
+            : "\(imageContent.sourceName).png"
+        guard panel.runModal() == .OK, let destination = panel.url else { return }
+
+        do {
+            let fileExtension = destination.pathExtension.lowercased()
+            let data: Data?
+            if fileExtension == "jpg" || fileExtension == "jpeg",
+               let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil)
+            {
+                data = NSBitmapImageRep(cgImage: cgImage).representation(
+                    using: .jpeg,
+                    properties: [.compressionFactor: 0.9]
+                )
+            } else {
+                data = image.pngData()
+            }
+            guard let data else {
+                throw CaptureStoreError.imageEncodingFailed
+            }
+            try data.write(to: destination, options: .atomic)
+        } catch {
+            presentScreenshotError(error)
+        }
+    }
+
+    private func editImage(at url: URL) {
+        hideLauncher()
+        Task { @MainActor [weak self] in
+            guard let self,
+                  let image = NSImage(contentsOf: url),
+                  let source = image.cgImage(forProposedRect: nil, context: nil, hints: nil),
+                  let edited = await captureEditorController.present(source: source)
+            else { return }
+
+            do {
+                let artifact = try processCapturedImage(edited, kind: .edited)
+                showPostCaptureActionsIfNeeded(for: artifact)
+            } catch {
+                presentScreenshotError(error)
+            }
+        }
+    }
+
+    private func showPostCaptureActionsIfNeeded(for artifact: CaptureArtifact) {
+        let settings = viewModel.settings.screenshot
+        guard settings.showPostCaptureActions else { return }
+        postCaptureActionsController.show(
+            artifact: artifact,
+            duration: settings.postCaptureActionDuration
+        ) { [weak self] action, artifact in
+            self?.handlePostCaptureAction(action, artifact: artifact)
+        }
+    }
+
+    private func handlePostCaptureAction(
+        _ action: PostCaptureAction,
+        artifact: CaptureArtifact
+    ) {
+        let imageContent = captureImageContent(for: artifact)
+        switch action {
+        case .copy:
+            clipboardStore.writeCaptureToPasteboard(artifact)
+        case .save:
+            do {
+                guard let image = NSImage(contentsOf: artifact.imageURL),
+                      let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil)
+                else {
+                    throw CaptureStoreError.imageEncodingFailed
+                }
+                _ = try captureStore.saveExternal(
+                    image: cgImage,
+                    settings: viewModel.settings.screenshot
+                )
+            } catch {
+                presentScreenshotError(error)
+            }
+        case .edit:
+            editImage(at: artifact.imageURL)
+        case .pin:
+            pinnedImageController.pin(artifact)
+        case .recognizeText:
+            recognizeClipboardImage(imageContent, translate: false)
+        case .translate:
+            recognizeClipboardImage(imageContent, translate: true)
+        case .askAI:
+            viewModel.openAIChat(
+                prompt: L10n.aiImagePrompt,
+                imagePath: artifact.imageURL.path
+            )
+        }
+    }
+
+    private func captureImageContent(for artifact: CaptureArtifact) -> ImageClipboardContent {
+        ImageClipboardContent(
+            thumbnailPath: artifact.thumbnailURL.path,
+            originalPath: artifact.imageURL.path,
+            sourceName: L10n.screenshotClipboardName,
+            width: artifact.width,
+            height: artifact.height,
+            ownsCachedFiles: false
+        )
+    }
+
+    private func presentOTPAuthImport(_ payload: String) {
+        guard let parsed = OTPAuthURL.parse(payload) else {
+            presentScreenshotError(AuthenticatorError.invalidURL)
+            return
+        }
+
+        let alert = NSAlert()
+        alert.messageText = L10n.screenshotQRImportOTPTitle
+        alert.informativeText = String(
+            format: L10n.screenshotQRImportOTPMessage,
+            parsed.issuer.isEmpty ? "-" : parsed.issuer,
+            parsed.account
+        )
+        alert.addButton(withTitle: L10n.screenshotQRImportOTPConfirm)
+        alert.addButton(withTitle: L10n.actionCancel)
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        do {
+            if !viewModel.settings.authenticatorEnabled {
+                viewModel.settings.authenticatorEnabled = true
+            }
+            try authenticatorService.importOTPAuth(payload)
+            authenticatorService.showPanel()
+        } catch {
+            let failure = NSAlert()
+            failure.alertStyle = .warning
+            failure.messageText = L10n.screenshotQRImportOTPFailed
+            failure.informativeText = error.localizedDescription
+            failure.addButton(withTitle: L10n.actionOK)
+            failure.runModal()
+        }
+    }
+
+    private func presentQRCodePayload(_ payload: String) {
+        let url = URL(string: payload)
+        let canOpen = url.map { ["http", "https"].contains($0.scheme?.lowercased() ?? "") } ?? false
+
+        let alert = NSAlert()
+        alert.messageText = L10n.screenshotQRResultTitle
+        alert.informativeText = payload
+        if canOpen {
+            alert.addButton(withTitle: L10n.screenshotQROpen)
+        }
+        alert.addButton(withTitle: L10n.actionMenuCopy)
+        alert.addButton(withTitle: L10n.actionCancel)
+        let response = alert.runModal()
+
+        if canOpen, response == .alertFirstButtonReturn, let url {
+            NSWorkspace.shared.open(url)
+            return
+        }
+
+        let copyResponse = canOpen ? NSApplication.ModalResponse.alertSecondButtonReturn : .alertFirstButtonReturn
+        if response == copyResponse {
+            let pasteboard = NSPasteboard.general
+            pasteboard.clearContents()
+            pasteboard.setString(payload, forType: .string)
+        }
     }
 
     private func hideTranslationPanel() {

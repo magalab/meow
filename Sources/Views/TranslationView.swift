@@ -12,6 +12,7 @@ struct TranslationPanelView: View {
     let sourceText: String
     /// Set true when capture() found that AX permission is missing.
     var axPermissionDenied: Bool = false
+    var sourceImagePath: String?
     let onDismiss: () -> Void
 
     var body: some View {
@@ -20,7 +21,11 @@ struct TranslationPanelView: View {
         } else if sourceText.isEmpty {
             noSelectionView
         } else {
-            TranslationContentView(sourceText: sourceText, onDismiss: onDismiss)
+            TranslationContentView(
+                sourceText: sourceText,
+                sourceImagePath: sourceImagePath,
+                onDismiss: onDismiss
+            )
         }
     }
 
@@ -74,6 +79,7 @@ private struct TranslationContentView: View {
     private let panelWidth: CGFloat = 560
 
     let sourceText: String
+    let sourceImagePath: String?
     let onDismiss: () -> Void
 
     @State private var translatedText: String = ""
@@ -188,14 +194,27 @@ private struct TranslationContentView: View {
 
     private var sourceSection: some View {
         ScrollView {
-            Text(sourceText)
-                .font(.system(size: 13))
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+            HStack(alignment: .top, spacing: 12) {
+                if let sourceImagePath,
+                   let image = NSImage(contentsOfFile: sourceImagePath)
+                {
+                    Image(nsImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 96, height: 72)
+                        .background(Color.black.opacity(0.05))
+                        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                }
+
+                Text(sourceText)
+                    .font(.system(size: 13))
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
         }
-            .frame(minHeight: sourceSectionHeight, maxHeight: sourceSectionHeight)
+        .frame(minHeight: sourceSectionHeight, maxHeight: sourceSectionHeight)
     }
 
     private var translationSection: some View {

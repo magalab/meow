@@ -9,6 +9,8 @@ A lightweight macOS launcher with gadgets, built with SwiftUI + AppKit.
 - Global hotkey (`Opt+Space`) to open the launcher
 - App search with launch-history ranking
 - Clipboard history with paste, copy, delete, and clear actions
+- Native region, window, and display screenshots with frozen multi-display
+  selection, full-resolution local history, and configurable copy/save output
 - Built-in commands (Preferences / Ask AI / Quit)
 - OpenAI-compatible AI chat assistant with local chat history
 - Ask AI from clipboard entries
@@ -62,6 +64,37 @@ APP_BUNDLE_ID=tech.lury.meow bash scripts/build-dmg.sh
 3. Use `Up/Down` to select and press Enter to launch or run a command.
 4. Use the action menu on clipboard entries to paste, copy, delete, reveal files, or ask AI.
 5. Open Preferences to adjust language, theme, hotkeys, Dock, menu bar, clipboard, authenticator, health reminders, keyboard overlay, and AI settings.
+
+## Screenshots
+
+Configure screenshots from Preferences -> Screenshot.
+
+- Capture a region, a window, or an entire display from global shortcuts or launcher commands
+- Select from frozen display images so moving content does not change during selection
+- Copy, save, or copy and save using PNG or JPEG
+- Choose a default quick-capture mode and independent quick, edit, window, and display shortcuts
+- Store full-resolution captures under `~/Library/Application Support/Meow/Captures/`
+- Add captures to Meow clipboard history without applying the clipboard image size limit
+- Save to `~/Pictures/Meow/` by default or choose another directory
+- Configure history retention by capture count, age, and local storage size
+- Use the draggable post-capture action bar to copy, save, edit, pin, OCR, translate, or ask AI;
+  choose 5, 10, or 20 seconds, or never auto-hide, with the timer paused while hovered
+- Crop, resize, annotate, highlight, number, and destructively redact captures in the editor
+- Pin clipboard images in resizable always-on-top windows
+- Recognize English and Simplified Chinese text locally with Vision, copy it, or send it to the
+  translation panel with a source-image preview. Automatic OCR history indexing is off by default;
+  enabling it stores recognized text locally for search and may include sensitive content
+- Scan QR codes and confirm `otpauth://` imports before storing secrets in Keychain
+- Send compressed image data to explicitly enabled vision-capable OpenAI-compatible models
+  only after a per-upload confirmation
+- Browse, search, edit, copy, pin, OCR, translate, scan, ask AI, reveal, and delete captures
+  from Screenshot History
+
+Screenshots require Screen Recording permission. Region selection supports multiple
+displays and `Esc` cancels an active capture. Screen Recording and Accessibility
+permissions are independent. macOS associates Screen Recording approval with the
+application identity; unsigned or frequently rebuilt ad-hoc apps may require approval
+again, while a consistently signed app retains a stable permission identity.
 
 ## Authenticator
 
@@ -120,6 +153,8 @@ Meow includes an OpenAI-compatible chat assistant. Configure it from Preferences
 - Endpoint, for example `https://api.openai.com/v1/chat/completions`
 - API key
 - Model name, either typed manually or fetched from the provider's `/models` endpoint
+- Whether the configured model supports image input
+- Maximum uploaded image edge and JPEG quality
 
 Chat history is stored locally under:
 
@@ -127,7 +162,9 @@ Chat history is stored locally under:
 ~/Library/Application Support/Meow/AIChats/
 ```
 
-API keys remain in Meow's local settings storage. Chat history can be disabled, cleared, or opened from the AI settings screen.
+API keys remain in Meow's local settings storage. Chat history can be disabled, cleared,
+or opened from the AI settings screen. Images remain local until the user invokes Ask AI;
+Meow shows the destination endpoint and compression settings before each upload.
 
 ## Project Structure
 

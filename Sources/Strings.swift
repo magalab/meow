@@ -194,12 +194,26 @@ enum L10n {
         loc("action.menu.copy")
     }
 
+    static var actionMenuSaveAs: String {
+        loc("action.menu.save.as")
+    }
+
     static var actionMenuAskAI: String {
         loc("action.menu.ask.ai")
     }
 
+    static var actionMenuPinImage: String { loc("action.menu.pin.image") }
+    static var actionMenuRecognizeText: String { loc("action.menu.recognize.text") }
+    static var actionMenuTranslateImage: String { loc("action.menu.translate.image") }
+    static var actionMenuScanQRCode: String { loc("action.menu.scan.qr") }
+    static var actionMenuEditImage: String { loc("action.menu.edit.image") }
+
     static var actionMenuDelete: String {
         loc("action.menu.delete")
+    }
+
+    static var actionMenuMore: String {
+        loc("action.menu.more")
     }
 
     static var actionMenuExecute: String {
@@ -208,6 +222,10 @@ enum L10n {
 
     static var actionCancel: String {
         loc("action.cancel")
+    }
+
+    static var actionOK: String {
+        loc("action.ok")
     }
 
     // MARK: - Preferences
@@ -226,6 +244,10 @@ enum L10n {
 
     static var prefsSectionKeyboard: String {
         loc("prefs.section.keyboard")
+    }
+
+    static var prefsSectionScreenshot: String {
+        loc("prefs.section.screenshot")
     }
 
     static var prefsSectionSpeech: String {
@@ -951,6 +973,143 @@ enum L10n {
         loc("cmd.quit.subtitle")
     }
 
+    // MARK: - Screenshot
+
+    static var cmdScreenshotRegionTitle: String { loc("cmd.screenshot.region.title") }
+    static var cmdScreenshotRegionSubtitle: String { loc("cmd.screenshot.region.subtitle") }
+    static var cmdScreenshotWindowTitle: String { loc("cmd.screenshot.window.title") }
+    static var cmdScreenshotWindowSubtitle: String { loc("cmd.screenshot.window.subtitle") }
+    static var cmdScreenshotDisplayTitle: String { loc("cmd.screenshot.display.title") }
+    static var cmdScreenshotDisplaySubtitle: String { loc("cmd.screenshot.display.subtitle") }
+    static var cmdScreenshotHistoryTitle: String { loc("cmd.screenshot.history.title") }
+    static var cmdScreenshotHistorySubtitle: String { loc("cmd.screenshot.history.subtitle") }
+    static var cmdScreenshotEditTitle: String { loc("cmd.screenshot.edit.title") }
+    static var cmdScreenshotEditSubtitle: String { loc("cmd.screenshot.edit.subtitle") }
+    static var cmdScreenshotOCRTitle: String { loc("cmd.screenshot.ocr.title") }
+    static var cmdScreenshotOCRSubtitle: String { loc("cmd.screenshot.ocr.subtitle") }
+    static var cmdScreenshotTranslateTitle: String { loc("cmd.screenshot.translate.title") }
+    static var cmdScreenshotTranslateSubtitle: String { loc("cmd.screenshot.translate.subtitle") }
+    static var cmdScreenshotPinTitle: String { loc("cmd.screenshot.pin.title") }
+    static var cmdScreenshotPinSubtitle: String { loc("cmd.screenshot.pin.subtitle") }
+    static var screenshotOutputCopy: String { loc("screenshot.output.copy") }
+    static var screenshotOutputSave: String { loc("screenshot.output.save") }
+    static var screenshotOutputCopyAndSave: String { loc("screenshot.output.copy.and.save") }
+    static var screenshotOverlayRegionHint: String { loc("screenshot.overlay.region.hint") }
+    static var screenshotOverlayWindowHint: String { loc("screenshot.overlay.window.hint") }
+    static var screenshotOverlayDisplayHint: String { loc("screenshot.overlay.display.hint") }
+    static var screenshotClipboardName: String { loc("screenshot.clipboard.name") }
+    static var screenshotErrorTitle: String { loc("screenshot.error.title") }
+    static var screenshotErrorPermissionDenied: String { loc("screenshot.error.permission.denied") }
+    static var screenshotOpenSettings: String { loc("screenshot.open.settings") }
+    static var screenshotErrorNoDisplays: String { loc("screenshot.error.no.displays") }
+    static var screenshotErrorDisplayUnavailable: String { loc("screenshot.error.display.unavailable") }
+    static var screenshotErrorCaptureFailed: String { loc("screenshot.error.capture.failed") }
+    static var screenshotErrorInvalidSelection: String { loc("screenshot.error.invalid.selection") }
+    static var screenshotErrorEncoding: String { loc("screenshot.error.encoding") }
+    static var screenshotOCRImageUnavailable: String { loc("screenshot.ocr.image.unavailable") }
+    static var screenshotOCRNoText: String { loc("screenshot.ocr.no.text") }
+    static var screenshotOCRCopiedTitle: String { loc("screenshot.ocr.copied.title") }
+    static var screenshotOCRCopiedMessage: String { loc("screenshot.ocr.copied.message") }
+    static var screenshotOCRErrorTitle: String { loc("screenshot.ocr.error.title") }
+    static var screenshotQRNotFound: String { loc("screenshot.qr.not.found") }
+    static var screenshotQRErrorTitle: String { loc("screenshot.qr.error.title") }
+    static var screenshotQRResultTitle: String { loc("screenshot.qr.result.title") }
+    static var screenshotQROpen: String { loc("screenshot.qr.open") }
+    static var screenshotQRImportOTPTitle: String { loc("screenshot.qr.import.otp.title") }
+    static var screenshotQRImportOTPMessage: String { loc("screenshot.qr.import.otp.message") }
+    static var screenshotQRImportOTPConfirm: String { loc("screenshot.qr.import.otp.confirm") }
+    static var screenshotQRImportOTPFailed: String { loc("screenshot.qr.import.otp.failed") }
+    static var prefsScreenshotEnabledTitle: String { loc("prefs.screenshot.enabled.title") }
+    static var prefsScreenshotEnabledSubtitle: String { loc("prefs.screenshot.enabled.subtitle") }
+    static var prefsScreenshotDefaultModeTitle: String { loc("prefs.screenshot.default.mode.title") }
+    static var prefsScreenshotDefaultModeSubtitle: String { loc("prefs.screenshot.default.mode.subtitle") }
+    static var prefsScreenshotRegionHotkeyTitle: String { loc("prefs.screenshot.region.hotkey.title") }
+    static var prefsScreenshotRegionHotkeySubtitle: String { loc("prefs.screenshot.region.hotkey.subtitle") }
+    static var prefsScreenshotEditHotkeyTitle: String { loc("prefs.screenshot.edit.hotkey.title") }
+    static var prefsScreenshotEditHotkeySubtitle: String { loc("prefs.screenshot.edit.hotkey.subtitle") }
+    static var prefsScreenshotWindowHotkeyTitle: String { loc("prefs.screenshot.window.hotkey.title") }
+    static var prefsScreenshotWindowHotkeySubtitle: String { loc("prefs.screenshot.window.hotkey.subtitle") }
+    static var prefsScreenshotDisplayHotkeyTitle: String { loc("prefs.screenshot.display.hotkey.title") }
+    static var prefsScreenshotDisplayHotkeySubtitle: String { loc("prefs.screenshot.display.hotkey.subtitle") }
+    static var prefsScreenshotOutputTitle: String { loc("prefs.screenshot.output.title") }
+    static var prefsScreenshotOutputSubtitle: String { loc("prefs.screenshot.output.subtitle") }
+    static var prefsScreenshotFormatTitle: String { loc("prefs.screenshot.format.title") }
+    static var prefsScreenshotFormatSubtitle: String { loc("prefs.screenshot.format.subtitle") }
+    static var prefsScreenshotQualityTitle: String { loc("prefs.screenshot.quality.title") }
+    static var prefsScreenshotQualitySubtitle: String { loc("prefs.screenshot.quality.subtitle") }
+    static var prefsScreenshotDirectoryTitle: String { loc("prefs.screenshot.directory.title") }
+    static var prefsScreenshotDirectoryDefault: String { loc("prefs.screenshot.directory.default") }
+    static var prefsScreenshotDirectoryChoose: String { loc("prefs.screenshot.directory.choose") }
+    static var prefsScreenshotFileNameTitle: String { loc("prefs.screenshot.filename.title") }
+    static var prefsScreenshotFileNameSubtitle: String { loc("prefs.screenshot.filename.subtitle") }
+    static var prefsScreenshotSoundTitle: String { loc("prefs.screenshot.sound.title") }
+    static var prefsScreenshotSoundSubtitle: String { loc("prefs.screenshot.sound.subtitle") }
+    static var prefsScreenshotPostActionsTitle: String { loc("prefs.screenshot.post.actions.title") }
+    static var prefsScreenshotPostActionsSubtitle: String { loc("prefs.screenshot.post.actions.subtitle") }
+    static var prefsScreenshotPostActionsDurationTitle: String { loc("prefs.screenshot.post.actions.duration.title") }
+    static var prefsScreenshotPostActionsDurationSubtitle: String { loc("prefs.screenshot.post.actions.duration.subtitle") }
+    static var prefsScreenshotPostActionsNever: String { loc("prefs.screenshot.post.actions.never") }
+    static var prefsScreenshotPostActionsSeconds: String { loc("prefs.screenshot.post.actions.seconds") }
+    static var prefsScreenshotOCRIndexTitle: String { loc("prefs.screenshot.ocr.index.title") }
+    static var prefsScreenshotOCRIndexSubtitle: String { loc("prefs.screenshot.ocr.index.subtitle") }
+    static var postCaptureSave: String { loc("screenshot.post.capture.save") }
+    static var prefsScreenshotWindowShadowTitle: String { loc("prefs.screenshot.window.shadow.title") }
+    static var prefsScreenshotWindowShadowSubtitle: String { loc("prefs.screenshot.window.shadow.subtitle") }
+    static var prefsScreenshotHistoryLimitTitle: String { loc("prefs.screenshot.history.limit.title") }
+    static var prefsScreenshotHistoryLimitSubtitle: String { loc("prefs.screenshot.history.limit.subtitle") }
+    static var prefsScreenshotHistoryLimitValue: String { loc("prefs.screenshot.history.limit.value") }
+    static var prefsScreenshotRetentionDaysTitle: String { loc("prefs.screenshot.retention.days.title") }
+    static var prefsScreenshotRetentionDaysSubtitle: String { loc("prefs.screenshot.retention.days.subtitle") }
+    static var prefsScreenshotRetentionDaysValue: String { loc("prefs.screenshot.retention.days.value") }
+    static var prefsScreenshotStorageLimitTitle: String { loc("prefs.screenshot.storage.limit.title") }
+    static var prefsScreenshotStorageLimitSubtitle: String { loc("prefs.screenshot.storage.limit.subtitle") }
+    static var prefsScreenshotStorageLimitValue: String { loc("prefs.screenshot.storage.limit.value") }
+    static var prefsScreenshotRetentionUnlimited: String { loc("prefs.screenshot.retention.unlimited") }
+    static var prefsScreenshotOCRLanguagesTitle: String { loc("prefs.screenshot.ocr.languages.title") }
+    static var prefsScreenshotOCRLanguagesSubtitle: String { loc("prefs.screenshot.ocr.languages.subtitle") }
+    static var prefsScreenshotOCRChinese: String { loc("prefs.screenshot.ocr.chinese") }
+    static var prefsScreenshotOCREnglish: String { loc("prefs.screenshot.ocr.english") }
+    static var screenshotHistoryTitle: String { loc("screenshot.history.title") }
+    static var screenshotHistoryCount: String { loc("screenshot.history.count") }
+    static var screenshotHistoryEmptyTitle: String { loc("screenshot.history.empty.title") }
+    static var screenshotHistoryEmptySubtitle: String { loc("screenshot.history.empty.subtitle") }
+    static var screenshotHistoryOpenFolder: String { loc("screenshot.history.open.folder") }
+    static var screenshotHistoryClear: String { loc("screenshot.history.clear") }
+    static var screenshotHistoryClearTitle: String { loc("screenshot.history.clear.title") }
+    static var screenshotHistoryClearMessage: String { loc("screenshot.history.clear.message") }
+    static var screenshotHistoryClearConfirm: String { loc("screenshot.history.clear.confirm") }
+    static var screenshotHistorySearch: String { loc("screenshot.history.search") }
+    static var screenshotKindRegion: String { loc("screenshot.kind.region") }
+    static var screenshotKindWindow: String { loc("screenshot.kind.window") }
+    static var screenshotKindDisplay: String { loc("screenshot.kind.display") }
+    static var screenshotKindEdited: String { loc("screenshot.kind.edited") }
+    static var editorTitle: String { loc("editor.title") }
+    static var editorToolCrop: String { loc("editor.tool.crop") }
+    static var editorToolRectangle: String { loc("editor.tool.rectangle") }
+    static var editorToolEllipse: String { loc("editor.tool.ellipse") }
+    static var editorToolArrow: String { loc("editor.tool.arrow") }
+    static var editorToolPen: String { loc("editor.tool.pen") }
+    static var editorToolText: String { loc("editor.tool.text") }
+    static var editorToolNumber: String { loc("editor.tool.number") }
+    static var editorToolHighlight: String { loc("editor.tool.highlight") }
+    static var editorToolMosaic: String { loc("editor.tool.mosaic") }
+    static var editorUndo: String { loc("editor.undo") }
+    static var editorRedo: String { loc("editor.redo") }
+    static var editorClear: String { loc("editor.clear") }
+    static var editorColor: String { loc("editor.color") }
+    static var editorWidth: String { loc("editor.width") }
+    static var editorOutputSize: String { loc("editor.output.size") }
+    static var editorHint: String { loc("editor.hint") }
+    static var editorFinish: String { loc("editor.finish") }
+    static var editorTextTitle: String { loc("editor.text.title") }
+    static var editorTextPlaceholder: String { loc("editor.text.placeholder") }
+    static var editorTextAdd: String { loc("editor.text.add") }
+    static var editorErrorTitle: String { loc("editor.error.title") }
+    static var editorErrorContext: String { loc("editor.error.context") }
+    static var editorErrorImage: String { loc("editor.error.image") }
+    static var editorSuggestRedactions: String { loc("editor.suggest.redactions") }
+    static var editorNoSensitiveContent: String { loc("editor.no.sensitive.content") }
+
     // MARK: - Window
 
     static var windowPrefsTitle: String {
@@ -1127,6 +1286,10 @@ enum L10n {
         loc("ai.clipboard.prompt")
     }
 
+    static var aiImagePrompt: String {
+        loc("ai.image.prompt")
+    }
+
     static var aiErrorNotConfigured: String {
         loc("ai.error.not.configured")
     }
@@ -1138,6 +1301,22 @@ enum L10n {
     static var aiErrorEmptyResponse: String {
         loc("ai.error.empty.response")
     }
+
+    static var aiErrorImageUnavailable: String {
+        loc("ai.error.image.unavailable")
+    }
+
+    static var aiErrorVisionUnsupported: String { loc("ai.error.vision.unsupported") }
+    static var aiErrorVisionUnsupportedTitle: String { loc("ai.error.vision.unsupported.title") }
+    static var aiImagePrivacyTitle: String { loc("ai.image.privacy.title") }
+    static var aiImagePrivacyMessage: String { loc("ai.image.privacy.message") }
+    static var aiImagePrivacyConfirm: String { loc("ai.image.privacy.confirm") }
+    static var prefsAIVisionTitle: String { loc("prefs.ai.vision.title") }
+    static var prefsAIVisionSubtitle: String { loc("prefs.ai.vision.subtitle") }
+    static var prefsAIVisionPrivacy: String { loc("prefs.ai.vision.privacy") }
+    static var prefsAIImageMaxDimension: String { loc("prefs.ai.image.max.dimension") }
+    static var prefsAIImageQuality: String { loc("prefs.ai.image.quality") }
+    static var prefsAIModelOpenSettings: String { loc("prefs.ai.model.open.settings") }
 
     // MARK: - Authenticator
 

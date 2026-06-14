@@ -239,6 +239,45 @@ final class ClipboardStore {
         return entries
     }
 
+    func insertCapture(_ artifact: CaptureArtifact) {
+        let imageContent = ImageClipboardContent(
+            thumbnailPath: artifact.thumbnailURL.path,
+            originalPath: artifact.imageURL.path,
+            sourceName: L10n.screenshotClipboardName,
+            width: artifact.width,
+            height: artifact.height,
+            ownsCachedFiles: false
+        )
+        addEntry(
+            ClipboardEntry(
+                id: artifact.id.uuidString,
+                content: .image(imageContent),
+                copiedAt: artifact.createdAt
+            )
+        )
+    }
+
+    func removeCaptureEntries(ids: Set<UUID>) {
+        let idStrings = Set(ids.map(\.uuidString))
+        let previousCount = entries.count
+        entries.removeAll { idStrings.contains($0.id) }
+        if entries.count != previousCount {
+            onChange?()
+        }
+    }
+
+    func writeCaptureToPasteboard(_ artifact: CaptureArtifact) {
+        guard let image = NSImage(contentsOf: artifact.imageURL),
+              let tiffData = image.tiffRepresentation
+        else { return }
+
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setData(tiffData, forType: .tiff)
+        pasteboard.writeObjects([artifact.imageURL as NSURL])
+        lastChangeCount = pasteboard.changeCount
+    }
+
     /// Tries to read an image from the pasteboard using multiple format checks.
     private func getImageFromPasteboard(_ pasteboard: NSPasteboard) -> NSImage? {
         // Try TIFF data
@@ -565,6 +604,7 @@ final class ClipboardStore {
 
     private func cleanupDiskCache(for entry: ClipboardEntry) {
         if case let .image(imageContent) = entry.content {
+            guard imageContent.ownsCachedFiles else { return }
             try? FileManager.default.removeItem(atPath: imageContent.thumbnailPath)
             if let originalPath = imageContent.originalPath {
                 try? FileManager.default.removeItem(atPath: originalPath)

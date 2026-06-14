@@ -23,6 +23,7 @@ final class AIChatHistoryStore: ObservableObject {
         static let appSupportDirectoryName = "Meow"
         static let historyDirectoryName = "AIChats"
         static let conversationsDirectoryName = "conversations"
+        static let attachmentsDirectoryName = "attachments"
         static let indexFileName = "index.json"
         static let legacyFileName = "ai-chat-history.json"
     }
@@ -39,6 +40,7 @@ final class AIChatHistoryStore: ObservableObject {
 
     init() {
         load()
+        removeOrphanAttachments()
         selectedConversationID = conversations.first?.id
     }
 
@@ -109,6 +111,7 @@ final class AIChatHistoryStore: ObservableObject {
         selectedConversationID = id
         prune()
         save()
+        removeOrphanAttachments()
     }
 
     func deleteConversation(_ id: UUID) {
@@ -117,6 +120,7 @@ final class AIChatHistoryStore: ObservableObject {
             selectedConversationID = conversations.first?.id
         }
         save()
+        removeOrphanAttachments()
     }
 
     func clearAll() {
@@ -134,6 +138,19 @@ final class AIChatHistoryStore: ObservableObject {
         } else {
             clearAll()
         }
+    }
+
+    func storeAttachment(at sourceURL: URL) throws -> String {
+        guard persistenceEnabled else {
+            return sourceURL.path
+        }
+        try fileManager.createDirectory(at: attachmentsDirectoryURL, withIntermediateDirectories: true)
+        let ext = sourceURL.pathExtension.isEmpty ? "png" : sourceURL.pathExtension.lowercased()
+        let destination = attachmentsDirectoryURL
+            .appendingPathComponent(UUID().uuidString.lowercased())
+            .appendingPathExtension(ext)
+        try fileManager.copyItem(at: sourceURL, to: destination)
+        return destination.path
     }
 
     var storagePath: String {
@@ -223,6 +240,10 @@ final class AIChatHistoryStore: ObservableObject {
         historyRootURL.appendingPathComponent(Storage.conversationsDirectoryName, isDirectory: true)
     }
 
+    private var attachmentsDirectoryURL: URL {
+        historyRootURL.appendingPathComponent(Storage.attachmentsDirectoryName, isDirectory: true)
+    }
+
     private var indexFileURL: URL {
         historyRootURL.appendingPathComponent(Storage.indexFileName)
     }
@@ -277,6 +298,21 @@ final class AIChatHistoryStore: ObservableObject {
         }
     }
 
+    private func removeOrphanAttachments() {
+        guard let files = try? fileManager.contentsOfDirectory(
+            at: attachmentsDirectoryURL,
+            includingPropertiesForKeys: nil
+        ) else { return }
+        let referencedPaths = Set(
+            conversations
+                .flatMap(\.messages)
+                .compactMap(\.imagePath)
+        )
+        for file in files where !referencedPaths.contains(file.path) {
+            try? fileManager.removeItem(at: file)
+        }
+    }
+
     private func prune() {
         if conversations.count > Self.maxConversations {
             conversations = Array(conversations.prefix(Self.maxConversations))
@@ -288,7 +324,8 @@ final class AIChatHistoryStore: ObservableObject {
         return AIChatMessage(
             id: message.id,
             role: message.role,
-            content: String(message.content.prefix(Self.maxMessageLength))
+            content: String(message.content.prefix(Self.maxMessageLength)),
+            imagePath: message.imagePath
         )
     }
 
