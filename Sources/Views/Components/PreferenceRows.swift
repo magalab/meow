@@ -338,6 +338,24 @@ struct PreferenceLanguageRow: View {
     }
 }
 
+private enum KeystrokePreferencePage: String, CaseIterable, Identifiable {
+    case overview
+    case display
+    case position
+
+    var id: String {
+        rawValue
+    }
+
+    var title: String {
+        switch self {
+        case .overview: return L10n.prefsKeystrokePageOverview
+        case .display: return L10n.prefsKeystrokePageDisplay
+        case .position: return L10n.prefsKeystrokePagePosition
+        }
+    }
+}
+
 struct PreferenceKeystrokeVisualizerSection: View {
     let theme: AppTheme
     @ObservedObject var visualizerService: KeystrokeVisualizerService
@@ -353,6 +371,7 @@ struct PreferenceKeystrokeVisualizerSection: View {
     @Binding var overlayPoint: KeystrokeOverlayPoint?
 
     @Environment(\.colorScheme) private var colorScheme
+    @State private var selectedPage = KeystrokePreferencePage.overview
 
     private var palette: ThemePalette {
         MeowTheme.palette(theme: theme, scheme: colorScheme)
@@ -372,7 +391,37 @@ struct PreferenceKeystrokeVisualizerSection: View {
                 isOn: $enabled
             )
 
-            if enabled && !hasPermission {
+            if enabled {
+                Picker("", selection: $selectedPage) {
+                    ForEach(KeystrokePreferencePage.allCases) { page in
+                        Text(page.title).tag(page)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                switch selectedPage {
+                case .overview:
+                    overviewPage
+                case .display:
+                    displayPage
+                case .position:
+                    positionPage
+                }
+            }
+        }
+        .animation(.snappy(duration: 0.22), value: enabled)
+        .animation(.snappy(duration: 0.22), value: selectedPage)
+        .onAppear {
+            refreshPermission()
+        }
+        .onChange(of: enabled) { _, _ in
+            refreshPermission()
+        }
+    }
+
+    private var overviewPage: some View {
+        VStack(spacing: 10) {
+            if !hasPermission {
                 permissionRow
             }
 
@@ -385,18 +434,25 @@ struct PreferenceKeystrokeVisualizerSection: View {
             )
 
             displayModeRow
+        }
+        .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+    }
+
+    private var displayPage: some View {
+        VStack(spacing: 10) {
             styleRow
-            positionRow
             durationRow
             historyRow
             opacityRow
         }
-        .onAppear {
-            refreshPermission()
+        .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+    }
+
+    private var positionPage: some View {
+        VStack(spacing: 10) {
+            positionRow
         }
-        .onChange(of: enabled) { _, _ in
-            refreshPermission()
-        }
+        .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
     }
 
     private var permissionRow: some View {

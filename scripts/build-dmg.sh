@@ -117,7 +117,9 @@ cat > "$APP_DIR/Contents/Info.plist" <<EOF
   <key>NSCalendarsFullAccessUsageDescription</key>
   <string>Meow shows calendar events for the selected day in the menu bar calendar.</string>
   <key>NSMicrophoneUsageDescription</key>
-  <string>Meow records audio while you hold the speech shortcut for offline transcription.</string>
+  <string>Meow uses the microphone for offline speech recognition and optional screen-recording audio.</string>
+  <key>NSCameraUsageDescription</key>
+  <string>Meow can include a camera overlay in screen recordings when you enable it.</string>
 </dict>
 </plist>
 EOF

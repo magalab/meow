@@ -2,15 +2,15 @@ import AppKit
 import SwiftUI
 
 enum PreferenceSection: String, CaseIterable, Identifiable {
-    case dock
     case general
     case screenshot
+    case recording
+    case history
     case authenticator
     case keyboard
     case speech
     case health
     case ai
-    case appearance
     case about
 
     var id: String {
@@ -19,31 +19,67 @@ enum PreferenceSection: String, CaseIterable, Identifiable {
 
     var localizedTitle: String {
         switch self {
-        case .dock: return L10n.prefsSectionDock
         case .general: return L10n.prefsSectionGeneral
         case .screenshot: return L10n.prefsSectionScreenshot
+        case .recording: return L10n.prefsSectionRecording
+        case .history: return L10n.prefsSectionHistory
         case .authenticator: return L10n.prefsSectionAuthenticator
         case .keyboard: return L10n.prefsSectionKeyboard
         case .speech: return L10n.prefsSectionSpeech
         case .health: return L10n.prefsSectionHealth
         case .ai: return L10n.prefsSectionAI
-        case .appearance: return L10n.prefsSectionAppearance
         case .about: return L10n.prefsSectionAbout
         }
     }
 
     var icon: String {
         switch self {
-        case .dock: return "dock.rectangle"
         case .general: return "gearshape"
         case .screenshot: return "camera.viewfinder"
+        case .recording: return "record.circle"
+        case .history: return "clock.arrow.circlepath"
         case .authenticator: return AuthenticatorVisuals.symbol
         case .keyboard: return "keyboard"
         case .speech: return "waveform"
         case .health: return "figure.mind.and.body"
         case .ai: return "sparkles"
-        case .appearance: return "paintpalette"
         case .about: return "info.circle"
+        }
+    }
+}
+
+private enum GeneralPreferencePage: String, CaseIterable, Identifiable {
+    case basics
+    case dock
+    case appearance
+    case shortcuts
+
+    var id: String {
+        rawValue
+    }
+
+    var title: String {
+        switch self {
+        case .basics: return L10n.prefsGeneralPageBasics
+        case .dock: return L10n.prefsGeneralPageDock
+        case .appearance: return L10n.prefsGeneralPageAppearance
+        case .shortcuts: return L10n.prefsGeneralPageShortcuts
+        }
+    }
+}
+
+private enum HistoryPreferencePage: String, CaseIterable, Identifiable {
+    case screenshots
+    case recordings
+
+    var id: String {
+        rawValue
+    }
+
+    var title: String {
+        switch self {
+        case .screenshots: return L10n.prefsSectionScreenshot
+        case .recordings: return L10n.prefsSectionRecording
         }
     }
 }
@@ -51,6 +87,12 @@ enum PreferenceSection: String, CaseIterable, Identifiable {
 @MainActor
 final class PreferencesNavigationState: ObservableObject {
     @Published var selectedSection: PreferenceSection = .general
+}
+
+struct RecordingHistoryContext {
+    let store: RecordingStore
+    let onDelete: (RecordingArtifact) -> Void
+    let onTrim: (RecordingArtifact) -> Void
 }
 
 struct PreferencesView: View {
@@ -63,8 +105,12 @@ struct PreferencesView: View {
     @ObservedObject var speechModelStore: SpeechModelStore
     @ObservedObject var speechHistoryStore: SpeechHistoryStore
     @ObservedObject var speechRecognitionService: SpeechRecognitionService
+    let makeCaptureHistoryView: (AppTheme) -> CaptureHistoryView
+    let recordingHistoryContext: RecordingHistoryContext
     @ObservedObject private var lang = LanguageManager.shared
     @Environment(\.colorScheme) private var colorScheme
+    @State private var selectedGeneralPage = GeneralPreferencePage.basics
+    @State private var selectedHistoryPage = HistoryPreferencePage.screenshots
 
     private var palette: ThemePalette {
         MeowTheme.palette(theme: viewModel.settings.theme, scheme: colorScheme)
@@ -123,103 +169,8 @@ struct PreferencesView: View {
 
                 ScrollView {
                     VStack(spacing: 10) {
-                        if navigation.selectedSection == .dock {
-                            PreferenceDockIconPreview(
-                                theme: viewModel.settings.theme,
-                                style: viewModel.settings.dockIconStyle
-                            )
-                            .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .opacity))
-
-                            PreferenceDockIconStyleRow(
-                                theme: viewModel.settings.theme,
-                                style: Binding(
-                                    get: { viewModel.settings.dockIconStyle },
-                                    set: { viewModel.settings.dockIconStyle = $0 }
-                                )
-                            )
-                            .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .opacity))
-
-                            PreferenceToggleRow(
-                                title: L10n.prefsDockTitle,
-                                subtitle: L10n.prefsDockSubtitle,
-                                symbol: "dock.rectangle",
-                                theme: viewModel.settings.theme,
-                                isOn: animatedBinding(for: \.showDockIcon)
-                            )
-                            .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .opacity))
-
-                            PreferenceToggleRow(
-                                title: L10n.prefsMenuBarTitle,
-                                subtitle: L10n.prefsMenuBarSubtitle,
-                                symbol: "menubar.rectangle",
-                                theme: viewModel.settings.theme,
-                                isOn: animatedBinding(for: \.showStatusItem)
-                            )
-                            .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .opacity))
-
-                            PreferenceDateIconRow(
-                                theme: viewModel.settings.theme,
-                                style: Binding(
-                                    get: { viewModel.settings.dateIconStyle },
-                                    set: { viewModel.settings.dateIconStyle = $0 }
-                                )
-                            )
-                            .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .opacity))
-                        }
-
                         if navigation.selectedSection == .general {
-                            PreferenceToggleRow(
-                                title: L10n.prefsAutoLaunchTitle,
-                                subtitle: L10n.prefsAutoLaunchSubtitle,
-                                symbol: "power.circle",
-                                theme: viewModel.settings.theme,
-                                isOn: animatedBinding(for: \.autoLaunch)
-                            )
-                            .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .opacity))
-
-                            PreferenceToggleRow(
-                                title: L10n.prefsClipboardTitle,
-                                subtitle: L10n.prefsClipboardSubtitle,
-                                symbol: "clipboard",
-                                theme: viewModel.settings.theme,
-                                isOn: animatedBinding(for: \.clipboardHistoryEnabled)
-                            )
-                            .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .opacity))
-
-                            PreferenceHotkeyRecorderRow(
-                                title: L10n.prefsHotkeyTitle,
-                                subtitle: L10n.prefsHotkeySubtitle,
-                                symbol: "keyboard",
-                                theme: viewModel.settings.theme,
-                                keyCode: viewModel.settings.hotkeyKeyCode,
-                                modifiers: viewModel.settings.hotkeyModifiers
-                            ) { keyCode, modifiers in
-                                viewModel.settings.hotkeyKeyCode = keyCode
-                                viewModel.settings.hotkeyModifiers = modifiers
-                            }
-                            .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .opacity))
-
-                            PreferenceHotkeyRecorderRow(
-                                title: L10n.prefsTranslateHotkeyTitle,
-                                subtitle: L10n.prefsTranslateHotkeySubtitle,
-                                symbol: "translate",
-                                theme: viewModel.settings.theme,
-                                keyCode: viewModel.settings.translateHotkeyKeyCode,
-                                modifiers: viewModel.settings.translateHotkeyModifiers
-                            ) { keyCode, modifiers in
-                                viewModel.settings.translateHotkeyKeyCode = keyCode
-                                viewModel.settings.translateHotkeyModifiers = modifiers
-                            }
-                            .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .opacity))
-
-                            PreferenceLanguageRow(
-                                theme: viewModel.settings.theme,
-                                language: Binding(
-                                    get: { viewModel.settings.language },
-                                    set: { viewModel.settings.language = $0 }
-                                )
-                            )
-                            .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .opacity))
+                            generalPreferencesSection
                         }
 
                         if navigation.selectedSection == .authenticator {
@@ -246,14 +197,20 @@ struct PreferencesView: View {
                             .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
                         }
 
-                        if navigation.selectedSection == .appearance {
-                            PreferenceThemeRow(
-                                theme: Binding(
-                                    get: { viewModel.settings.theme },
-                                    set: { viewModel.settings.theme = $0 }
+                        if navigation.selectedSection == .recording {
+                            RecordingPreferencesView(
+                                theme: viewModel.settings.theme,
+                                settings: Binding(
+                                    get: { viewModel.settings.recording },
+                                    set: { viewModel.settings.recording = $0 }
                                 )
                             )
                             .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+                        }
+
+                        if navigation.selectedSection == .history {
+                            historyPreferencesSection
+                                .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
                         }
 
                         if navigation.selectedSection == .speech {
@@ -350,6 +307,186 @@ struct PreferencesView: View {
         }
         .frame(width: 760, height: 500)
         .id(lang.refreshToken)
+    }
+
+    private var generalPreferencesSection: some View {
+        VStack(spacing: 10) {
+            Picker("", selection: $selectedGeneralPage) {
+                ForEach(GeneralPreferencePage.allCases) { page in
+                    Text(page.title).tag(page)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            switch selectedGeneralPage {
+            case .basics:
+                generalBasicsPage
+            case .dock:
+                generalDockPage
+            case .appearance:
+                generalAppearancePage
+            case .shortcuts:
+                generalShortcutsPage
+            }
+        }
+        .animation(.snappy(duration: 0.22), value: selectedGeneralPage)
+        .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+    }
+
+    private var generalBasicsPage: some View {
+        VStack(spacing: 10) {
+            PreferenceToggleRow(
+                title: L10n.prefsAutoLaunchTitle,
+                subtitle: L10n.prefsAutoLaunchSubtitle,
+                symbol: "power.circle",
+                theme: viewModel.settings.theme,
+                isOn: animatedBinding(for: \.autoLaunch)
+            )
+
+            PreferenceToggleRow(
+                title: L10n.prefsClipboardTitle,
+                subtitle: L10n.prefsClipboardSubtitle,
+                symbol: "clipboard",
+                theme: viewModel.settings.theme,
+                isOn: animatedBinding(for: \.clipboardHistoryEnabled)
+            )
+
+            if viewModel.settings.clipboardHistoryEnabled {
+                PreferenceToggleRow(
+                    title: L10n.prefsClipboardImagePreviewTitle,
+                    subtitle: L10n.prefsClipboardImagePreviewSubtitle,
+                    symbol: "photo.on.rectangle",
+                    theme: viewModel.settings.theme,
+                    isOn: animatedBinding(for: \.clipboardShowImagePreviews)
+                )
+            }
+
+            PreferenceLanguageRow(
+                theme: viewModel.settings.theme,
+                language: Binding(
+                    get: { viewModel.settings.language },
+                    set: { viewModel.settings.language = $0 }
+                )
+            )
+        }
+        .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+    }
+
+    private var generalDockPage: some View {
+        VStack(spacing: 10) {
+            PreferenceDockIconPreview(
+                theme: viewModel.settings.theme,
+                style: viewModel.settings.dockIconStyle
+            )
+
+            PreferenceDockIconStyleRow(
+                theme: viewModel.settings.theme,
+                style: Binding(
+                    get: { viewModel.settings.dockIconStyle },
+                    set: { viewModel.settings.dockIconStyle = $0 }
+                )
+            )
+
+            PreferenceToggleRow(
+                title: L10n.prefsDockTitle,
+                subtitle: L10n.prefsDockSubtitle,
+                symbol: "dock.rectangle",
+                theme: viewModel.settings.theme,
+                isOn: animatedBinding(for: \.showDockIcon)
+            )
+
+            PreferenceToggleRow(
+                title: L10n.prefsMenuBarTitle,
+                subtitle: L10n.prefsMenuBarSubtitle,
+                symbol: "menubar.rectangle",
+                theme: viewModel.settings.theme,
+                isOn: animatedBinding(for: \.showStatusItem)
+            )
+
+            PreferenceDateIconRow(
+                theme: viewModel.settings.theme,
+                style: Binding(
+                    get: { viewModel.settings.dateIconStyle },
+                    set: { viewModel.settings.dateIconStyle = $0 }
+                )
+            )
+        }
+        .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+    }
+
+    private var generalAppearancePage: some View {
+        VStack(spacing: 10) {
+            PreferenceThemeRow(
+                theme: Binding(
+                    get: { viewModel.settings.theme },
+                    set: { viewModel.settings.theme = $0 }
+                )
+            )
+        }
+        .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+    }
+
+    private var generalShortcutsPage: some View {
+        VStack(spacing: 10) {
+            PreferenceHotkeyRecorderRow(
+                title: L10n.prefsHotkeyTitle,
+                subtitle: L10n.prefsHotkeySubtitle,
+                symbol: "keyboard",
+                theme: viewModel.settings.theme,
+                keyCode: viewModel.settings.hotkeyKeyCode,
+                modifiers: viewModel.settings.hotkeyModifiers
+            ) { keyCode, modifiers in
+                viewModel.settings.hotkeyKeyCode = keyCode
+                viewModel.settings.hotkeyModifiers = modifiers
+            }
+
+            PreferenceHotkeyRecorderRow(
+                title: L10n.prefsTranslateHotkeyTitle,
+                subtitle: L10n.prefsTranslateHotkeySubtitle,
+                symbol: "translate",
+                theme: viewModel.settings.theme,
+                keyCode: viewModel.settings.translateHotkeyKeyCode,
+                modifiers: viewModel.settings.translateHotkeyModifiers
+            ) { keyCode, modifiers in
+                viewModel.settings.translateHotkeyKeyCode = keyCode
+                viewModel.settings.translateHotkeyModifiers = modifiers
+            }
+        }
+        .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+    }
+
+    private var historyPreferencesSection: some View {
+        VStack(spacing: 10) {
+            Picker("", selection: $selectedHistoryPage) {
+                ForEach(HistoryPreferencePage.allCases) { page in
+                    Text(page.title).tag(page)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            switch selectedHistoryPage {
+            case .screenshots:
+                makeCaptureHistoryView(viewModel.settings.theme)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(palette.preferencesPanelStroke, lineWidth: 1)
+                    )
+            case .recordings:
+                RecordingHistoryView(
+                    store: recordingHistoryContext.store,
+                    theme: viewModel.settings.theme,
+                    onDelete: recordingHistoryContext.onDelete,
+                    onTrim: recordingHistoryContext.onTrim
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(palette.preferencesPanelStroke, lineWidth: 1)
+                )
+            }
+        }
+        .animation(.snappy(duration: 0.22), value: selectedHistoryPage)
     }
 
     private func animatedBinding(for keyPath: WritableKeyPath<AppSettings, Bool>) -> Binding<Bool> {

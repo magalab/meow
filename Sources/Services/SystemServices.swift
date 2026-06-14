@@ -218,7 +218,12 @@ final class StatusItemService {
     private var dockIconItem: NSMenuItem?
     private var statusBarIconItem: NSMenuItem?
     private var quitItem: NSMenuItem?
+    private var recordingStatusItem: NSMenuItem?
+    private var recordingPauseItem: NSMenuItem?
+    private var recordingStopItem: NSMenuItem?
+    private var recordingHistoryItem: NSMenuItem?
     private var dateRefreshTimer: Timer?
+    private var recordingActive = false
 
     private var currentStyle: DateIconStyle = .monthDay
     private var iconStyleMenuItems: [NSMenuItem] = []
@@ -234,6 +239,9 @@ final class StatusItemService {
         toggleAutoLaunch: @escaping () -> Void,
         toggleDockIcon: @escaping () -> Void,
         toggleStatusBarIcon: @escaping () -> Void,
+        pauseRecording: @escaping () -> Void,
+        stopRecording: @escaping () -> Void,
+        openRecordingHistory: @escaping () -> Void,
         quit: @escaping () -> Void
     ) {
         guard statusItem == nil else { return }
@@ -258,6 +266,55 @@ final class StatusItemService {
         openItem.action = #selector(BlockActionTarget.invoke)
         menu.addItem(openItem)
         self.openItem = openItem
+
+        let recordingStatusItem = NSMenuItem(
+            title: L10n.recordingStatusIdle,
+            action: nil,
+            keyEquivalent: ""
+        )
+        recordingStatusItem.isEnabled = false
+        recordingStatusItem.isHidden = true
+        menu.addItem(recordingStatusItem)
+        self.recordingStatusItem = recordingStatusItem
+
+        let recordingPauseItem = NSMenuItem(
+            title: L10n.recordingPause,
+            action: nil,
+            keyEquivalent: ""
+        )
+        let pauseTarget = BlockActionTarget { pauseRecording() }
+        actionTargets.append(pauseTarget)
+        recordingPauseItem.target = pauseTarget
+        recordingPauseItem.action = #selector(BlockActionTarget.invoke)
+        recordingPauseItem.isHidden = true
+        menu.addItem(recordingPauseItem)
+        self.recordingPauseItem = recordingPauseItem
+
+        let recordingStopItem = NSMenuItem(
+            title: L10n.recordingStop,
+            action: nil,
+            keyEquivalent: ""
+        )
+        let stopTarget = BlockActionTarget { stopRecording() }
+        actionTargets.append(stopTarget)
+        recordingStopItem.target = stopTarget
+        recordingStopItem.action = #selector(BlockActionTarget.invoke)
+        recordingStopItem.isHidden = true
+        menu.addItem(recordingStopItem)
+        self.recordingStopItem = recordingStopItem
+
+        let recordingHistoryItem = NSMenuItem(
+            title: L10n.recordingHistoryTitle,
+            action: nil,
+            keyEquivalent: ""
+        )
+        let historyTarget = BlockActionTarget { openRecordingHistory() }
+        actionTargets.append(historyTarget)
+        recordingHistoryItem.target = historyTarget
+        recordingHistoryItem.action = #selector(BlockActionTarget.invoke)
+        recordingHistoryItem.isHidden = !initialSettings.recording.enabled
+        menu.addItem(recordingHistoryItem)
+        self.recordingHistoryItem = recordingHistoryItem
 
         let preferencesItem = NSMenuItem(title: L10n.menuPreferences, action: nil, keyEquivalent: ",")
         preferencesItem.keyEquivalentModifierMask = [.command]
@@ -374,6 +431,7 @@ final class StatusItemService {
         autoLaunchItem?.state = settings.autoLaunch ? .on : .off
         dockIconItem?.state = settings.showDockIcon ? .on : .off
         statusBarIconItem?.state = settings.showStatusItem ? .on : .off
+        recordingHistoryItem?.isHidden = !settings.recording.enabled
     }
 
     func updateL10n() {
@@ -384,6 +442,7 @@ final class StatusItemService {
         dockIconItem?.title = L10n.menuDock
         statusBarIconItem?.title = L10n.menuMenuBar
         quitItem?.title = L10n.quitMeow
+        recordingHistoryItem?.title = L10n.recordingHistoryTitle
         for item in iconStyleMenuItems {
             if let rawValue = item.representedObject as? String,
                let style = DateIconStyle(rawValue: rawValue)
@@ -398,6 +457,35 @@ final class StatusItemService {
         currentStyle = style
         statusItem?.button?.image = dateImage()
         updateIconStyleSubmenuState()
+    }
+
+    func updateRecordingState(_ state: RecordingState, elapsed: TimeInterval) {
+        let active = state.isActive
+        recordingActive = active
+        recordingStatusItem?.isHidden = !active
+        recordingPauseItem?.isHidden = !active
+        recordingStopItem?.isHidden = !active
+
+        if active {
+            let total = max(0, Int(elapsed))
+            let time = String(format: "%02d:%02d", total / 60, total % 60)
+            recordingStatusItem?.title = String(format: L10n.recordingStatusActive, time)
+            if case .paused = state {
+                recordingPauseItem?.title = L10n.recordingResume
+            } else {
+                recordingPauseItem?.title = L10n.recordingPause
+            }
+            statusItem?.button?.image = NSImage(
+                systemSymbolName: "record.circle.fill",
+                accessibilityDescription: L10n.recordingStatusIdle
+            )
+            statusItem?.button?.contentTintColor = .systemRed
+            statusItem?.button?.title = " \(time)"
+        } else {
+            statusItem?.button?.contentTintColor = nil
+            statusItem?.button?.title = ""
+            statusItem?.button?.image = dateImage()
+        }
     }
 
     private func updateIconStyleSubmenuState() {
@@ -599,7 +687,9 @@ final class StatusItemService {
             Task { @MainActor in
                 guard let button, let self else { return }
                 self.dateRefreshTimer?.invalidate()
-                button.image = self.dateImage()
+                if !self.recordingActive {
+                    button.image = self.dateImage()
+                }
                 self.scheduleDateRefresh(for: button)
             }
         }
@@ -815,6 +905,68 @@ final class HotkeyService: @unchecked Sendable {
         action: @escaping () -> Void
     ) -> RegistrationResult {
         registerHotkey(id: 6, keyCode: keyCode, modifiers: modifiers, pressedAction: action)
+    }
+
+    func registerRecordingDisplayHotkey(
+        keyCode: UInt32,
+        modifiers: UInt32,
+        action: @escaping () -> Void
+    ) -> RegistrationResult {
+        registerHotkey(id: 8, keyCode: keyCode, modifiers: modifiers, pressedAction: action)
+    }
+
+    func registerRecordingRegionHotkey(
+        keyCode: UInt32,
+        modifiers: UInt32,
+        action: @escaping () -> Void
+    ) -> RegistrationResult {
+        registerHotkey(id: 9, keyCode: keyCode, modifiers: modifiers, pressedAction: action)
+    }
+
+    func registerRecordingWindowHotkey(
+        keyCode: UInt32,
+        modifiers: UInt32,
+        action: @escaping () -> Void
+    ) -> RegistrationResult {
+        registerHotkey(id: 10, keyCode: keyCode, modifiers: modifiers, pressedAction: action)
+    }
+
+    func registerRecordingPauseHotkey(
+        keyCode: UInt32,
+        modifiers: UInt32,
+        action: @escaping () -> Void
+    ) -> RegistrationResult {
+        registerHotkey(id: 11, keyCode: keyCode, modifiers: modifiers, pressedAction: action)
+    }
+
+    func registerRecordingStopHotkey(
+        keyCode: UInt32,
+        modifiers: UInt32,
+        action: @escaping () -> Void
+    ) -> RegistrationResult {
+        registerHotkey(id: 12, keyCode: keyCode, modifiers: modifiers, pressedAction: action)
+    }
+
+    func unregisterRecordingHotkeys() {
+        for id: UInt32 in 8...14 {
+            unregisterHotkey(id: id)
+        }
+    }
+
+    func registerRecordingFrameHotkey(
+        keyCode: UInt32,
+        modifiers: UInt32,
+        action: @escaping () -> Void
+    ) -> RegistrationResult {
+        registerHotkey(id: 13, keyCode: keyCode, modifiers: modifiers, pressedAction: action)
+    }
+
+    func registerRecordingMagnifierHotkey(
+        keyCode: UInt32,
+        modifiers: UInt32,
+        action: @escaping () -> Void
+    ) -> RegistrationResult {
+        registerHotkey(id: 14, keyCode: keyCode, modifiers: modifiers, pressedAction: action)
     }
 
     func unregisterScreenshotHotkeys() {

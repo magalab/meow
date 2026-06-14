@@ -11,6 +11,8 @@ A lightweight macOS launcher with gadgets, built with SwiftUI + AppKit.
 - Clipboard history with paste, copy, delete, and clear actions
 - Native region, window, and display screenshots with frozen multi-display
   selection, full-resolution local history, and configurable copy/save output
+- Native screen recording for displays, regions, windows, applications, system audio,
+  cameras, and connected mobile capture devices
 - Built-in commands (Preferences / Ask AI / Quit)
 - OpenAI-compatible AI chat assistant with local chat history
 - Ask AI from clipboard entries
@@ -88,13 +90,35 @@ Configure screenshots from Preferences -> Screenshot.
 - Send compressed image data to explicitly enabled vision-capable OpenAI-compatible models
   only after a per-upload confirmation
 - Browse, search, edit, copy, pin, OCR, translate, scan, ask AI, reveal, and delete captures
-  from Screenshot History
+  from Screenshot History, with grid and list layouts also available from the unified History tab
 
 Screenshots require Screen Recording permission. Region selection supports multiple
 displays and `Esc` cancels an active capture. Screen Recording and Accessibility
 permissions are independent. macOS associates Screen Recording approval with the
 application identity; unsigned or frequently rebuilt ad-hoc apps may require approval
 again, while a consistently signed app retains a stable permission identity.
+
+## Screen Recording
+
+Configure recording from Preferences -> Recording, then use launcher commands or the
+independent global shortcuts.
+
+- Records displays, regions, single or multiple windows, applications, system audio, and connected iPhone/iPad capture devices
+- Supports H.264, HEVC, HEVC with Alpha, SDR/HDR, Retina resolution, and up to 60 FPS from Preferences
+- Captures system audio and a selected microphone as mixed or separate tracks
+- Adds an optional movable camera overlay, native mouse-click highlights, a pointer magnifier, and PNG frame capture
+- Supports desktop, transparent, or custom solid-color backgrounds for filtered window content
+- Shows recording duration and pause/stop controls in the menu bar and a floating control panel
+- Saves to `~/Movies/Meow/` by default and indexes metadata and thumbnails under
+  `~/Library/Application Support/Meow/Recordings/`
+- Provides searchable history with grid/list layouts, Finder reveal, deletion, and count/age/storage retention policies
+- Opens a floating completion preview with playback and non-destructive start/end trimming
+- Preserves recovery metadata for interrupted recordings and scans it on the next launch
+
+Screen, region, window, application, and system-audio capture require Screen Recording
+permission. Microphone and camera capture request their own permissions. HDR forces HEVC
+in MOV; transparent output requires HEVC with Alpha in MOV and is most useful for window
+or application capture.
 
 ## Authenticator
 

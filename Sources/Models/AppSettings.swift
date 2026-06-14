@@ -153,6 +153,7 @@ extension AISettings {
 struct AppSettings: Codable {
     var autoLaunch: Bool
     var clipboardHistoryEnabled: Bool
+    var clipboardShowImagePreviews: Bool
     var showStatusItem: Bool
     var showDockIcon: Bool
     var hotkeyKeyCode: UInt32
@@ -167,6 +168,7 @@ struct AppSettings: Codable {
     var dockIconStyle: DockIconStyle
     var ai: AISettings
     var screenshot: ScreenshotSettings
+    var recording: RecordingSettings
     var speech: SpeechSettings
     var healthReminder: HealthReminderSettings
     var authenticatorEnabled: Bool
@@ -185,6 +187,7 @@ struct AppSettings: Codable {
     init(
         autoLaunch: Bool,
         clipboardHistoryEnabled: Bool,
+        clipboardShowImagePreviews: Bool,
         showStatusItem: Bool,
         showDockIcon: Bool,
         hotkeyKeyCode: UInt32,
@@ -197,6 +200,7 @@ struct AppSettings: Codable {
         dockIconStyle: DockIconStyle = .calendar,
         ai: AISettings = .default,
         screenshot: ScreenshotSettings = .default,
+        recording: RecordingSettings = .default,
         speech: SpeechSettings = .default,
         healthReminder: HealthReminderSettings = .default,
         authenticatorEnabled: Bool = false,
@@ -214,6 +218,7 @@ struct AppSettings: Codable {
     ) {
         self.autoLaunch = autoLaunch
         self.clipboardHistoryEnabled = clipboardHistoryEnabled
+        self.clipboardShowImagePreviews = clipboardShowImagePreviews
         self.showStatusItem = showStatusItem
         self.showDockIcon = showDockIcon
         self.hotkeyKeyCode = hotkeyKeyCode
@@ -226,6 +231,7 @@ struct AppSettings: Codable {
         self.dockIconStyle = dockIconStyle
         self.ai = ai
         self.screenshot = screenshot
+        self.recording = recording
         self.speech = speech
         self.healthReminder = healthReminder
         self.authenticatorEnabled = authenticatorEnabled
@@ -245,6 +251,7 @@ struct AppSettings: Codable {
     static let `default` = AppSettings(
         autoLaunch: false,
         clipboardHistoryEnabled: true,
+        clipboardShowImagePreviews: true,
         showStatusItem: true,
         showDockIcon: false,
         hotkeyKeyCode: 49,
@@ -260,6 +267,7 @@ extension AppSettings {
     private enum CodingKeys: String, CodingKey {
         case autoLaunch
         case clipboardHistoryEnabled
+        case clipboardShowImagePreviews
         case showStatusItem
         case showDockIcon
         case hotkeyKeyCode
@@ -272,6 +280,7 @@ extension AppSettings {
         case dockIconStyle
         case ai
         case screenshot
+        case recording
         case speech
         case healthReminder
         case authenticatorEnabled
@@ -292,6 +301,7 @@ extension AppSettings {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         autoLaunch = try container.decodeIfPresent(Bool.self, forKey: .autoLaunch) ?? Self.default.autoLaunch
         clipboardHistoryEnabled = try container.decodeIfPresent(Bool.self, forKey: .clipboardHistoryEnabled) ?? Self.default.clipboardHistoryEnabled
+        clipboardShowImagePreviews = try container.decodeIfPresent(Bool.self, forKey: .clipboardShowImagePreviews) ?? Self.default.clipboardShowImagePreviews
         showStatusItem = try container.decodeIfPresent(Bool.self, forKey: .showStatusItem) ?? Self.default.showStatusItem
         showDockIcon = try container.decodeIfPresent(Bool.self, forKey: .showDockIcon) ?? Self.default.showDockIcon
         hotkeyKeyCode = try container.decodeIfPresent(UInt32.self, forKey: .hotkeyKeyCode) ?? Self.default.hotkeyKeyCode
@@ -307,6 +317,10 @@ extension AppSettings {
             ScreenshotSettings.self,
             forKey: .screenshot
         ) ?? Self.default.screenshot
+        recording = try container.decodeIfPresent(
+            RecordingSettings.self,
+            forKey: .recording
+        ) ?? Self.default.recording
         speech = try container.decodeIfPresent(SpeechSettings.self, forKey: .speech) ?? Self.default.speech
         healthReminder = try container.decodeIfPresent(
             HealthReminderSettings.self,

@@ -1,10 +1,33 @@
 import AppKit
 import SwiftUI
 
+private enum ScreenshotPreferencePage: String, CaseIterable, Identifiable {
+    case capture
+    case output
+    case shortcuts
+    case ocr
+    case history
+
+    var id: String {
+        rawValue
+    }
+
+    var title: String {
+        switch self {
+        case .capture: return L10n.prefsScreenshotPageCapture
+        case .output: return L10n.prefsScreenshotPageOutput
+        case .shortcuts: return L10n.prefsScreenshotPageShortcuts
+        case .ocr: return L10n.prefsScreenshotPageOCR
+        case .history: return L10n.prefsScreenshotPageHistory
+        }
+    }
+}
+
 struct ScreenshotPreferencesView: View {
     let theme: AppTheme
     @Binding var settings: ScreenshotSettings
 
+    @State private var selectedPage = ScreenshotPreferencePage.capture
     @Environment(\.colorScheme) private var colorScheme
 
     private var palette: ThemePalette {
@@ -22,147 +45,193 @@ struct ScreenshotPreferencesView: View {
             )
 
             if settings.enabled {
-                pickerRow(
-                    title: L10n.prefsScreenshotDefaultModeTitle,
-                    subtitle: L10n.prefsScreenshotDefaultModeSubtitle,
-                    symbol: "camera.metering.center.weighted",
-                    selection: $settings.defaultCaptureMode,
-                    options: ScreenshotCaptureMode.allCases
-                ) { $0.displayName }
-
-                PreferenceHotkeyRecorderRow(
-                    title: L10n.prefsScreenshotRegionHotkeyTitle,
-                    subtitle: L10n.prefsScreenshotRegionHotkeySubtitle,
-                    symbol: "viewfinder",
-                    theme: theme,
-                    keyCode: settings.regionHotkeyKeyCode,
-                    modifiers: settings.regionHotkeyModifiers
-                ) { keyCode, modifiers in
-                    settings.regionHotkeyKeyCode = keyCode
-                    settings.regionHotkeyModifiers = modifiers
+                Picker("", selection: $selectedPage) {
+                    ForEach(ScreenshotPreferencePage.allCases) { page in
+                        Text(page.title).tag(page)
+                    }
                 }
+                .pickerStyle(.segmented)
 
-                PreferenceHotkeyRecorderRow(
-                    title: L10n.prefsScreenshotEditHotkeyTitle,
-                    subtitle: L10n.prefsScreenshotEditHotkeySubtitle,
-                    symbol: "pencil.and.outline",
-                    theme: theme,
-                    keyCode: settings.editHotkeyKeyCode,
-                    modifiers: settings.editHotkeyModifiers
-                ) { keyCode, modifiers in
-                    settings.editHotkeyKeyCode = keyCode
-                    settings.editHotkeyModifiers = modifiers
+                switch selectedPage {
+                case .capture:
+                    capturePage
+                case .output:
+                    outputPage
+                case .shortcuts:
+                    shortcutsPage
+                case .ocr:
+                    ocrPage
+                case .history:
+                    historyPage
                 }
-
-                PreferenceHotkeyRecorderRow(
-                    title: L10n.prefsScreenshotWindowHotkeyTitle,
-                    subtitle: L10n.prefsScreenshotWindowHotkeySubtitle,
-                    symbol: "macwindow",
-                    theme: theme,
-                    keyCode: settings.windowHotkeyKeyCode,
-                    modifiers: settings.windowHotkeyModifiers
-                ) { keyCode, modifiers in
-                    settings.windowHotkeyKeyCode = keyCode
-                    settings.windowHotkeyModifiers = modifiers
-                }
-
-                PreferenceHotkeyRecorderRow(
-                    title: L10n.prefsScreenshotDisplayHotkeyTitle,
-                    subtitle: L10n.prefsScreenshotDisplayHotkeySubtitle,
-                    symbol: "display",
-                    theme: theme,
-                    keyCode: settings.displayHotkeyKeyCode,
-                    modifiers: settings.displayHotkeyModifiers
-                ) { keyCode, modifiers in
-                    settings.displayHotkeyKeyCode = keyCode
-                    settings.displayHotkeyModifiers = modifiers
-                }
-
-                pickerRow(
-                    title: L10n.prefsScreenshotOutputTitle,
-                    subtitle: L10n.prefsScreenshotOutputSubtitle,
-                    symbol: "square.and.arrow.down",
-                    selection: $settings.outputMode,
-                    options: ScreenshotOutputMode.allCases
-                ) { $0.displayName }
-
-                pickerRow(
-                    title: L10n.prefsScreenshotFormatTitle,
-                    subtitle: L10n.prefsScreenshotFormatSubtitle,
-                    symbol: "photo",
-                    selection: $settings.imageFormat,
-                    options: ScreenshotImageFormat.allCases
-                ) { $0.displayName }
-
-                if settings.imageFormat == .jpeg {
-                    sliderRow
-                }
-
-                saveDirectoryRow
-                fileNameTemplateRow
-
-                PreferenceToggleRow(
-                    title: L10n.prefsScreenshotWindowShadowTitle,
-                    subtitle: L10n.prefsScreenshotWindowShadowSubtitle,
-                    symbol: "macwindow.on.rectangle",
-                    theme: theme,
-                    isOn: $settings.includeWindowShadow
-                )
-
-                pickerRow(
-                    title: L10n.prefsScreenshotHistoryLimitTitle,
-                    subtitle: L10n.prefsScreenshotHistoryLimitSubtitle,
-                    symbol: "clock.arrow.circlepath",
-                    selection: $settings.historyLimit,
-                    options: [25, 50, 100, 200, 500]
-                ) { String(format: L10n.prefsScreenshotHistoryLimitValue, $0) }
-
-                pickerRow(
-                    title: L10n.prefsScreenshotRetentionDaysTitle,
-                    subtitle: L10n.prefsScreenshotRetentionDaysSubtitle,
-                    symbol: "calendar.badge.clock",
-                    selection: $settings.retentionDays,
-                    options: [0, 7, 30, 90, 365]
-                ) {
-                    $0 == 0
-                        ? L10n.prefsScreenshotRetentionUnlimited
-                        : String(format: L10n.prefsScreenshotRetentionDaysValue, $0)
-                }
-
-                pickerRow(
-                    title: L10n.prefsScreenshotStorageLimitTitle,
-                    subtitle: L10n.prefsScreenshotStorageLimitSubtitle,
-                    symbol: "externaldrive",
-                    selection: $settings.maxStorageMB,
-                    options: [0, 512, 1_024, 2_048, 5_120]
-                ) {
-                    $0 == 0
-                        ? L10n.prefsScreenshotRetentionUnlimited
-                        : String(format: L10n.prefsScreenshotStorageLimitValue, $0)
-                }
-
-                ocrLanguagesRow
-
-                PreferenceToggleRow(
-                    title: L10n.prefsScreenshotSoundTitle,
-                    subtitle: L10n.prefsScreenshotSoundSubtitle,
-                    symbol: "speaker.wave.2",
-                    theme: theme,
-                    isOn: $settings.playSound
-                )
-
-                postCaptureActionsRow
-
-                PreferenceToggleRow(
-                    title: L10n.prefsScreenshotOCRIndexTitle,
-                    subtitle: L10n.prefsScreenshotOCRIndexSubtitle,
-                    symbol: "text.magnifyingglass",
-                    theme: theme,
-                    isOn: $settings.automaticallyIndexOCRText
-                )
             }
         }
         .animation(.snappy(duration: 0.22), value: settings.enabled)
+        .animation(.snappy(duration: 0.22), value: selectedPage)
+    }
+
+    private var capturePage: some View {
+        VStack(spacing: 10) {
+            pickerRow(
+                title: L10n.prefsScreenshotDefaultModeTitle,
+                subtitle: L10n.prefsScreenshotDefaultModeSubtitle,
+                symbol: "camera.metering.center.weighted",
+                selection: $settings.defaultCaptureMode,
+                options: ScreenshotCaptureMode.allCases
+            ) { $0.displayName }
+
+            PreferenceToggleRow(
+                title: L10n.prefsScreenshotWindowShadowTitle,
+                subtitle: L10n.prefsScreenshotWindowShadowSubtitle,
+                symbol: "macwindow.on.rectangle",
+                theme: theme,
+                isOn: $settings.includeWindowShadow
+            )
+
+            PreferenceToggleRow(
+                title: L10n.prefsScreenshotSoundTitle,
+                subtitle: L10n.prefsScreenshotSoundSubtitle,
+                symbol: "speaker.wave.2",
+                theme: theme,
+                isOn: $settings.playSound
+            )
+
+            postCaptureActionsRow
+        }
+        .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+    }
+
+    private var outputPage: some View {
+        VStack(spacing: 10) {
+            pickerRow(
+                title: L10n.prefsScreenshotOutputTitle,
+                subtitle: L10n.prefsScreenshotOutputSubtitle,
+                symbol: "square.and.arrow.down",
+                selection: $settings.outputMode,
+                options: ScreenshotOutputMode.allCases
+            ) { $0.displayName }
+
+            pickerRow(
+                title: L10n.prefsScreenshotFormatTitle,
+                subtitle: L10n.prefsScreenshotFormatSubtitle,
+                symbol: "photo",
+                selection: $settings.imageFormat,
+                options: ScreenshotImageFormat.allCases
+            ) { $0.displayName }
+
+            if settings.imageFormat == .jpeg {
+                sliderRow
+            }
+
+            saveDirectoryRow
+            fileNameTemplateRow
+        }
+        .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+    }
+
+    private var shortcutsPage: some View {
+        VStack(spacing: 10) {
+            PreferenceHotkeyRecorderRow(
+                title: L10n.prefsScreenshotRegionHotkeyTitle,
+                subtitle: L10n.prefsScreenshotRegionHotkeySubtitle,
+                symbol: "viewfinder",
+                theme: theme,
+                keyCode: settings.regionHotkeyKeyCode,
+                modifiers: settings.regionHotkeyModifiers
+            ) { keyCode, modifiers in
+                settings.regionHotkeyKeyCode = keyCode
+                settings.regionHotkeyModifiers = modifiers
+            }
+
+            PreferenceHotkeyRecorderRow(
+                title: L10n.prefsScreenshotEditHotkeyTitle,
+                subtitle: L10n.prefsScreenshotEditHotkeySubtitle,
+                symbol: "pencil.and.outline",
+                theme: theme,
+                keyCode: settings.editHotkeyKeyCode,
+                modifiers: settings.editHotkeyModifiers
+            ) { keyCode, modifiers in
+                settings.editHotkeyKeyCode = keyCode
+                settings.editHotkeyModifiers = modifiers
+            }
+
+            PreferenceHotkeyRecorderRow(
+                title: L10n.prefsScreenshotWindowHotkeyTitle,
+                subtitle: L10n.prefsScreenshotWindowHotkeySubtitle,
+                symbol: "macwindow",
+                theme: theme,
+                keyCode: settings.windowHotkeyKeyCode,
+                modifiers: settings.windowHotkeyModifiers
+            ) { keyCode, modifiers in
+                settings.windowHotkeyKeyCode = keyCode
+                settings.windowHotkeyModifiers = modifiers
+            }
+
+            PreferenceHotkeyRecorderRow(
+                title: L10n.prefsScreenshotDisplayHotkeyTitle,
+                subtitle: L10n.prefsScreenshotDisplayHotkeySubtitle,
+                symbol: "display",
+                theme: theme,
+                keyCode: settings.displayHotkeyKeyCode,
+                modifiers: settings.displayHotkeyModifiers
+            ) { keyCode, modifiers in
+                settings.displayHotkeyKeyCode = keyCode
+                settings.displayHotkeyModifiers = modifiers
+            }
+        }
+        .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+    }
+
+    private var ocrPage: some View {
+        VStack(spacing: 10) {
+            ocrLanguagesRow
+
+            PreferenceToggleRow(
+                title: L10n.prefsScreenshotOCRIndexTitle,
+                subtitle: L10n.prefsScreenshotOCRIndexSubtitle,
+                symbol: "text.magnifyingglass",
+                theme: theme,
+                isOn: $settings.automaticallyIndexOCRText
+            )
+        }
+        .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+    }
+
+    private var historyPage: some View {
+        VStack(spacing: 10) {
+            pickerRow(
+                title: L10n.prefsScreenshotHistoryLimitTitle,
+                subtitle: L10n.prefsScreenshotHistoryLimitSubtitle,
+                symbol: "clock.arrow.circlepath",
+                selection: $settings.historyLimit,
+                options: [25, 50, 100, 200, 500]
+            ) { String(format: L10n.prefsScreenshotHistoryLimitValue, $0) }
+
+            pickerRow(
+                title: L10n.prefsScreenshotRetentionDaysTitle,
+                subtitle: L10n.prefsScreenshotRetentionDaysSubtitle,
+                symbol: "calendar.badge.clock",
+                selection: $settings.retentionDays,
+                options: [0, 7, 30, 90, 365]
+            ) {
+                $0 == 0
+                    ? L10n.prefsScreenshotRetentionUnlimited
+                    : String(format: L10n.prefsScreenshotRetentionDaysValue, $0)
+            }
+
+            pickerRow(
+                title: L10n.prefsScreenshotStorageLimitTitle,
+                subtitle: L10n.prefsScreenshotStorageLimitSubtitle,
+                symbol: "externaldrive",
+                selection: $settings.maxStorageMB,
+                options: [0, 512, 1_024, 2_048, 5_120]
+            ) {
+                $0 == 0
+                    ? L10n.prefsScreenshotRetentionUnlimited
+                    : String(format: L10n.prefsScreenshotStorageLimitValue, $0)
+            }
+        }
+        .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
     }
 
     private var sliderRow: some View {

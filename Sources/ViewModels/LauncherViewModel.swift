@@ -29,6 +29,7 @@ final class LauncherViewModel: ObservableObject {
     var onOpenAuthenticator: (() -> Void)?
     var onHealthCommand: ((HealthReminderCommand) -> Void)?
     var onScreenshotCommand: ((ScreenshotCommand) -> Void)?
+    var onRecordingCommand: ((RecordingCommand) -> Void)?
     var onPinClipboardImage: ((ImageClipboardContent) -> Void)?
     var onRecognizeClipboardImage: ((ImageClipboardContent) -> Void)?
     var onTranslateClipboardImage: ((ImageClipboardContent) -> Void)?
@@ -166,6 +167,61 @@ final class LauncherViewModel: ObservableObject {
                         subtitle: L10n.cmdScreenshotPinSubtitle,
                         keywords: ["screenshot", "image", "clipboard", "pin", "float",
                                    "截图", "图片", "剪贴板", "贴图", "置顶"]
+                    ),
+                ],
+                at: min(2, entries.count)
+            )
+        }
+        if settings.recording.enabled {
+            entries.insert(
+                contentsOf: [
+                    CommandEntry(
+                        id: "meow.recording.display",
+                        title: L10n.cmdRecordingDisplayTitle,
+                        subtitle: L10n.cmdRecordingDisplaySubtitle,
+                        keywords: ["record", "screen", "display", "录屏", "屏幕录制", "显示器"]
+                    ),
+                    CommandEntry(
+                        id: "meow.recording.region",
+                        title: L10n.cmdRecordingRegionTitle,
+                        subtitle: L10n.cmdRecordingRegionSubtitle,
+                        keywords: ["record", "region", "area", "录屏", "区域录制"]
+                    ),
+                    CommandEntry(
+                        id: "meow.recording.window",
+                        title: L10n.cmdRecordingWindowTitle,
+                        subtitle: L10n.cmdRecordingWindowSubtitle,
+                        keywords: ["record", "window", "录屏", "窗口录制"]
+                    ),
+                    CommandEntry(
+                        id: "meow.recording.windows",
+                        title: L10n.cmdRecordingWindowsTitle,
+                        subtitle: L10n.cmdRecordingWindowsSubtitle,
+                        keywords: ["record", "multiple", "windows", "录屏", "多个窗口", "多窗口"]
+                    ),
+                    CommandEntry(
+                        id: "meow.recording.application",
+                        title: L10n.cmdRecordingApplicationTitle,
+                        subtitle: L10n.cmdRecordingApplicationSubtitle,
+                        keywords: ["record", "application", "app", "录屏", "应用录制"]
+                    ),
+                    CommandEntry(
+                        id: "meow.recording.audio",
+                        title: L10n.cmdRecordingAudioTitle,
+                        subtitle: L10n.cmdRecordingAudioSubtitle,
+                        keywords: ["record", "system audio", "sound", "录音", "系统音频"]
+                    ),
+                    CommandEntry(
+                        id: "meow.recording.history",
+                        title: L10n.cmdRecordingHistoryTitle,
+                        subtitle: L10n.cmdRecordingHistorySubtitle,
+                        keywords: ["recording", "history", "video", "录屏历史", "视频"]
+                    ),
+                    CommandEntry(
+                        id: "meow.recording.mobile",
+                        title: L10n.cmdRecordingMobileTitle,
+                        subtitle: L10n.cmdRecordingMobileSubtitle,
+                        keywords: ["record", "iphone", "ipad", "mobile", "录制手机", "移动设备"]
                     ),
                 ],
                 at: min(2, entries.count)
@@ -378,6 +434,22 @@ final class LauncherViewModel: ObservableObject {
             if let image = latestClipboardImage() {
                 onPinClipboardImage?(image)
             }
+        case "meow.recording.display":
+            onRecordingCommand?(.recordDisplay)
+        case "meow.recording.region":
+            onRecordingCommand?(.recordRegion)
+        case "meow.recording.window":
+            onRecordingCommand?(.recordWindow)
+        case "meow.recording.windows":
+            onRecordingCommand?(.recordWindows)
+        case "meow.recording.application":
+            onRecordingCommand?(.recordApplication)
+        case "meow.recording.audio":
+            onRecordingCommand?(.recordSystemAudio)
+        case "meow.recording.history":
+            onRecordingCommand?(.openHistory)
+        case "meow.recording.mobile":
+            onRecordingCommand?(.recordMobileDevice)
         case "meow.quit":
             NSApp.terminate(nil)
         default:
