@@ -129,7 +129,11 @@ struct LauncherView: View {
                                             viewModel.activate(item)
                                         } label: {
                                             HStack(spacing: 12) {
-                                                SearchItemIcon(item: item, theme: viewModel.settings.theme)
+                                                SearchItemIcon(
+                                                    item: item,
+                                                    theme: viewModel.settings.theme,
+                                                    showClipboardImagePreviews: viewModel.settings.clipboardShowImagePreviews
+                                                )
 
                                                 VStack(alignment: .leading, spacing: 2) {
                                                     let isSelected = selectedID == item.id

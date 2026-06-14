@@ -242,12 +242,36 @@ enum L10n {
         loc("prefs.section.general")
     }
 
+    static var prefsGeneralPageBasics: String {
+        loc("prefs.general.page.basics")
+    }
+
+    static var prefsGeneralPageDock: String {
+        loc("prefs.general.page.dock")
+    }
+
+    static var prefsGeneralPageAppearance: String {
+        loc("prefs.general.page.appearance")
+    }
+
+    static var prefsGeneralPageShortcuts: String {
+        loc("prefs.general.page.shortcuts")
+    }
+
     static var prefsSectionKeyboard: String {
         loc("prefs.section.keyboard")
     }
 
     static var prefsSectionScreenshot: String {
         loc("prefs.section.screenshot")
+    }
+
+    static var prefsSectionRecording: String {
+        loc("prefs.section.recording")
+    }
+
+    static var prefsSectionHistory: String {
+        loc("prefs.section.history")
     }
 
     static var prefsSectionSpeech: String {
@@ -260,14 +284,6 @@ enum L10n {
 
     static var prefsSectionAI: String {
         loc("prefs.section.ai")
-    }
-
-    static var prefsSectionDock: String {
-        loc("prefs.section.dock")
-    }
-
-    static var prefsSectionAppearance: String {
-        loc("prefs.section.appearance")
     }
 
     static var prefsSectionAbout: String {
@@ -288,6 +304,12 @@ enum L10n {
 
     static var prefsClipboardSubtitle: String {
         loc("prefs.clipboard.subtitle")
+    }
+    static var prefsClipboardImagePreviewTitle: String {
+        loc("prefs.clipboard.image.preview.title")
+    }
+    static var prefsClipboardImagePreviewSubtitle: String {
+        loc("prefs.clipboard.image.preview.subtitle")
     }
 
     static var prefsHotkeyTitle: String {
@@ -310,6 +332,10 @@ enum L10n {
 
     static var speechEnabledTitle: String { loc("speech.enabled.title") }
     static var speechEnabledSubtitle: String { loc("speech.enabled.subtitle") }
+    static var speechPageOverview: String { loc("speech.page.overview") }
+    static var speechPageModel: String { loc("speech.page.model") }
+    static var speechPageShortcuts: String { loc("speech.page.shortcuts") }
+    static var speechPageHistory: String { loc("speech.page.history") }
     static var speechHotkeyTitle: String { loc("speech.hotkey.title") }
     static var speechHotkeySubtitle: String { loc("speech.hotkey.subtitle") }
     static var speechSoundTitle: String { loc("speech.sound.title") }
@@ -527,6 +553,18 @@ enum L10n {
 
     static var prefsKeystrokeEnabledSubtitle: String {
         loc("prefs.keystroke.enabled.subtitle")
+    }
+
+    static var prefsKeystrokePageOverview: String {
+        loc("prefs.keystroke.page.overview")
+    }
+
+    static var prefsKeystrokePageDisplay: String {
+        loc("prefs.keystroke.page.display")
+    }
+
+    static var prefsKeystrokePagePosition: String {
+        loc("prefs.keystroke.page.position")
     }
 
     static var prefsKeystrokeModifierTitle: String {
@@ -1019,6 +1057,11 @@ enum L10n {
     static var screenshotQRImportOTPMessage: String { loc("screenshot.qr.import.otp.message") }
     static var screenshotQRImportOTPConfirm: String { loc("screenshot.qr.import.otp.confirm") }
     static var screenshotQRImportOTPFailed: String { loc("screenshot.qr.import.otp.failed") }
+    static var prefsScreenshotPageCapture: String { loc("prefs.screenshot.page.capture") }
+    static var prefsScreenshotPageOutput: String { loc("prefs.screenshot.page.output") }
+    static var prefsScreenshotPageShortcuts: String { loc("prefs.screenshot.page.shortcuts") }
+    static var prefsScreenshotPageOCR: String { loc("prefs.screenshot.page.ocr") }
+    static var prefsScreenshotPageHistory: String { loc("prefs.screenshot.page.history") }
     static var prefsScreenshotEnabledTitle: String { loc("prefs.screenshot.enabled.title") }
     static var prefsScreenshotEnabledSubtitle: String { loc("prefs.screenshot.enabled.subtitle") }
     static var prefsScreenshotDefaultModeTitle: String { loc("prefs.screenshot.default.mode.title") }
@@ -1079,10 +1122,165 @@ enum L10n {
     static var screenshotHistoryClearMessage: String { loc("screenshot.history.clear.message") }
     static var screenshotHistoryClearConfirm: String { loc("screenshot.history.clear.confirm") }
     static var screenshotHistorySearch: String { loc("screenshot.history.search") }
+    static var historyLayoutGrid: String { loc("history.layout.grid") }
+    static var historyLayoutList: String { loc("history.layout.list") }
     static var screenshotKindRegion: String { loc("screenshot.kind.region") }
     static var screenshotKindWindow: String { loc("screenshot.kind.window") }
     static var screenshotKindDisplay: String { loc("screenshot.kind.display") }
     static var screenshotKindEdited: String { loc("screenshot.kind.edited") }
+
+    // MARK: - Recording
+
+    static var cmdRecordingDisplayTitle: String { loc("cmd.recording.display.title") }
+    static var cmdRecordingDisplaySubtitle: String { loc("cmd.recording.display.subtitle") }
+    static var cmdRecordingRegionTitle: String { loc("cmd.recording.region.title") }
+    static var cmdRecordingRegionSubtitle: String { loc("cmd.recording.region.subtitle") }
+    static var cmdRecordingWindowTitle: String { loc("cmd.recording.window.title") }
+    static var cmdRecordingWindowSubtitle: String { loc("cmd.recording.window.subtitle") }
+    static var cmdRecordingWindowsTitle: String { loc("cmd.recording.windows.title") }
+    static var cmdRecordingWindowsSubtitle: String { loc("cmd.recording.windows.subtitle") }
+    static var cmdRecordingApplicationTitle: String { loc("cmd.recording.application.title") }
+    static var cmdRecordingApplicationSubtitle: String { loc("cmd.recording.application.subtitle") }
+    static var cmdRecordingAudioTitle: String { loc("cmd.recording.audio.title") }
+    static var cmdRecordingAudioSubtitle: String { loc("cmd.recording.audio.subtitle") }
+    static var cmdRecordingHistoryTitle: String { loc("cmd.recording.history.title") }
+    static var cmdRecordingHistorySubtitle: String { loc("cmd.recording.history.subtitle") }
+    static var cmdRecordingMobileTitle: String { loc("cmd.recording.mobile.title") }
+    static var cmdRecordingMobileSubtitle: String { loc("cmd.recording.mobile.subtitle") }
+    static var prefsRecordingPageVideoAudio: String { loc("prefs.recording.page.video.audio") }
+    static var prefsRecordingPageCapture: String { loc("prefs.recording.page.capture") }
+    static var prefsRecordingPageOutput: String { loc("prefs.recording.page.output") }
+    static var prefsRecordingPageShortcuts: String { loc("prefs.recording.page.shortcuts") }
+    static var prefsRecordingPageHistory: String { loc("prefs.recording.page.history") }
+    static var prefsRecordingEnabledTitle: String { loc("prefs.recording.enabled.title") }
+    static var prefsRecordingEnabledSubtitle: String { loc("prefs.recording.enabled.subtitle") }
+    static var prefsRecordingFormatTitle: String { loc("prefs.recording.format.title") }
+    static var prefsRecordingFormatSubtitle: String { loc("prefs.recording.format.subtitle") }
+    static var prefsRecordingCodecTitle: String { loc("prefs.recording.codec.title") }
+    static var prefsRecordingCodecSubtitle: String { loc("prefs.recording.codec.subtitle") }
+    static var prefsRecordingMovRequiredTitle: String { loc("prefs.recording.mov.required.title") }
+    static var prefsRecordingMovRequiredSubtitle: String { loc("prefs.recording.mov.required.subtitle") }
+    static var prefsRecordingAlphaUnavailableTitle: String { loc("prefs.recording.alpha.unavailable.title") }
+    static var prefsRecordingAlphaUnavailableSubtitle: String { loc("prefs.recording.alpha.unavailable.subtitle") }
+    static var prefsRecordingQualityTitle: String { loc("prefs.recording.quality.title") }
+    static var prefsRecordingQualitySubtitle: String { loc("prefs.recording.quality.subtitle") }
+    static var prefsRecordingFrameRateTitle: String { loc("prefs.recording.frame.rate.title") }
+    static var prefsRecordingFrameRateSubtitle: String { loc("prefs.recording.frame.rate.subtitle") }
+    static var prefsRecordingAudioTitle: String { loc("prefs.recording.audio.title") }
+    static var prefsRecordingAudioSubtitle: String { loc("prefs.recording.audio.subtitle") }
+    static var prefsRecordingAudioFormatTitle: String { loc("prefs.recording.audio.format.title") }
+    static var prefsRecordingAudioFormatSubtitle: String { loc("prefs.recording.audio.format.subtitle") }
+    static var prefsRecordingMicrophoneTitle: String { loc("prefs.recording.microphone.title") }
+    static var prefsRecordingMicrophoneSubtitle: String { loc("prefs.recording.microphone.subtitle") }
+    static var recordingMicrophoneDefault: String { loc("recording.microphone.default") }
+    static var prefsRecordingSeparateTracksTitle: String { loc("prefs.recording.separate.tracks.title") }
+    static var prefsRecordingSeparateTracksSubtitle: String { loc("prefs.recording.separate.tracks.subtitle") }
+    static var prefsRecordingCountdownTitle: String { loc("prefs.recording.countdown.title") }
+    static var prefsRecordingCountdownSubtitle: String { loc("prefs.recording.countdown.subtitle") }
+    static var prefsRecordingRetinaTitle: String { loc("prefs.recording.retina.title") }
+    static var prefsRecordingRetinaSubtitle: String { loc("prefs.recording.retina.subtitle") }
+    static var prefsRecordingCursorTitle: String { loc("prefs.recording.cursor.title") }
+    static var prefsRecordingCursorSubtitle: String { loc("prefs.recording.cursor.subtitle") }
+    static var prefsRecordingMouseHighlightTitle: String { loc("prefs.recording.mouse.highlight.title") }
+    static var prefsRecordingMouseHighlightSubtitle: String { loc("prefs.recording.mouse.highlight.subtitle") }
+    static var prefsRecordingMenuBarTitle: String { loc("prefs.recording.menu.bar.title") }
+    static var prefsRecordingMenuBarSubtitle: String { loc("prefs.recording.menu.bar.subtitle") }
+    static var prefsRecordingExcludeTitle: String { loc("prefs.recording.exclude.title") }
+    static var prefsRecordingExcludeSubtitle: String { loc("prefs.recording.exclude.subtitle") }
+    static var prefsRecordingExcludedAppsTitle: String { loc("prefs.recording.excluded.apps.title") }
+    static var prefsRecordingExcludedAppsSubtitle: String { loc("prefs.recording.excluded.apps.subtitle") }
+    static var prefsRecordingDesktopTitle: String { loc("prefs.recording.desktop.title") }
+    static var prefsRecordingDesktopSubtitle: String { loc("prefs.recording.desktop.subtitle") }
+    static var prefsRecordingSystemUITitle: String { loc("prefs.recording.system.ui.title") }
+    static var prefsRecordingSystemUISubtitle: String { loc("prefs.recording.system.ui.subtitle") }
+    static var prefsRecordingPreventSleepTitle: String { loc("prefs.recording.prevent.sleep.title") }
+    static var prefsRecordingPreventSleepSubtitle: String { loc("prefs.recording.prevent.sleep.subtitle") }
+    static var prefsRecordingPreviewTitle: String { loc("prefs.recording.preview.title") }
+    static var prefsRecordingPreviewSubtitle: String { loc("prefs.recording.preview.subtitle") }
+    static var prefsRecordingCameraTitle: String { loc("prefs.recording.camera.title") }
+    static var prefsRecordingCameraSubtitle: String { loc("prefs.recording.camera.subtitle") }
+    static var prefsRecordingCameraUnavailableTitle: String { loc("prefs.recording.camera.unavailable.title") }
+    static var prefsRecordingCameraUnavailableSubtitle: String { loc("prefs.recording.camera.unavailable.subtitle") }
+    static var prefsRecordingMobileUnavailableTitle: String { loc("prefs.recording.mobile.unavailable.title") }
+    static var prefsRecordingMobileUnavailableSubtitle: String { loc("prefs.recording.mobile.unavailable.subtitle") }
+    static var recordingCameraDefault: String { loc("recording.camera.default") }
+    static var prefsRecordingHDRTitle: String { loc("prefs.recording.hdr.title") }
+    static var prefsRecordingHDRSubtitle: String { loc("prefs.recording.hdr.subtitle") }
+    static var prefsRecordingHDRUnavailableTitle: String { loc("prefs.recording.hdr.unavailable.title") }
+    static var prefsRecordingHDRUnavailableSubtitle: String { loc("prefs.recording.hdr.unavailable.subtitle") }
+    static var prefsRecordingBackgroundTitle: String { loc("prefs.recording.background.title") }
+    static var prefsRecordingBackgroundSubtitle: String { loc("prefs.recording.background.subtitle") }
+    static var recordingBackgroundDesktop: String { loc("recording.background.desktop") }
+    static var recordingBackgroundTransparent: String { loc("recording.background.transparent") }
+    static var recordingBackgroundSolid: String { loc("recording.background.solid") }
+    static var prefsRecordingDirectoryTitle: String { loc("prefs.recording.directory.title") }
+    static var prefsRecordingDirectoryDefault: String { loc("prefs.recording.directory.default") }
+    static var prefsRecordingFileNameTitle: String { loc("prefs.recording.filename.title") }
+    static var prefsRecordingFileNameSubtitle: String { loc("prefs.recording.filename.subtitle") }
+    static var prefsRecordingDisplayHotkeyTitle: String { loc("prefs.recording.display.hotkey.title") }
+    static var prefsRecordingDisplayHotkeySubtitle: String { loc("prefs.recording.display.hotkey.subtitle") }
+    static var prefsRecordingRegionHotkeyTitle: String { loc("prefs.recording.region.hotkey.title") }
+    static var prefsRecordingRegionHotkeySubtitle: String { loc("prefs.recording.region.hotkey.subtitle") }
+    static var prefsRecordingWindowHotkeyTitle: String { loc("prefs.recording.window.hotkey.title") }
+    static var prefsRecordingWindowHotkeySubtitle: String { loc("prefs.recording.window.hotkey.subtitle") }
+    static var prefsRecordingPauseHotkeyTitle: String { loc("prefs.recording.pause.hotkey.title") }
+    static var prefsRecordingPauseHotkeySubtitle: String { loc("prefs.recording.pause.hotkey.subtitle") }
+    static var prefsRecordingStopHotkeyTitle: String { loc("prefs.recording.stop.hotkey.title") }
+    static var prefsRecordingStopHotkeySubtitle: String { loc("prefs.recording.stop.hotkey.subtitle") }
+    static var prefsRecordingFrameHotkeyTitle: String { loc("prefs.recording.frame.hotkey.title") }
+    static var prefsRecordingFrameHotkeySubtitle: String { loc("prefs.recording.frame.hotkey.subtitle") }
+    static var prefsRecordingMagnifierHotkeyTitle: String { loc("prefs.recording.magnifier.hotkey.title") }
+    static var prefsRecordingMagnifierHotkeySubtitle: String { loc("prefs.recording.magnifier.hotkey.subtitle") }
+    static var prefsRecordingHistoryLimitTitle: String { loc("prefs.recording.history.limit.title") }
+    static var prefsRecordingHistoryLimitSubtitle: String { loc("prefs.recording.history.limit.subtitle") }
+    static var prefsRecordingRetentionTitle: String { loc("prefs.recording.retention.title") }
+    static var prefsRecordingRetentionSubtitle: String { loc("prefs.recording.retention.subtitle") }
+    static var prefsRecordingStorageTitle: String { loc("prefs.recording.storage.title") }
+    static var prefsRecordingStorageSubtitle: String { loc("prefs.recording.storage.subtitle") }
+    static var recordingUnlimited: String { loc("recording.unlimited") }
+    static var recordingDays: String { loc("recording.days") }
+    static var recordingNone: String { loc("recording.none") }
+    static var recordingSeconds: String { loc("recording.seconds") }
+    static var recordingQualityCompact: String { loc("recording.quality.compact") }
+    static var recordingQualityBalanced: String { loc("recording.quality.balanced") }
+    static var recordingQualityHigh: String { loc("recording.quality.high") }
+    static var recordingAudioNone: String { loc("recording.audio.none") }
+    static var recordingAudioSystem: String { loc("recording.audio.system") }
+    static var recordingAudioMicrophone: String { loc("recording.audio.microphone") }
+    static var recordingAudioBoth: String { loc("recording.audio.both") }
+    static var recordingHistoryTitle: String { loc("recording.history.title") }
+    static var recordingHistoryCount: String { loc("recording.history.count") }
+    static var recordingHistorySearch: String { loc("recording.history.search") }
+    static var recordingHistoryOpenFolder: String { loc("recording.history.open.folder") }
+    static var recordingHistoryClear: String { loc("recording.history.clear") }
+    static var recordingHistoryEmptyTitle: String { loc("recording.history.empty.title") }
+    static var recordingHistoryEmptySubtitle: String { loc("recording.history.empty.subtitle") }
+    static var recordingHistoryClearTitle: String { loc("recording.history.clear.title") }
+    static var recordingHistoryClearMessage: String { loc("recording.history.clear.message") }
+    static var recordingHistoryClearConfirm: String { loc("recording.history.clear.confirm") }
+    static var recordingChooseApplicationTitle: String { loc("recording.choose.application.title") }
+    static var recordingChooseApplicationSubtitle: String { loc("recording.choose.application.subtitle") }
+    static var recordingChooseMobileTitle: String { loc("recording.choose.mobile.title") }
+    static var recordingChooseMobileSubtitle: String { loc("recording.choose.mobile.subtitle") }
+    static var recordingStart: String { loc("recording.start") }
+    static var recordingErrorTitle: String { loc("recording.error.title") }
+    static var recordingStatusIdle: String { loc("recording.status.idle") }
+    static var recordingStatusActive: String { loc("recording.status.active") }
+    static var recordingPause: String { loc("recording.pause") }
+    static var recordingResume: String { loc("recording.resume") }
+    static var recordingStop: String { loc("recording.stop") }
+    static var recordingTrimStart: String { loc("recording.trim.start") }
+    static var recordingTrimEnd: String { loc("recording.trim.end") }
+    static var recordingTrimDuration: String { loc("recording.trim.duration") }
+    static var recordingTrimPreview: String { loc("recording.trim.preview") }
+    static var recordingTrimExport: String { loc("recording.trim.export") }
+    static var recordingTrimStaticPreview: String { loc("recording.trim.static.preview") }
+    static var recordingPreviewTitle: String { loc("recording.preview.title") }
+    static var recordingPreviewFinder: String { loc("recording.preview.finder") }
+    static var recordingPreviewOpen: String { loc("recording.preview.open") }
+    static var recordingPreviewTrim: String { loc("recording.preview.trim") }
+    static var recordingNotificationTitle: String { loc("recording.notification.title") }
+    static var recordingNotificationBody: String { loc("recording.notification.body") }
     static var editorTitle: String { loc("editor.title") }
     static var editorToolCrop: String { loc("editor.tool.crop") }
     static var editorToolRectangle: String { loc("editor.tool.rectangle") }

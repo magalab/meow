@@ -1,5 +1,7 @@
 import AppKit
 @preconcurrency import ApplicationServices
+import AVFoundation
+@preconcurrency import ScreenCaptureKit
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -51,7 +53,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let clipboardStore = ClipboardStore()
     private let screenCaptureService = ScreenCaptureService()
     private let captureOverlayController = CaptureOverlayController()
+    private let recordingContentPickerController = RecordingContentPickerController()
     private let captureStore = CaptureStore()
+    private let recordingStore = RecordingStore()
+    private lazy var recordingService = RecordingService(store: recordingStore)
+    private let recordingNotificationService = RecordingNotificationService()
+    private let cameraOverlayController = CameraOverlayController()
+    private let screenMagnifierController = ScreenMagnifierController()
     private let captureEditorController = CaptureEditorController()
     private let postCaptureActionsController = PostCaptureActionsController()
     private let pinnedImageController = PinnedImageController()
@@ -78,6 +86,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var preferencesWindow: NSWindow?
     private var captureHistoryWindow: NSWindow?
     private var captureHistoryHostingController: NSHostingController<CaptureHistoryView>?
+    private var recordingHistoryWindow: NSWindow?
+    private var recordingControlWindow: NSPanel?
+    private var recordingPreviewWindow: NSPanel?
+    private var recordingTrimmerWindows: [URL: NSWindow] = [:]
+    private var recordingTask: Task<Void, Never>?
     private var viewModel: LauncherViewModel!
     private var globalMouseMonitor: Any?
     private var localMouseMonitor: Any?
@@ -91,6 +104,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var lastRegisteredScreenshotEditHotkey: (keyCode: UInt32, modifiers: UInt32)?
     private var lastRegisteredScreenshotWindowHotkey: (keyCode: UInt32, modifiers: UInt32)?
     private var lastRegisteredScreenshotDisplayHotkey: (keyCode: UInt32, modifiers: UInt32)?
+    private var lastRegisteredRecordingDisplayHotkey: (keyCode: UInt32, modifiers: UInt32)?
+    private var lastRegisteredRecordingRegionHotkey: (keyCode: UInt32, modifiers: UInt32)?
+    private var lastRegisteredRecordingWindowHotkey: (keyCode: UInt32, modifiers: UInt32)?
+    private var lastRegisteredRecordingPauseHotkey: (keyCode: UInt32, modifiers: UInt32)?
+    private var lastRegisteredRecordingStopHotkey: (keyCode: UInt32, modifiers: UInt32)?
+    private var lastRegisteredRecordingFrameHotkey: (keyCode: UInt32, modifiers: UInt32)?
+    private var lastRegisteredRecordingMagnifierHotkey: (keyCode: UInt32, modifiers: UInt32)?
+    private var recordingAllowsVisualOverlays = false
     private var captureTask: Task<Void, Never>?
     private var clipboardMonitoringEnabled = false
     private var calendarPopover: NSPopover?
@@ -128,6 +149,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         viewModel.onScreenshotCommand = { [weak self] command in
             self?.handleScreenshotCommand(command)
+        }
+        viewModel.onRecordingCommand = { [weak self] command in
+            self?.handleRecordingCommand(command)
+        }
+        recordingService.onCompleted = { [weak self] artifact in
+            self?.hideRecordingControl()
+            self?.cameraOverlayController.stop()
+            self?.screenMagnifierController.stop()
+            self?.recordingAllowsVisualOverlays = false
+            self?.recordingNotificationService.notifyCompleted(artifact)
+            if self?.viewModel.settings.recording.showPreview == true {
+                self?.showRecordingPreview(artifact)
+            }
+        }
+        recordingService.onError = { [weak self] error in
+            self?.hideRecordingControl()
+            self?.cameraOverlayController.stop()
+            self?.screenMagnifierController.stop()
+            self?.recordingAllowsVisualOverlays = false
+            self?.presentRecordingError(error)
+        }
+        recordingService.onStateChanged = { [weak self] state, elapsed in
+            self?.statusItemService.updateRecordingState(state, elapsed: elapsed)
         }
         viewModel.onPinClipboardImage = { [weak self] image in
             self?.hideLauncher()
@@ -194,6 +238,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         viewModel.load()
 
+        recordingNotificationService.requestAuthorization()
         setupStatusItem()
         let initial = settingsStore.load()
         dockIconService.start(style: initial.dockIconStyle)
@@ -207,6 +252,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_: Notification) {
         hotkeyService.unregister()
         captureTask?.cancel()
+        recordingTask?.cancel()
+        if recordingService.state.isActive {
+            Task { await recordingService.stop() }
+        }
+        cameraOverlayController.stop()
+        screenMagnifierController.stop()
         captureOverlayController.cancel()
         captureEditorController.cancel()
         postCaptureActionsController.close()
@@ -304,6 +355,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 guard let self else { return }
                 self.viewModel.settings.showStatusItem.toggle()
             },
+            pauseRecording: { [weak self] in
+                self?.runOnMain { $0.recordingService.pauseOrResume() }
+            },
+            stopRecording: { [weak self] in
+                self?.runOnMain { app in
+                    Task { await app.recordingService.stop() }
+                }
+            },
+            openRecordingHistory: { [weak self] in
+                self?.showRecordingHistory()
+            },
             quit: {
                 NSApp.terminate(nil)
             }
@@ -336,6 +398,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             retentionDays: settings.screenshot.retentionDays,
             maxStorageMB: settings.screenshot.maxStorageMB
         )
+        recordingService.apply(settings: settings.recording)
         authenticatorService.apply(
             enabled: settings.authenticatorEnabled,
             iCloudSyncEnabled: settings.authenticatorICloudSyncEnabled,
@@ -418,6 +481,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         applyScreenshotHotkeys(settings.screenshot)
+        applyRecordingHotkeys(settings.recording)
 
         if settings.clipboardHistoryEnabled != clipboardMonitoringEnabled {
             if settings.clipboardHistoryEnabled {
@@ -606,6 +670,632 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    private func handleRecordingCommand(_ command: RecordingCommand) {
+        switch command {
+        case .recordDisplay:
+            triggerRecording(mode: .display)
+        case .recordRegion:
+            triggerRecording(mode: .region)
+        case .recordWindow:
+            triggerRecording(mode: .window)
+        case .recordWindows:
+            triggerMultipleWindowRecording()
+        case .recordApplication:
+            triggerApplicationRecording()
+        case .recordSystemAudio:
+            triggerSystemAudioRecording()
+        case .recordMobileDevice:
+            triggerMobileDeviceRecording()
+        case .pauseResume:
+            recordingService.pauseOrResume()
+        case .stop:
+            Task { await recordingService.stop() }
+        case .saveCurrentFrame:
+            saveRecordingFrame()
+        case .toggleMagnifier:
+            toggleRecordingMagnifier()
+        case .openHistory:
+            showRecordingHistory()
+        }
+    }
+
+    private func applyRecordingHotkeys(_ settings: RecordingSettings) {
+        guard settings.enabled else {
+            hotkeyService.unregisterRecordingHotkeys()
+            lastRegisteredRecordingDisplayHotkey = nil
+            lastRegisteredRecordingRegionHotkey = nil
+            lastRegisteredRecordingWindowHotkey = nil
+            lastRegisteredRecordingPauseHotkey = nil
+            lastRegisteredRecordingStopHotkey = nil
+            lastRegisteredRecordingFrameHotkey = nil
+            lastRegisteredRecordingMagnifierHotkey = nil
+            return
+        }
+
+        registerRecordingHotkey(
+            hotkeyService.registerRecordingDisplayHotkey(
+                keyCode: settings.displayHotkeyKeyCode,
+                modifiers: settings.displayHotkeyModifiers
+            ) { [weak self] in
+                self?.runOnMain { $0.triggerRecording(mode: .display) }
+            },
+            name: "recording display",
+            keyCode: settings.displayHotkeyKeyCode,
+            modifiers: settings.displayHotkeyModifiers,
+            previous: lastRegisteredRecordingDisplayHotkey,
+            restore: { [weak self] keyCode, modifiers in
+                self?.viewModel.settings.recording.displayHotkeyKeyCode = keyCode
+                self?.viewModel.settings.recording.displayHotkeyModifiers = modifiers
+            },
+            success: { [weak self] in
+                self?.lastRegisteredRecordingDisplayHotkey = (
+                    settings.displayHotkeyKeyCode,
+                    settings.displayHotkeyModifiers
+                )
+            }
+        )
+        registerRecordingHotkey(
+            hotkeyService.registerRecordingFrameHotkey(
+                keyCode: settings.frameHotkeyKeyCode,
+                modifiers: settings.frameHotkeyModifiers
+            ) { [weak self] in
+                self?.runOnMain { $0.saveRecordingFrame() }
+            },
+            name: "recording frame",
+            keyCode: settings.frameHotkeyKeyCode,
+            modifiers: settings.frameHotkeyModifiers,
+            previous: lastRegisteredRecordingFrameHotkey,
+            restore: { [weak self] keyCode, modifiers in
+                self?.viewModel.settings.recording.frameHotkeyKeyCode = keyCode
+                self?.viewModel.settings.recording.frameHotkeyModifiers = modifiers
+            },
+            success: { [weak self] in
+                self?.lastRegisteredRecordingFrameHotkey = (
+                    settings.frameHotkeyKeyCode,
+                    settings.frameHotkeyModifiers
+                )
+            }
+        )
+        registerRecordingHotkey(
+            hotkeyService.registerRecordingMagnifierHotkey(
+                keyCode: settings.magnifierHotkeyKeyCode,
+                modifiers: settings.magnifierHotkeyModifiers
+            ) { [weak self] in
+                self?.runOnMain { $0.toggleRecordingMagnifier() }
+            },
+            name: "recording magnifier",
+            keyCode: settings.magnifierHotkeyKeyCode,
+            modifiers: settings.magnifierHotkeyModifiers,
+            previous: lastRegisteredRecordingMagnifierHotkey,
+            restore: { [weak self] keyCode, modifiers in
+                self?.viewModel.settings.recording.magnifierHotkeyKeyCode = keyCode
+                self?.viewModel.settings.recording.magnifierHotkeyModifiers = modifiers
+            },
+            success: { [weak self] in
+                self?.lastRegisteredRecordingMagnifierHotkey = (
+                    settings.magnifierHotkeyKeyCode,
+                    settings.magnifierHotkeyModifiers
+                )
+            }
+        )
+        registerRecordingHotkey(
+            hotkeyService.registerRecordingRegionHotkey(
+                keyCode: settings.regionHotkeyKeyCode,
+                modifiers: settings.regionHotkeyModifiers
+            ) { [weak self] in
+                self?.runOnMain { $0.triggerRecording(mode: .region) }
+            },
+            name: "recording region",
+            keyCode: settings.regionHotkeyKeyCode,
+            modifiers: settings.regionHotkeyModifiers,
+            previous: lastRegisteredRecordingRegionHotkey,
+            restore: { [weak self] keyCode, modifiers in
+                self?.viewModel.settings.recording.regionHotkeyKeyCode = keyCode
+                self?.viewModel.settings.recording.regionHotkeyModifiers = modifiers
+            },
+            success: { [weak self] in
+                self?.lastRegisteredRecordingRegionHotkey = (
+                    settings.regionHotkeyKeyCode,
+                    settings.regionHotkeyModifiers
+                )
+            }
+        )
+        registerRecordingHotkey(
+            hotkeyService.registerRecordingWindowHotkey(
+                keyCode: settings.windowHotkeyKeyCode,
+                modifiers: settings.windowHotkeyModifiers
+            ) { [weak self] in
+                self?.runOnMain { $0.triggerRecording(mode: .window) }
+            },
+            name: "recording window",
+            keyCode: settings.windowHotkeyKeyCode,
+            modifiers: settings.windowHotkeyModifiers,
+            previous: lastRegisteredRecordingWindowHotkey,
+            restore: { [weak self] keyCode, modifiers in
+                self?.viewModel.settings.recording.windowHotkeyKeyCode = keyCode
+                self?.viewModel.settings.recording.windowHotkeyModifiers = modifiers
+            },
+            success: { [weak self] in
+                self?.lastRegisteredRecordingWindowHotkey = (
+                    settings.windowHotkeyKeyCode,
+                    settings.windowHotkeyModifiers
+                )
+            }
+        )
+        registerRecordingHotkey(
+            hotkeyService.registerRecordingPauseHotkey(
+                keyCode: settings.pauseHotkeyKeyCode,
+                modifiers: settings.pauseHotkeyModifiers
+            ) { [weak self] in
+                self?.runOnMain { $0.recordingService.pauseOrResume() }
+            },
+            name: "recording pause",
+            keyCode: settings.pauseHotkeyKeyCode,
+            modifiers: settings.pauseHotkeyModifiers,
+            previous: lastRegisteredRecordingPauseHotkey,
+            restore: { [weak self] keyCode, modifiers in
+                self?.viewModel.settings.recording.pauseHotkeyKeyCode = keyCode
+                self?.viewModel.settings.recording.pauseHotkeyModifiers = modifiers
+            },
+            success: { [weak self] in
+                self?.lastRegisteredRecordingPauseHotkey = (
+                    settings.pauseHotkeyKeyCode,
+                    settings.pauseHotkeyModifiers
+                )
+            }
+        )
+        registerRecordingHotkey(
+            hotkeyService.registerRecordingStopHotkey(
+                keyCode: settings.stopHotkeyKeyCode,
+                modifiers: settings.stopHotkeyModifiers
+            ) { [weak self] in
+                self?.runOnMain { app in
+                    Task { await app.recordingService.stop() }
+                }
+            },
+            name: "recording stop",
+            keyCode: settings.stopHotkeyKeyCode,
+            modifiers: settings.stopHotkeyModifiers,
+            previous: lastRegisteredRecordingStopHotkey,
+            restore: { [weak self] keyCode, modifiers in
+                self?.viewModel.settings.recording.stopHotkeyKeyCode = keyCode
+                self?.viewModel.settings.recording.stopHotkeyModifiers = modifiers
+            },
+            success: { [weak self] in
+                self?.lastRegisteredRecordingStopHotkey = (
+                    settings.stopHotkeyKeyCode,
+                    settings.stopHotkeyModifiers
+                )
+            }
+        )
+    }
+
+    private func registerRecordingHotkey(
+        _ result: HotkeyService.RegistrationResult,
+        name: String,
+        keyCode: UInt32,
+        modifiers: UInt32,
+        previous: (keyCode: UInt32, modifiers: UInt32)?,
+        restore: @escaping (UInt32, UInt32) -> Void,
+        success: () -> Void
+    ) {
+        handleHotkeyRegistrationResult(
+            result,
+            name: name,
+            keyCode: keyCode,
+            modifiers: modifiers,
+            previous: previous,
+            restore: restore,
+            onSuccess: success
+        )
+    }
+
+    nonisolated private func runOnMain(_ action: @escaping @MainActor (AppDelegate) -> Void) {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            action(self)
+        }
+    }
+
+    private func triggerRecording(mode: ScreenshotCaptureMode) {
+        guard recordingTask == nil,
+              captureTask == nil,
+              !recordingService.state.isActive
+        else { return }
+        hideLauncher()
+        hideTranslationPanel()
+
+        recordingTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            defer { self.recordingTask = nil }
+            do {
+                let session = try await screenCaptureService.prepareSession()
+                guard let selection = await captureOverlayController.present(session: session, mode: mode) else {
+                    return
+                }
+                let source: RecordingSource
+                switch selection {
+                case let .display(display, _):
+                    source = .display(display)
+                case let .region(display, rect, scale):
+                    source = .region(display: display, rectInDisplayPoints: rect, scale: scale)
+                case let .window(window, _):
+                    source = .window(window)
+                }
+                recordingAllowsVisualOverlays = source.kind == .display || source.kind == .region
+                try await prepareCameraOverlayIfNeeded(for: source)
+                await recordingService.start(source: source)
+                if recordingService.state.isActive {
+                    showRecordingControl()
+                }
+            } catch {
+                presentRecordingError(error)
+            }
+        }
+    }
+
+    private func triggerApplicationRecording() {
+        guard recordingTask == nil,
+              captureTask == nil,
+              !recordingService.state.isActive
+        else { return }
+        hideLauncher()
+
+        recordingTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            defer { self.recordingTask = nil }
+            do {
+                let session = try await screenCaptureService.prepareSession()
+                let applications = applicationCandidates(from: session)
+                guard let application = chooseApplication(from: applications),
+                      let display = displayAtPointer(in: session)
+                else { return }
+                let source = RecordingSource.application(application, display: display)
+                recordingAllowsVisualOverlays = false
+                try await prepareCameraOverlayIfNeeded(for: source)
+                await recordingService.start(source: source)
+                if recordingService.state.isActive {
+                    showRecordingControl()
+                }
+            } catch {
+                presentRecordingError(error)
+            }
+        }
+    }
+
+    private func triggerMultipleWindowRecording() {
+        guard recordingTask == nil,
+              captureTask == nil,
+              !recordingService.state.isActive
+        else { return }
+        hideLauncher()
+        recordingTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            defer { self.recordingTask = nil }
+            guard let filter = await recordingContentPickerController.selectMultipleWindows() else {
+                return
+            }
+            recordingAllowsVisualOverlays = false
+            await recordingService.start(source: .contentFilter(filter))
+            if recordingService.state.isActive {
+                showRecordingControl()
+            }
+        }
+    }
+
+    private func triggerSystemAudioRecording() {
+        guard recordingTask == nil,
+              captureTask == nil,
+              !recordingService.state.isActive
+        else { return }
+        if !viewModel.settings.recording.audioMode.capturesSystemAudio {
+            viewModel.settings.recording.audioMode = .system
+        }
+        recordingTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            defer { self.recordingTask = nil }
+            do {
+                let session = try await screenCaptureService.prepareSession()
+                guard let display = displayAtPointer(in: session) else {
+                    throw RecordingError.sourceUnavailable
+                }
+                await recordingService.start(source: .systemAudio(display))
+                if recordingService.state.isActive {
+                    showRecordingControl()
+                }
+            } catch {
+                presentRecordingError(error)
+            }
+        }
+    }
+
+    private func triggerMobileDeviceRecording() {
+        guard recordingTask == nil,
+              captureTask == nil,
+              !recordingService.state.isActive
+        else { return }
+        let devices = RecordingService.mobileDevices()
+        guard let device = chooseMobileDevice(from: devices) else { return }
+        hideLauncher()
+        recordingTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            defer { self.recordingTask = nil }
+            await recordingService.start(source: .mobileDevice(device.uniqueID))
+            if recordingService.state.isActive {
+                showRecordingControl()
+            }
+        }
+    }
+
+    private func applicationCandidates(from session: CaptureSession) -> [SCRunningApplication] {
+        var seen = Set<String>()
+        return session.windows
+            .compactMap(\.owningApplication)
+            .filter { application in
+                guard application.bundleIdentifier != Bundle.main.bundleIdentifier else { return false }
+                return seen.insert(application.bundleIdentifier).inserted
+            }
+            .sorted {
+                $0.applicationName.localizedCaseInsensitiveCompare($1.applicationName) == .orderedAscending
+            }
+    }
+
+    private func chooseApplication(
+        from applications: [SCRunningApplication]
+    ) -> SCRunningApplication? {
+        guard !applications.isEmpty else {
+            presentRecordingError(RecordingError.sourceUnavailable)
+            return nil
+        }
+        let picker = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 320, height: 28))
+        for application in applications {
+            picker.addItem(withTitle: application.applicationName)
+        }
+        let alert = NSAlert()
+        alert.messageText = L10n.recordingChooseApplicationTitle
+        alert.informativeText = L10n.recordingChooseApplicationSubtitle
+        alert.accessoryView = picker
+        alert.addButton(withTitle: L10n.recordingStart)
+        alert.addButton(withTitle: L10n.actionCancel)
+        return alert.runModal() == .alertFirstButtonReturn
+            ? applications[picker.indexOfSelectedItem]
+            : nil
+    }
+
+    private func chooseMobileDevice(from devices: [AVCaptureDevice]) -> AVCaptureDevice? {
+        guard !devices.isEmpty else {
+            presentRecordingError(RecordingError.sourceUnavailable)
+            return nil
+        }
+        let picker = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 320, height: 28))
+        for device in devices {
+            picker.addItem(withTitle: device.localizedName)
+        }
+        let alert = NSAlert()
+        alert.messageText = L10n.recordingChooseMobileTitle
+        alert.informativeText = L10n.recordingChooseMobileSubtitle
+        alert.accessoryView = picker
+        alert.addButton(withTitle: L10n.recordingStart)
+        alert.addButton(withTitle: L10n.actionCancel)
+        return alert.runModal() == .alertFirstButtonReturn
+            ? devices[picker.indexOfSelectedItem]
+            : nil
+    }
+
+    private func displayAtPointer(in session: CaptureSession) -> SCDisplay? {
+        let point = NSEvent.mouseLocation
+        return session.displays.first { $0.screen.frame.contains(point) }?.display
+            ?? session.displays.first?.display
+    }
+
+    private func prepareCameraOverlayIfNeeded(for source: RecordingSource) async throws {
+        guard viewModel.settings.recording.cameraOverlayEnabled,
+              source.kind == .display || source.kind == .region
+        else {
+            cameraOverlayController.stop()
+            return
+        }
+        let display: SCDisplay?
+        switch source {
+        case let .display(value), let .region(value, _, _), let .systemAudio(value):
+            display = value
+        case let .application(_, value):
+            display = value
+        case .contentFilter:
+            display = nil
+        case .window:
+            display = nil
+        case .mobileDevice:
+            display = nil
+        }
+        try await cameraOverlayController.start(
+            deviceID: viewModel.settings.recording.cameraDeviceID,
+            on: display.flatMap { ScreenCaptureService.screen(for: $0.displayID) } ?? activeScreen()
+        )
+    }
+
+    private func toggleRecordingMagnifier() {
+        guard recordingService.state.isActive, recordingAllowsVisualOverlays else {
+            screenMagnifierController.stop()
+            return
+        }
+        Task { await screenMagnifierController.toggle() }
+    }
+
+    private func saveRecordingFrame() {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                _ = try await recordingService.saveCurrentFrame()
+            } catch {
+                NSLog("[Meow] Failed to save recording frame: %@", String(describing: error))
+                presentRecordingError(error)
+            }
+        }
+    }
+
+    private func showRecordingControl() {
+        if recordingControlWindow == nil {
+            let panel = NSPanel(
+                contentRect: NSRect(x: 0, y: 0, width: 190, height: 54),
+                styleMask: [.borderless, .nonactivatingPanel],
+                backing: .buffered,
+                defer: false
+            )
+            panel.level = .floating
+            panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+            panel.isOpaque = false
+            panel.backgroundColor = .clear
+            panel.hasShadow = true
+            panel.isMovableByWindowBackground = true
+            panel.contentView = NSHostingView(
+                rootView: RecordingControlView(
+                    service: recordingService,
+                    onStop: { [weak self] in
+                        Task { await self?.recordingService.stop() }
+                    },
+                    onSaveFrame: { [weak self] in
+                        self?.saveRecordingFrame()
+                    }
+                )
+            )
+            recordingControlWindow = panel
+        }
+        guard let panel = recordingControlWindow else { return }
+        if let screen = activeScreen() {
+            panel.setFrameOrigin(NSPoint(
+                x: screen.visibleFrame.midX - panel.frame.width / 2,
+                y: screen.visibleFrame.maxY - panel.frame.height - 16
+            ))
+        }
+        panel.orderFrontRegardless()
+    }
+
+    private func hideRecordingControl() {
+        recordingControlWindow?.orderOut(nil)
+    }
+
+    private func showRecordingPreview(_ artifact: RecordingArtifact) {
+        recordingPreviewWindow?.orderOut(nil)
+        let panelSize = recordingPreviewPanelSize(for: artifact)
+        let panel = NSPanel(
+            contentRect: NSRect(origin: .zero, size: panelSize),
+            styleMask: [.titled, .closable, .resizable, .utilityWindow],
+            backing: .buffered,
+            defer: false
+        )
+        panel.title = L10n.recordingPreviewTitle
+        panel.level = .floating
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        panel.isReleasedWhenClosed = false
+        if let screen = activeScreen() {
+            panel.setFrameOrigin(NSPoint(
+                x: screen.visibleFrame.maxX - panel.frame.width - 24,
+                y: screen.visibleFrame.maxY - panel.frame.height - 24
+            ))
+        } else {
+            panel.center()
+        }
+        recordingPreviewWindow = panel
+        DispatchQueue.main.async { [weak self, weak panel] in
+            guard let self, let panel else { return }
+            panel.contentViewController = NSHostingController(
+                rootView: RecordingPreviewView(
+                    artifact: artifact,
+                    onTrim: { [weak self, weak panel] in
+                        panel?.orderOut(nil)
+                        self?.showRecordingTrimmer(for: artifact.fileURL)
+                    },
+                    onClose: { [weak panel] in panel?.orderOut(nil) }
+                )
+            )
+            panel.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+        }
+    }
+
+    private func recordingPreviewPanelSize(for artifact: RecordingArtifact) -> NSSize {
+        guard artifact.width > 0, artifact.height > 0 else {
+            return NSSize(width: 560, height: 260)
+        }
+        let aspectRatio = CGFloat(artifact.height) / CGFloat(artifact.width)
+        let width: CGFloat = 640
+        let previewHeight = min(420, max(220, width * aspectRatio))
+        return NSSize(width: width, height: previewHeight + 104)
+    }
+
+    private func showRecordingHistory() {
+        if recordingHistoryWindow == nil {
+            let window = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 820, height: 560),
+                styleMask: [.titled, .closable, .resizable],
+                backing: .buffered,
+                defer: false
+            )
+            window.title = L10n.recordingHistoryTitle
+            window.isReleasedWhenClosed = false
+            recordingHistoryWindow = window
+        }
+        guard let window = recordingHistoryWindow else { return }
+        centerWindowOnScreen(window)
+        DispatchQueue.main.async { [weak self, weak window] in
+            guard let self, let window else { return }
+            window.contentViewController = NSHostingController(
+                rootView: RecordingHistoryView(
+                    store: self.recordingStore,
+                    theme: self.viewModel.settings.theme,
+                    onDelete: { [weak self] artifact in
+                        self?.recordingStore.delete(artifact)
+                    },
+                    onTrim: { [weak self] artifact in
+                        self?.showRecordingTrimmer(for: artifact.fileURL)
+                    }
+                )
+            )
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+        }
+    }
+
+    private func showRecordingTrimmer(for url: URL) {
+        if let existing = recordingTrimmerWindows[url] {
+            existing.makeKeyAndOrderFront(nil)
+            return
+        }
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 760, height: 540),
+            styleMask: [.titled, .closable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = url.lastPathComponent
+        window.contentViewController = NSHostingController(
+            rootView: RecordingTrimmerView(sourceURL: url)
+        )
+        window.isReleasedWhenClosed = false
+        centerWindowOnScreen(window)
+        recordingTrimmerWindows[url] = window
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func presentRecordingError(_ error: Error) {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = L10n.recordingErrorTitle
+        alert.informativeText = error.localizedDescription
+        alert.addButton(withTitle: L10n.actionOK)
+        if case .permissionDenied? = error as? RecordingError {
+            alert.addButton(withTitle: L10n.screenshotOpenSettings)
+        }
+        let response = alert.runModal()
+        if response == .alertSecondButtonReturn,
+           let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")
+        {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
     private func triggerScreenshot(
         mode: ScreenshotCaptureMode,
         editAfterCapture: Bool = false
@@ -741,9 +1431,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func showCaptureHistory() {
-        let view = CaptureHistoryView(
+        let hosting = NSHostingController(rootView: makeCaptureHistoryView(theme: viewModel.settings.theme))
+        captureHistoryHostingController = hosting
+
+        if captureHistoryWindow == nil {
+            let window = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 820, height: 600),
+                styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+                backing: .buffered,
+                defer: false
+            )
+            window.title = L10n.screenshotHistoryTitle
+            window.titleVisibility = .hidden
+            window.titlebarAppearsTransparent = true
+            window.toolbarStyle = .unified
+            window.minSize = NSSize(width: 720, height: 500)
+            window.isReleasedWhenClosed = false
+            captureHistoryWindow = window
+        }
+
+        guard let window = captureHistoryWindow else { return }
+        hideLauncher()
+        window.contentViewController = hosting
+        centerWindowOnScreen(window, on: activeScreen())
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func makeCaptureHistoryView(theme: AppTheme) -> CaptureHistoryView {
+        CaptureHistoryView(
             store: captureStore,
-            theme: viewModel.settings.theme,
+            theme: theme,
             onCopy: { [weak self] artifact in
                 self?.clipboardStore.writeCaptureToPasteboard(artifact)
             },
@@ -785,31 +1503,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 viewModel.refresh()
             }
         )
-        let hosting = NSHostingController(rootView: view)
-        captureHistoryHostingController = hosting
-
-        if captureHistoryWindow == nil {
-            let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 820, height: 600),
-                styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
-                backing: .buffered,
-                defer: false
-            )
-            window.title = L10n.screenshotHistoryTitle
-            window.titleVisibility = .hidden
-            window.titlebarAppearsTransparent = true
-            window.toolbarStyle = .unified
-            window.minSize = NSSize(width: 720, height: 500)
-            window.isReleasedWhenClosed = false
-            captureHistoryWindow = window
-        }
-
-        guard let window = captureHistoryWindow else { return }
-        hideLauncher()
-        window.contentViewController = hosting
-        centerWindowOnScreen(window, on: activeScreen())
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
     }
 
     private func showLauncher() {
@@ -1410,7 +2103,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 healthReminderService: healthReminderService,
                 speechModelStore: speechModelStore,
                 speechHistoryStore: speechHistoryStore,
-                speechRecognitionService: speechRecognitionService
+                speechRecognitionService: speechRecognitionService,
+                makeCaptureHistoryView: { [weak self] theme in
+                    guard let self else {
+                        return CaptureHistoryView(
+                            store: CaptureStore(),
+                            theme: theme,
+                            onCopy: { _ in },
+                            onPin: { _ in },
+                            onEdit: { _ in },
+                            onRecognizeText: { _ in },
+                            onTranslate: { _ in },
+                            onScanQRCode: { _ in },
+                            onAskAI: { _ in },
+                            onDelete: { _ in },
+                            onClear: {}
+                        )
+                    }
+                    return self.makeCaptureHistoryView(theme: theme)
+                },
+                recordingHistoryContext: RecordingHistoryContext(
+                    store: recordingStore,
+                    onDelete: { [weak self] artifact in
+                        self?.recordingStore.delete(artifact)
+                    },
+                    onTrim: { [weak self] artifact in
+                        self?.showRecordingTrimmer(for: artifact.fileURL)
+                    }
+                )
             )
             let hosting = NSHostingController(rootView: prefs)
 

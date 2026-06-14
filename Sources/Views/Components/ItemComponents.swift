@@ -19,6 +19,7 @@ private enum SearchItemImageCache {
 struct SearchItemIcon: View {
     let item: SearchItem
     let theme: AppTheme
+    let showClipboardImagePreviews: Bool
     @Environment(\.colorScheme) private var colorScheme
 
     private var palette: ThemePalette {
@@ -35,7 +36,8 @@ struct SearchItemIcon: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(palette.launcherAccent)
             case let .clipboard(entry):
-                if case let .image(imageContent) = entry.content {
+                if showClipboardImagePreviews,
+                   case let .image(imageContent) = entry.content {
                     LazyClipboardImageView(path: imageContent.thumbnailPath)
                 } else {
                     Image(systemName: item.symbolName)

@@ -1,5 +1,25 @@
 import SwiftUI
 
+private enum SpeechPreferencePage: String, CaseIterable, Identifiable {
+    case overview
+    case model
+    case shortcuts
+    case history
+
+    var id: String {
+        rawValue
+    }
+
+    var title: String {
+        switch self {
+        case .overview: return L10n.speechPageOverview
+        case .model: return L10n.speechPageModel
+        case .shortcuts: return L10n.speechPageShortcuts
+        case .history: return L10n.speechPageHistory
+        }
+    }
+}
+
 struct PreferenceSpeechSection: View {
     private enum Confirmation: Int, Identifiable {
         case downloadModel
@@ -15,6 +35,7 @@ struct PreferenceSpeechSection: View {
     @ObservedObject var recognitionService: SpeechRecognitionService
 
     @Environment(\.colorScheme) private var colorScheme
+    @State private var selectedPage = SpeechPreferencePage.overview
     @State private var confirmation: Confirmation?
     @State private var isHistoryExpanded = false
     @State private var copiedEntryID: SpeechHistoryEntry.ID?
@@ -34,32 +55,28 @@ struct PreferenceSpeechSection: View {
                 isOn: $settings.enabled
             )
 
-            PreferenceHotkeyRecorderRow(
-                title: L10n.speechHotkeyTitle,
-                subtitle: L10n.speechHotkeySubtitle,
-                symbol: "mic",
-                theme: theme,
-                keyCode: settings.hotkeyKeyCode,
-                modifiers: settings.hotkeyModifiers
-            ) { keyCode, modifiers in
-                settings.hotkeyKeyCode = keyCode
-                settings.hotkeyModifiers = modifiers
+            if settings.enabled {
+                Picker("", selection: $selectedPage) {
+                    ForEach(SpeechPreferencePage.allCases) { page in
+                        Text(page.title).tag(page)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                switch selectedPage {
+                case .overview:
+                    overviewPage
+                case .model:
+                    modelPage
+                case .shortcuts:
+                    shortcutsPage
+                case .history:
+                    historyPage
+                }
             }
-
-            modelRow
-            permissionRow
-
-            PreferenceToggleRow(
-                title: L10n.speechSoundTitle,
-                subtitle: L10n.speechSoundSubtitle,
-                symbol: "speaker.wave.2",
-                theme: theme,
-                isOn: $settings.soundEnabled
-            )
-
-            retentionRow
-            historySection
         }
+        .animation(.snappy(duration: 0.22), value: settings.enabled)
+        .animation(.snappy(duration: 0.22), value: selectedPage)
         .alert(item: $confirmation) { confirmation in
             switch confirmation {
             case .downloadModel:
@@ -82,6 +99,53 @@ struct PreferenceSpeechSection: View {
                 )
             }
         }
+    }
+
+    private var overviewPage: some View {
+        VStack(spacing: 10) {
+            permissionRow
+
+            PreferenceToggleRow(
+                title: L10n.speechSoundTitle,
+                subtitle: L10n.speechSoundSubtitle,
+                symbol: "speaker.wave.2",
+                theme: theme,
+                isOn: $settings.soundEnabled
+            )
+        }
+        .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+    }
+
+    private var modelPage: some View {
+        VStack(spacing: 10) {
+            modelRow
+        }
+        .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+    }
+
+    private var shortcutsPage: some View {
+        VStack(spacing: 10) {
+            PreferenceHotkeyRecorderRow(
+                title: L10n.speechHotkeyTitle,
+                subtitle: L10n.speechHotkeySubtitle,
+                symbol: "mic",
+                theme: theme,
+                keyCode: settings.hotkeyKeyCode,
+                modifiers: settings.hotkeyModifiers
+            ) { keyCode, modifiers in
+                settings.hotkeyKeyCode = keyCode
+                settings.hotkeyModifiers = modifiers
+            }
+        }
+        .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+    }
+
+    private var historyPage: some View {
+        VStack(spacing: 10) {
+            retentionRow
+            historySection
+        }
+        .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
     }
 
     private var modelRow: some View {
