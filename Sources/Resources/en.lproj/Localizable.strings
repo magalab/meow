@@ -522,11 +522,6 @@
 "tts.disabled" = "Enable Offline Speech Synthesis above to generate and play speech.";
 "tts.input.title" = "Text to Speak";
 "tts.input.placeholder" = "Enter Chinese, English, or mixed text…";
-"tts.voice.title" = "Voice";
-"tts.voice.american.english" = "English US · %@";
-"tts.voice.british.english" = "English UK · %@";
-"tts.voice.chinese.female" = "Chinese Female · %@";
-"tts.voice.chinese.male" = "Chinese Male · %@";
 "tts.voice.matcha.single" = "Matcha Chinese-English · single stable voice";
 "tts.generate" = "Generate";
 "tts.play" = "Play";
@@ -545,8 +540,6 @@
 "tts.status.paused" = "Paused";
 "tts.model.matcha.title" = "Matcha Chinese-English";
 "tts.model.matcha.subtitle" = "Chinese, English, and mixed text · single stable voice · about 140 MB";
-"tts.model.kokoro.title" = "Kokoro Chinese + English int8";
-"tts.model.kokoro.subtitle" = "Chinese, English, and mixed text · 103 voices · about 140 MB";
 "tts.model.license" = "Matcha Icefall zh-en · distributed by sherpa-onnx";
 "tts.model.source" = "Official model documentation";
 "tts.model.not.installed" = "Required for offline synthesis. Text never leaves this Mac.";

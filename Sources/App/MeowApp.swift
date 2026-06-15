@@ -19,6 +19,18 @@ final class LauncherPanel: NSPanel {
     }
 }
 
+private final class WindowCloseDelegate: NSObject, NSWindowDelegate {
+    private let onClose: () -> Void
+
+    init(onClose: @escaping () -> Void) {
+        self.onClose = onClose
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        onClose()
+    }
+}
+
 @main
 struct MeowApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
@@ -92,6 +104,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var recordingControlWindow: NSPanel?
     private var recordingPreviewWindow: NSPanel?
     private var recordingTrimmerWindows: [URL: NSWindow] = [:]
+    private var recordingTrimmerDelegates: [URL: WindowCloseDelegate] = [:]
     private var recordingTask: Task<Void, Never>?
     private var viewModel: LauncherViewModel!
     private var globalMouseMonitor: Any?
@@ -394,6 +407,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func apply(settings: AppSettings) {
+        var settings = settings
+        let normalizedTTSSettings = settings.tts.normalized()
+        if settings.tts != normalizedTTSSettings {
+            settings.tts = normalizedTTSSettings
+            viewModel.settings.tts = normalizedTTSSettings
+        }
         let languageChanged = appliedLanguage != settings.language
         if languageChanged {
             LanguageManager.shared.apply(settings.language)
@@ -434,11 +453,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         healthReminderService.apply(settings: settings)
         speechModelStore.apply(selectedModel: settings.speech.model)
         speechRecognitionService.apply(settings: settings.speech)
-        let normalizedTTSSettings = settings.tts.normalized()
-        if settings.tts != normalizedTTSSettings {
-            viewModel.settings.tts = normalizedTTSSettings
-            return
-        }
         ttsModelStore.apply(selectedModel: normalizedTTSSettings.model)
         speechSynthesisService.apply(settings: normalizedTTSSettings)
         let actualAutoLaunchEnabled = autoLaunchService.apply(enabled: settings.autoLaunch)
@@ -1118,9 +1132,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         alert.accessoryView = picker
         alert.addButton(withTitle: L10n.recordingStart)
         alert.addButton(withTitle: L10n.actionCancel)
-        return alert.runModal() == .alertFirstButtonReturn
-            ? applications[picker.indexOfSelectedItem]
-            : nil
+        guard alert.runModal() == .alertFirstButtonReturn else { return nil }
+        let selectedIndex = picker.indexOfSelectedItem
+        guard applications.indices.contains(selectedIndex) else { return nil }
+        return applications[selectedIndex]
     }
 
     private func chooseMobileDevice(from devices: [AVCaptureDevice]) -> AVCaptureDevice? {
@@ -1138,9 +1153,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         alert.accessoryView = picker
         alert.addButton(withTitle: L10n.recordingStart)
         alert.addButton(withTitle: L10n.actionCancel)
-        return alert.runModal() == .alertFirstButtonReturn
-            ? devices[picker.indexOfSelectedItem]
-            : nil
+        guard alert.runModal() == .alertFirstButtonReturn else { return nil }
+        let selectedIndex = picker.indexOfSelectedItem
+        guard devices.indices.contains(selectedIndex) else { return nil }
+        return devices[selectedIndex]
     }
 
     private func displayAtPointer(in session: CaptureSession) -> SCDisplay? {
@@ -1351,8 +1367,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             rootView: RecordingTrimmerView(sourceURL: url)
         )
         window.isReleasedWhenClosed = false
+        let delegate = WindowCloseDelegate { [weak self] in
+            self?.recordingTrimmerWindows[url] = nil
+            self?.recordingTrimmerDelegates[url] = nil
+        }
+        window.delegate = delegate
         centerWindowOnScreen(window)
         recordingTrimmerWindows[url] = window
+        recordingTrimmerDelegates[url] = delegate
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }

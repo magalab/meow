@@ -553,6 +553,19 @@ final class RecordingService: NSObject, ObservableObject {
 
     private func fail(_ error: Error) {
         stopElapsedTimer()
+        countdownTask?.cancel()
+        countdownTask = nil
+        let stream = self.stream
+        self.stream = nil
+        if let stream {
+            Task {
+                try? await stream.stopCapture()
+            }
+        }
+        microphoneCapture?.stop()
+        microphoneCapture = nil
+        mobileCapture = nil
+        writer = nil
         allowSleep()
         state = .failed(error.localizedDescription)
         preparedSource = nil
@@ -1126,7 +1139,9 @@ private final class RecordingMobileDeviceCapture: NSObject, AVCaptureFileOutputR
     private let outputURL: URL
     private let session = AVCaptureSession()
     private let output = AVCaptureMovieFileOutput()
+    private let lock = NSLock()
     private var continuation: CheckedContinuation<RecordingMobileDeviceResult, Error>?
+    private var stopTimeoutTask: Task<Void, Never>?
 
     init(deviceID: String, outputURL: URL) {
         self.deviceID = deviceID
@@ -1148,7 +1163,15 @@ private final class RecordingMobileDeviceCapture: NSObject, AVCaptureFileOutputR
 
     func stop() async throws -> RecordingMobileDeviceResult {
         try await withCheckedThrowingContinuation { continuation in
-            self.continuation = continuation
+            lock.withLock {
+                self.continuation = continuation
+            }
+            stopTimeoutTask?.cancel()
+            stopTimeoutTask = Task { [weak self] in
+                try? await Task.sleep(nanoseconds: 5_000_000_000)
+                guard !Task.isCancelled else { return }
+                self?.resumeStop(throwing: RecordingError.sourceUnavailable)
+            }
             output.stopRecording()
         }
     }
@@ -1161,12 +1184,10 @@ private final class RecordingMobileDeviceCapture: NSObject, AVCaptureFileOutputR
     ) {
         session.stopRunning()
         if let error {
-            continuation?.resume(throwing: error)
-            continuation = nil
+            resumeStop(throwing: error)
             return
         }
-        let pending = continuation
-        continuation = nil
+        let pending = takeContinuation()
         Task {
             let asset = AVURLAsset(url: outputFileURL)
             let duration = (try? await asset.load(.duration).seconds) ?? 0
@@ -1181,5 +1202,20 @@ private final class RecordingMobileDeviceCapture: NSObject, AVCaptureFileOutputR
                 hasAudio: !audioTracks.isEmpty
             ))
         }
+    }
+
+    private func takeContinuation() -> CheckedContinuation<RecordingMobileDeviceResult, Error>? {
+        lock.withLock {
+            let pending = continuation
+            continuation = nil
+            stopTimeoutTask?.cancel()
+            stopTimeoutTask = nil
+            return pending
+        }
+    }
+
+    private func resumeStop(throwing error: Error) {
+        session.stopRunning()
+        takeContinuation()?.resume(throwing: error)
     }
 }

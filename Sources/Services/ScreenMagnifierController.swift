@@ -80,13 +80,18 @@ final class ScreenMagnifierController {
               ] as? NSNumber,
               let display = displays[CGDirectDisplayID(displayNumber.uint32Value)]
         else { return }
-        let localX = pointer.x - screen.frame.minX
-        let localY = screen.frame.maxY - pointer.y
+        let scale = screen.backingScaleFactor
+        let localX = (pointer.x - screen.frame.minX) * scale
+        let localY = (screen.frame.maxY - pointer.y) * scale
+        let screenWidth = screen.frame.width * scale
+        let screenHeight = screen.frame.height * scale
+        let captureWidth = captureSize.width * scale
+        let captureHeight = captureSize.height * scale
         let sourceRect = CGRect(
-            x: min(max(0, localX - captureSize.width / 2), max(0, screen.frame.width - captureSize.width)),
-            y: min(max(0, localY - captureSize.height / 2), max(0, screen.frame.height - captureSize.height)),
-            width: min(captureSize.width, screen.frame.width),
-            height: min(captureSize.height, screen.frame.height)
+            x: min(max(0, localX - captureWidth / 2), max(0, screenWidth - captureWidth)),
+            y: min(max(0, localY - captureHeight / 2), max(0, screenHeight - captureHeight)),
+            width: min(captureWidth, screenWidth),
+            height: min(captureHeight, screenHeight)
         )
         let configuration = SCStreamConfiguration()
         configuration.sourceRect = sourceRect

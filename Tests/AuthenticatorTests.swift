@@ -75,7 +75,7 @@ func ttsSettingsCompatibility() throws {
 
     let migrated = try JSONDecoder().decode(
         TtsSettings.self,
-        from: Data(#"{"enabled":true,"model":"kokoroMultilingualInt8","voiceID":57}"#.utf8)
+        from: Data(#"{"enabled":true,"model":"legacyUnsupportedModel","voiceID":57}"#.utf8)
     )
     #expect(migrated.model == .matchaChineseEnglish)
     #expect(migrated.voiceID == 0)
@@ -108,19 +108,6 @@ func ttsModelManifestValidation() throws {
     #expect(store.state == .installed)
     #expect(model.archive.fileName == "matcha-icefall-zh-en.tar.bz2")
     #expect(model.additionalFiles.map(\.relativePath) == ["vocos-16khz-univ.onnx"])
-}
-
-@Test("Kokoro compatibility exposes every bundled voice identifier")
-func kokoroCompatibilityVoiceManifest() {
-    #expect(TtsVoice.available.count == 103)
-    #expect(Set(TtsVoice.available.map(\.id)) == Set(Int32(0)...Int32(102)))
-    #expect(TtsVoice.voice(for: 21).name == "032")
-    #expect(TtsVoice.voice(for: 22).name == "036")
-    #expect(TtsVoice.voice(for: 25).name == "040")
-    #expect(TtsVoice.voice(for: 56).name == "094")
-    #expect(TtsVoice.voice(for: 69).name == "030")
-    #expect(TtsVoice.voice(for: 70).name == "031")
-    #expect(TtsVoice.voice(for: 100).name == "097")
 }
 
 @Test("TTS text normalization and chunking preserve mixed-language content")
