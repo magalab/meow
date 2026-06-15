@@ -200,6 +200,7 @@ struct RecordingPreferencesView: View {
             toggle(L10n.prefsRecordingDesktopTitle, L10n.prefsRecordingDesktopSubtitle, "desktopcomputer", $settings.excludeDesktopIcons)
             toggle(L10n.prefsRecordingSystemUITitle, L10n.prefsRecordingSystemUISubtitle, "switch.2", $settings.excludeSystemOverlays)
             toggle(L10n.prefsRecordingPreventSleepTitle, L10n.prefsRecordingPreventSleepSubtitle, "moon.zzz", $settings.preventSleep)
+            toggle(L10n.prefsRecordingFloatingControlsTitle, L10n.prefsRecordingFloatingControlsSubtitle, "record.circle", $settings.showFloatingControls)
             if capabilities.hasCamera {
                 cameraRow
             } else {

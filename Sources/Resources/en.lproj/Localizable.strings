@@ -652,6 +652,8 @@
 "prefs.recording.system.ui.subtitle" = "Exclude Control Center, notifications, Dock, and System UI overlays";
 "prefs.recording.prevent.sleep.title" = "Prevent Sleep";
 "prefs.recording.prevent.sleep.subtitle" = "Keep the display awake while recording";
+"prefs.recording.floating.controls.title" = "Floating Controls";
+"prefs.recording.floating.controls.subtitle" = "Show the recording timer and pause/stop buttons while recording";
 "prefs.recording.preview.title" = "Open After Recording";
 "prefs.recording.preview.subtitle" = "Open the completed file in the default player";
 "prefs.recording.camera.title" = "Camera Overlay";

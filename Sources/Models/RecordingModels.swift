@@ -95,6 +95,7 @@ struct RecordingSettings: Codable, Equatable, Sendable {
     var excludeSystemOverlays: Bool
     var countdownSeconds: Int
     var preventSleep: Bool
+    var showFloatingControls: Bool
     var showPreview: Bool
     var cameraOverlayEnabled: Bool
     var cameraDeviceID: String
@@ -141,6 +142,7 @@ struct RecordingSettings: Codable, Equatable, Sendable {
         excludeSystemOverlays: Bool,
         countdownSeconds: Int,
         preventSleep: Bool,
+        showFloatingControls: Bool,
         showPreview: Bool,
         cameraOverlayEnabled: Bool,
         cameraDeviceID: String,
@@ -186,6 +188,7 @@ struct RecordingSettings: Codable, Equatable, Sendable {
         self.excludeSystemOverlays = excludeSystemOverlays
         self.countdownSeconds = countdownSeconds
         self.preventSleep = preventSleep
+        self.showFloatingControls = showFloatingControls
         self.showPreview = showPreview
         self.cameraOverlayEnabled = cameraOverlayEnabled
         self.cameraDeviceID = cameraDeviceID
@@ -233,6 +236,7 @@ struct RecordingSettings: Codable, Equatable, Sendable {
         excludeSystemOverlays: false,
         countdownSeconds: 3,
         preventSleep: true,
+        showFloatingControls: true,
         showPreview: true,
         cameraOverlayEnabled: false,
         cameraDeviceID: "",
@@ -265,7 +269,7 @@ struct RecordingSettings: Codable, Equatable, Sendable {
         case audioMode, audioFormat, microphoneDeviceID, keepAudioTracksSeparate, showCursor, highlightMouseClicks
         case includeMenuBar
         case excludeMeow, excludedApplicationBundleIDs, excludeDesktopIcons, excludeSystemOverlays
-        case countdownSeconds, preventSleep, showPreview, cameraOverlayEnabled
+        case countdownSeconds, preventSleep, showFloatingControls, showPreview, cameraOverlayEnabled
         case cameraDeviceID, recordHDR, backgroundStyle, backgroundColorHex, saveDirectory
         case fileNameTemplate, historyLimit, retentionDays, maxStorageMB
         case displayHotkeyKeyCode, displayHotkeyModifiers, regionHotkeyKeyCode, regionHotkeyModifiers
@@ -306,6 +310,7 @@ struct RecordingSettings: Codable, Equatable, Sendable {
         ) ?? defaults.excludeSystemOverlays
         countdownSeconds = try container.decodeIfPresent(Int.self, forKey: .countdownSeconds) ?? defaults.countdownSeconds
         preventSleep = try container.decodeIfPresent(Bool.self, forKey: .preventSleep) ?? defaults.preventSleep
+        showFloatingControls = try container.decodeIfPresent(Bool.self, forKey: .showFloatingControls) ?? defaults.showFloatingControls
         showPreview = try container.decodeIfPresent(Bool.self, forKey: .showPreview) ?? defaults.showPreview
         cameraOverlayEnabled = try container.decodeIfPresent(Bool.self, forKey: .cameraOverlayEnabled) ?? defaults.cameraOverlayEnabled
         cameraDeviceID = try container.decodeIfPresent(String.self, forKey: .cameraDeviceID) ?? defaults.cameraDeviceID

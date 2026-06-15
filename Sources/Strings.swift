@@ -1195,6 +1195,8 @@ enum L10n {
     static var prefsRecordingSystemUISubtitle: String { loc("prefs.recording.system.ui.subtitle") }
     static var prefsRecordingPreventSleepTitle: String { loc("prefs.recording.prevent.sleep.title") }
     static var prefsRecordingPreventSleepSubtitle: String { loc("prefs.recording.prevent.sleep.subtitle") }
+    static var prefsRecordingFloatingControlsTitle: String { loc("prefs.recording.floating.controls.title") }
+    static var prefsRecordingFloatingControlsSubtitle: String { loc("prefs.recording.floating.controls.subtitle") }
     static var prefsRecordingPreviewTitle: String { loc("prefs.recording.preview.title") }
     static var prefsRecordingPreviewSubtitle: String { loc("prefs.recording.preview.subtitle") }
     static var prefsRecordingCameraTitle: String { loc("prefs.recording.camera.title") }

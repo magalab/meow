@@ -652,6 +652,8 @@
 "prefs.recording.system.ui.subtitle" = "排除控制中心、通知、Dock 和系统界面浮层";
 "prefs.recording.prevent.sleep.title" = "防止休眠";
 "prefs.recording.prevent.sleep.subtitle" = "录制期间保持显示器唤醒";
+"prefs.recording.floating.controls.title" = "浮动控制条";
+"prefs.recording.floating.controls.subtitle" = "录制期间显示计时、暂停和停止按钮";
 "prefs.recording.preview.title" = "录制后打开";
 "prefs.recording.preview.subtitle" = "使用默认播放器打开完成的文件";
 "prefs.recording.camera.title" = "摄像头叠加";

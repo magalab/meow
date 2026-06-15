@@ -68,6 +68,7 @@ func recordingSettingsCompatibility() throws {
     #expect(settings.videoFormat == .mp4)
     #expect(settings.videoCodec == .h264)
     #expect(settings.audioMode == .system)
+    #expect(settings.showFloatingControls)
 }
 
 @Test("Recording settings normalize HDR, alpha, and mobile output constraints")
