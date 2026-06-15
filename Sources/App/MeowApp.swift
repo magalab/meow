@@ -68,11 +68,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let aiChatHistoryStore = AIChatHistoryStore()
     private let speechModelStore = SpeechModelStore()
     private let speechHistoryStore = SpeechHistoryStore()
+    private let ttsModelStore = TtsModelStore()
     private lazy var speechRecognitionService = SpeechRecognitionService(
         modelStore: speechModelStore,
         historyStore: speechHistoryStore,
         clipboardStore: clipboardStore
     )
+    private lazy var speechSynthesisService = SpeechSynthesisService(modelStore: ttsModelStore)
     private let speechOverlayController = SpeechOverlayController()
 
     private let translationService = TranslationService()
@@ -96,9 +98,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var localMouseMonitor: Any?
     private var globalKeyMonitor: Any?
     private var localKeyMonitor: Any?
+    private var selectedTextForTts = ""
+    private var ttsSelectionPermissionDenied = false
     private var appliedLanguage: AppLanguage?
     private var lastRegisteredToggleHotkey: (keyCode: UInt32, modifiers: UInt32)?
     private var lastRegisteredTranslateHotkey: (keyCode: UInt32, modifiers: UInt32)?
+    private var lastRegisteredTtsHotkey: (keyCode: UInt32, modifiers: UInt32)?
     private var lastRegisteredSpeechHotkey: (keyCode: UInt32, modifiers: UInt32)?
     private var lastRegisteredScreenshotRegionHotkey: (keyCode: UInt32, modifiers: UInt32)?
     private var lastRegisteredScreenshotEditHotkey: (keyCode: UInt32, modifiers: UInt32)?
@@ -152,6 +157,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         viewModel.onRecordingCommand = { [weak self] command in
             self?.handleRecordingCommand(command)
+        }
+        viewModel.onSpeakText = { [weak self] text in
+            guard let self else { return }
+            self.hideLauncher()
+            self.speechSynthesisService.synthesize(text: text, settings: self.viewModel.settings.tts)
+        }
+        viewModel.onSpeakSelectedText = { [weak self] in
+            self?.speakCapturedSelection()
         }
         recordingService.onCompleted = { [weak self] artifact in
             self?.hideRecordingControl()
@@ -214,6 +227,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         speechRecognitionService.onNeedsModel = { [weak self] in
             self?.showPreferences(section: .speech)
         }
+        speechSynthesisService.onNeedsModel = { [weak self] in
+            self?.showPreferences(section: .speech)
+        }
         speechOverlayController.connect(to: speechRecognitionService)
         viewModel.onPasteClipboard = { [weak self] entry in
             guard let self else { return }
@@ -263,6 +279,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         postCaptureActionsController.close()
         pinnedImageController.closeAll()
         speechRecognitionService.cancel()
+        speechSynthesisService.cancel()
         speechOverlayController.hide()
         keystrokeVisualizerService.stop()
         healthReminderService.stop()
@@ -417,6 +434,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         healthReminderService.apply(settings: settings)
         speechModelStore.apply(selectedModel: settings.speech.model)
         speechRecognitionService.apply(settings: settings.speech)
+        let normalizedTTSSettings = settings.tts.normalized()
+        if settings.tts != normalizedTTSSettings {
+            viewModel.settings.tts = normalizedTTSSettings
+            return
+        }
+        ttsModelStore.apply(selectedModel: normalizedTTSSettings.model)
+        speechSynthesisService.apply(settings: normalizedTTSSettings)
         let actualAutoLaunchEnabled = autoLaunchService.apply(enabled: settings.autoLaunch)
         let toggleHotkeyResult = hotkeyService.registerToggleHotkey(
             keyCode: settings.hotkeyKeyCode,
@@ -487,6 +511,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 settings.translateHotkeyKeyCode,
                 settings.translateHotkeyModifiers
             )
+        }
+
+        if normalizedTTSSettings.enabled {
+            let ttsHotkeyResult = hotkeyService.registerTtsSelectionHotkey(
+                keyCode: settings.ttsHotkeyKeyCode,
+                modifiers: settings.ttsHotkeyModifiers
+            ) { [weak self] in
+                self?.speakSelectedTextViaHotkey()
+            }
+            handleHotkeyRegistrationResult(
+                ttsHotkeyResult,
+                name: "text-to-speech",
+                keyCode: settings.ttsHotkeyKeyCode,
+                modifiers: settings.ttsHotkeyModifiers,
+                previous: lastRegisteredTtsHotkey
+            ) { [weak self] keyCode, modifiers in
+                guard let self else { return }
+                self.viewModel.settings.ttsHotkeyKeyCode = keyCode
+                self.viewModel.settings.ttsHotkeyModifiers = modifiers
+            } onSuccess: { [weak self] in
+                self?.lastRegisteredTtsHotkey = (
+                    settings.ttsHotkeyKeyCode,
+                    settings.ttsHotkeyModifiers
+                )
+            }
+        } else {
+            hotkeyService.unregisterTtsSelectionHotkey()
+            lastRegisteredTtsHotkey = nil
         }
 
         applyScreenshotHotkeys(settings.screenshot)
@@ -1536,8 +1588,67 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if !viewModel.refreshInstalledApps() {
             viewModel.refresh()
         }
+        if viewModel.settings.tts.enabled {
+            selectedTextForTts = translationService.captureViaAccessibility()
+            ttsSelectionPermissionDenied = translationService.axPermissionDenied
+        } else {
+            selectedTextForTts = ""
+            ttsSelectionPermissionDenied = false
+        }
         launcherWindow?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func speakCapturedSelection() {
+        let text = selectedTextForTts
+        let permissionDenied = ttsSelectionPermissionDenied
+        hideLauncher()
+
+        if text.isEmpty, !permissionDenied {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { [weak self] in
+                guard let self else { return }
+                let fallbackText = self.translationService.captureWithFallback(promptForPermission: true)
+                self.ttsSelectionPermissionDenied = self.translationService.axPermissionDenied
+                self.speakSelectedText(fallbackText)
+            }
+            return
+        }
+
+        speakSelectedText(text)
+    }
+
+    private func speakSelectedText(_ text: String) {
+        guard !text.isEmpty else {
+            let alert = NSAlert()
+            alert.messageText = L10n.ttsSelectionUnavailableTitle
+            alert.informativeText = ttsSelectionPermissionDenied
+                ? L10n.ttsSelectionPermissionMessage
+                : L10n.ttsSelectionEmptyMessage
+            if ttsSelectionPermissionDenied {
+                alert.addButton(withTitle: L10n.translateOpenPrivacy)
+                alert.addButton(withTitle: L10n.actionCancel)
+                if alert.runModal() == .alertFirstButtonReturn {
+                    NSWorkspace.shared.open(
+                        URL(
+                            string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
+                        )!
+                    )
+                }
+            } else {
+                alert.addButton(withTitle: L10n.actionOK)
+                alert.runModal()
+            }
+            return
+        }
+
+        speechSynthesisService.synthesize(text: text, settings: viewModel.settings.tts)
+    }
+
+    private func speakSelectedTextViaHotkey() {
+        guard viewModel.settings.tts.enabled else { return }
+        selectedTextForTts = translationService.captureWithFallback(promptForPermission: true)
+        ttsSelectionPermissionDenied = translationService.axPermissionDenied
+        speakCapturedSelection()
     }
 
     private func hideLauncher() {
@@ -2130,6 +2241,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 speechModelStore: speechModelStore,
                 speechHistoryStore: speechHistoryStore,
                 speechRecognitionService: speechRecognitionService,
+                ttsModelStore: ttsModelStore,
+                speechSynthesisService: speechSynthesisService,
                 makeCaptureHistoryView: { [weak self] theme in
                     guard let self else {
                         return CaptureHistoryView(

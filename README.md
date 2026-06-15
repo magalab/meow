@@ -18,6 +18,7 @@ A lightweight macOS launcher with gadgets, built with SwiftUI + AppKit.
 - Ask AI from clipboard entries
 - Translation panel for selected text (requires Accessibility permission)
 - Offline speech recognition with a hold-to-talk shortcut, automatic paste, and local WAV history
+- Offline Chinese and English speech synthesis with local playback, WAV export, and clipboard read-aloud actions
 - Keystroke visualizer with draggable overlay, display modes, duration, opacity, and history count
 - Health reminder with work/break timer, break overlay, daily goal, and light activity detection
 - Menu bar calendar with Chinese lunisolar dates, solar terms, and Calendar.app events
@@ -149,6 +150,24 @@ Speech history and models are stored under:
 ```text
 ~/Library/Application Support/Meow/ASRHistory/
 ~/Library/Application Support/Meow/Models/ASR/
+```
+
+## Offline Speech Synthesis
+
+Configure speech synthesis from Preferences -> Speech -> Synthesis.
+
+- Uses the existing sherpa-onnx runtime with the Matcha Chinese-English model
+- Supports Chinese, English, mixed-language text, and a stable single voice
+- Downloads the approximately 140 MB model and vocoder only after confirmation
+- Supports play, pause, resume, stop, and WAV export
+- Adds read-aloud actions for selected text, clipboard entries, and launcher commands when enabled
+- Reading selected text requires Accessibility permission
+- Runs fully offline after the model is installed
+
+The TTS model is stored under:
+
+```text
+~/Library/Application Support/Meow/Models/TTS/
 ```
 
 ## Health Reminder

@@ -1,9 +1,9 @@
 import SwiftUI
 
 private enum SpeechPreferencePage: String, CaseIterable, Identifiable {
-    case overview
-    case model
-    case shortcuts
+    case recognition
+    case synthesis
+    case models
     case history
 
     var id: String {
@@ -12,9 +12,9 @@ private enum SpeechPreferencePage: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .overview: return L10n.speechPageOverview
-        case .model: return L10n.speechPageModel
-        case .shortcuts: return L10n.speechPageShortcuts
+        case .recognition: return L10n.speechPageRecognition
+        case .synthesis: return L10n.speechPageSynthesis
+        case .models: return L10n.speechPageModels
         case .history: return L10n.speechPageHistory
         }
     }
@@ -33,9 +33,12 @@ struct PreferenceSpeechSection: View {
     @ObservedObject var modelStore: SpeechModelStore
     @ObservedObject var historyStore: SpeechHistoryStore
     @ObservedObject var recognitionService: SpeechRecognitionService
+    @Binding var ttsSettings: TtsSettings
+    @ObservedObject var ttsModelStore: TtsModelStore
+    @ObservedObject var synthesisService: SpeechSynthesisService
 
     @Environment(\.colorScheme) private var colorScheme
-    @State private var selectedPage = SpeechPreferencePage.overview
+    @State private var selectedPage = SpeechPreferencePage.recognition
     @State private var confirmation: Confirmation?
     @State private var isHistoryExpanded = false
     @State private var copiedEntryID: SpeechHistoryEntry.ID?
@@ -55,7 +58,15 @@ struct PreferenceSpeechSection: View {
                 isOn: $settings.enabled
             )
 
-            if settings.enabled {
+            PreferenceToggleRow(
+                title: L10n.ttsEnabledTitle,
+                subtitle: L10n.ttsEnabledSubtitle,
+                symbol: "waveform.badge.plus",
+                theme: theme,
+                isOn: $ttsSettings.enabled
+            )
+
+            if settings.enabled || ttsSettings.enabled {
                 Picker("", selection: $selectedPage) {
                     ForEach(SpeechPreferencePage.allCases) { page in
                         Text(page.title).tag(page)
@@ -64,18 +75,19 @@ struct PreferenceSpeechSection: View {
                 .pickerStyle(.segmented)
 
                 switch selectedPage {
-                case .overview:
-                    overviewPage
-                case .model:
-                    modelPage
-                case .shortcuts:
-                    shortcutsPage
+                case .recognition:
+                    recognitionPage
+                case .synthesis:
+                    synthesisPage
+                case .models:
+                    modelsPage
                 case .history:
                     historyPage
                 }
             }
         }
         .animation(.snappy(duration: 0.22), value: settings.enabled)
+        .animation(.snappy(duration: 0.22), value: ttsSettings.enabled)
         .animation(.snappy(duration: 0.22), value: selectedPage)
         .alert(item: $confirmation) { confirmation in
             switch confirmation {
@@ -101,51 +113,91 @@ struct PreferenceSpeechSection: View {
         }
     }
 
-    private var overviewPage: some View {
-        VStack(spacing: 10) {
-            permissionRow
+    @ViewBuilder
+    private var recognitionPage: some View {
+        if settings.enabled {
+            VStack(spacing: 10) {
+                permissionRow
 
-            PreferenceToggleRow(
-                title: L10n.speechSoundTitle,
-                subtitle: L10n.speechSoundSubtitle,
-                symbol: "speaker.wave.2",
+                PreferenceToggleRow(
+                    title: L10n.speechSoundTitle,
+                    subtitle: L10n.speechSoundSubtitle,
+                    symbol: "speaker.wave.2",
+                    theme: theme,
+                    isOn: $settings.soundEnabled
+                )
+
+                PreferenceHotkeyRecorderRow(
+                    title: L10n.speechHotkeyTitle,
+                    subtitle: L10n.speechHotkeySubtitle,
+                    symbol: "mic",
+                    theme: theme,
+                    keyCode: settings.hotkeyKeyCode,
+                    modifiers: settings.hotkeyModifiers
+                ) { keyCode, modifiers in
+                    settings.hotkeyKeyCode = keyCode
+                    settings.hotkeyModifiers = modifiers
+                }
+            }
+            .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+        } else {
+            disabledPage(L10n.speechRecognitionDisabled)
+        }
+    }
+
+    @ViewBuilder
+    private var synthesisPage: some View {
+        if ttsSettings.enabled {
+            TtsPreferencesView(
+                mode: .synthesis,
                 theme: theme,
-                isOn: $settings.soundEnabled
+                settings: $ttsSettings,
+                modelStore: ttsModelStore,
+                synthesisService: synthesisService
             )
+            .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+        } else {
+            disabledPage(L10n.ttsDisabled)
         }
-        .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
     }
 
-    private var modelPage: some View {
+    private var modelsPage: some View {
         VStack(spacing: 10) {
-            modelRow
-        }
-        .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
-    }
-
-    private var shortcutsPage: some View {
-        VStack(spacing: 10) {
-            PreferenceHotkeyRecorderRow(
-                title: L10n.speechHotkeyTitle,
-                subtitle: L10n.speechHotkeySubtitle,
-                symbol: "mic",
-                theme: theme,
-                keyCode: settings.hotkeyKeyCode,
-                modifiers: settings.hotkeyModifiers
-            ) { keyCode, modifiers in
-                settings.hotkeyKeyCode = keyCode
-                settings.hotkeyModifiers = modifiers
+            if settings.enabled {
+                modelRow
+            }
+            if ttsSettings.enabled {
+                TtsPreferencesView(
+                    mode: .model,
+                    theme: theme,
+                    settings: $ttsSettings,
+                    modelStore: ttsModelStore,
+                    synthesisService: synthesisService
+                )
             }
         }
         .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
     }
 
+    @ViewBuilder
     private var historyPage: some View {
-        VStack(spacing: 10) {
-            retentionRow
-            historySection
+        if settings.enabled {
+            VStack(spacing: 10) {
+                retentionRow
+                historySection
+            }
+            .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+        } else {
+            disabledPage(L10n.speechRecognitionDisabled)
         }
-        .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+    }
+
+    private func disabledPage(_ message: String) -> some View {
+        Text(message)
+            .font(.system(size: 13, weight: .medium, design: .rounded))
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, minHeight: 72)
+            .speechPanel(palette)
     }
 
     private var modelRow: some View {

@@ -105,6 +105,8 @@ struct PreferencesView: View {
     @ObservedObject var speechModelStore: SpeechModelStore
     @ObservedObject var speechHistoryStore: SpeechHistoryStore
     @ObservedObject var speechRecognitionService: SpeechRecognitionService
+    @ObservedObject var ttsModelStore: TtsModelStore
+    @ObservedObject var speechSynthesisService: SpeechSynthesisService
     let makeCaptureHistoryView: (AppTheme) -> CaptureHistoryView
     let recordingHistoryContext: RecordingHistoryContext
     @ObservedObject private var lang = LanguageManager.shared
@@ -222,7 +224,13 @@ struct PreferencesView: View {
                                 ),
                                 modelStore: speechModelStore,
                                 historyStore: speechHistoryStore,
-                                recognitionService: speechRecognitionService
+                                recognitionService: speechRecognitionService,
+                                ttsSettings: Binding(
+                                    get: { viewModel.settings.tts },
+                                    set: { viewModel.settings.tts = $0 }
+                                ),
+                                ttsModelStore: ttsModelStore,
+                                synthesisService: speechSynthesisService
                             )
                             .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
                         }
@@ -450,6 +458,18 @@ struct PreferencesView: View {
             ) { keyCode, modifiers in
                 viewModel.settings.translateHotkeyKeyCode = keyCode
                 viewModel.settings.translateHotkeyModifiers = modifiers
+            }
+
+            PreferenceHotkeyRecorderRow(
+                title: L10n.prefsTtsHotkeyTitle,
+                subtitle: L10n.prefsTtsHotkeySubtitle,
+                symbol: "speaker.wave.2",
+                theme: viewModel.settings.theme,
+                keyCode: viewModel.settings.ttsHotkeyKeyCode,
+                modifiers: viewModel.settings.ttsHotkeyModifiers
+            ) { keyCode, modifiers in
+                viewModel.settings.ttsHotkeyKeyCode = keyCode
+                viewModel.settings.ttsHotkeyModifiers = modifiers
             }
         }
         .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))

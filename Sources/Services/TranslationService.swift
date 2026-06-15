@@ -18,11 +18,37 @@ final class TranslationService: ObservableObject {
     /// True when the last capture attempt found that AX permission is missing.
     @Published private(set) var axPermissionDenied: Bool = false
 
+    /// Reads the current selection through Accessibility without changing the pasteboard.
+    /// This is useful immediately before Meow activates its own launcher window.
+    @discardableResult
+    func captureViaAccessibility(promptForPermission: Bool = false) -> String {
+        let trusted = AXIsProcessTrustedWithOptions(
+            [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: promptForPermission] as CFDictionary
+        )
+        axPermissionDenied = !trusted
+
+        guard trusted else {
+            pendingText = ""
+            return ""
+        }
+
+        let trimmed = (grabSelectedTextViaAX() ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        pendingText = trimmed
+        return trimmed
+    }
+
     /// Captures text and stores it as `pendingText`.  Returns the captured text (may be empty).
     @discardableResult
     func capture() -> String {
+        captureWithFallback(promptForPermission: true)
+    }
+
+    /// Captures the current selection through AX, falling back to a temporary copy operation.
+    @discardableResult
+    func captureWithFallback(promptForPermission: Bool = false) -> String {
         let trusted = AXIsProcessTrustedWithOptions(
-            [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
+            [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: promptForPermission] as CFDictionary
         )
         axPermissionDenied = !trusted
 
@@ -34,6 +60,9 @@ final class TranslationService: ObservableObject {
         var text = grabSelectedTextViaAX() ?? ""
         if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             text = grabSelectedTextViaTemporaryCopy() ?? ""
+            NSLog(
+                "[Meow] Selection capture used temporary copy fallback: success=\(!text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty), length=\(text.count)"
+            )
         }
 
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -97,6 +126,7 @@ final class TranslationService: ObservableObject {
     }
 
     private func simulateCopy() {
+        InternalInputEventSuppressor.suppress(for: 0.25)
         let source = CGEventSource(stateID: .hidSystemState)
         let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0x08, keyDown: true) // C key
         keyDown?.flags = .maskCommand

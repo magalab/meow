@@ -162,6 +162,10 @@ struct AppSettings: Codable {
     var translateHotkeyKeyCode: UInt32
     /// Carbon modifier flags for the translate-selection hotkey (default: 2048 = optionKey = ⌥D).
     var translateHotkeyModifiers: UInt32
+    /// Key code for the text-to-speech selection hotkey (default: 1 = kVK_ANSI_S).
+    var ttsHotkeyKeyCode: UInt32
+    /// Carbon modifier flags for the text-to-speech selection hotkey (default: 2048 = optionKey = ⌥S).
+    var ttsHotkeyModifiers: UInt32
     var language: AppLanguage
     var theme: AppTheme
     var dateIconStyle: DateIconStyle
@@ -170,6 +174,7 @@ struct AppSettings: Codable {
     var screenshot: ScreenshotSettings
     var recording: RecordingSettings
     var speech: SpeechSettings
+    var tts: TtsSettings
     var healthReminder: HealthReminderSettings
     var authenticatorEnabled: Bool
     var authenticatorICloudSyncEnabled: Bool
@@ -194,6 +199,8 @@ struct AppSettings: Codable {
         hotkeyModifiers: UInt32,
         translateHotkeyKeyCode: UInt32,
         translateHotkeyModifiers: UInt32,
+        ttsHotkeyKeyCode: UInt32,
+        ttsHotkeyModifiers: UInt32,
         language: AppLanguage,
         theme: AppTheme,
         dateIconStyle: DateIconStyle = .pawPrint,
@@ -202,6 +209,7 @@ struct AppSettings: Codable {
         screenshot: ScreenshotSettings = .default,
         recording: RecordingSettings = .default,
         speech: SpeechSettings = .default,
+        tts: TtsSettings = .default,
         healthReminder: HealthReminderSettings = .default,
         authenticatorEnabled: Bool = false,
         authenticatorICloudSyncEnabled: Bool = false,
@@ -225,6 +233,8 @@ struct AppSettings: Codable {
         self.hotkeyModifiers = hotkeyModifiers
         self.translateHotkeyKeyCode = translateHotkeyKeyCode
         self.translateHotkeyModifiers = translateHotkeyModifiers
+        self.ttsHotkeyKeyCode = ttsHotkeyKeyCode
+        self.ttsHotkeyModifiers = ttsHotkeyModifiers
         self.language = language
         self.theme = theme
         self.dateIconStyle = dateIconStyle
@@ -233,6 +243,7 @@ struct AppSettings: Codable {
         self.screenshot = screenshot
         self.recording = recording
         self.speech = speech
+        self.tts = tts
         self.healthReminder = healthReminder
         self.authenticatorEnabled = authenticatorEnabled
         self.authenticatorICloudSyncEnabled = authenticatorICloudSyncEnabled
@@ -258,6 +269,8 @@ struct AppSettings: Codable {
         hotkeyModifiers: 2048,
         translateHotkeyKeyCode: 2,
         translateHotkeyModifiers: 2048,
+        ttsHotkeyKeyCode: 1,
+        ttsHotkeyModifiers: 2048,
         language: .system,
         theme: .gingerCat
     )
@@ -274,6 +287,8 @@ extension AppSettings {
         case hotkeyModifiers
         case translateHotkeyKeyCode
         case translateHotkeyModifiers
+        case ttsHotkeyKeyCode
+        case ttsHotkeyModifiers
         case language
         case theme
         case dateIconStyle
@@ -282,6 +297,7 @@ extension AppSettings {
         case screenshot
         case recording
         case speech
+        case tts
         case healthReminder
         case authenticatorEnabled
         case authenticatorICloudSyncEnabled
@@ -308,6 +324,8 @@ extension AppSettings {
         hotkeyModifiers = try container.decodeIfPresent(UInt32.self, forKey: .hotkeyModifiers) ?? Self.default.hotkeyModifiers
         translateHotkeyKeyCode = try container.decodeIfPresent(UInt32.self, forKey: .translateHotkeyKeyCode) ?? Self.default.translateHotkeyKeyCode
         translateHotkeyModifiers = try container.decodeIfPresent(UInt32.self, forKey: .translateHotkeyModifiers) ?? Self.default.translateHotkeyModifiers
+        ttsHotkeyKeyCode = try container.decodeIfPresent(UInt32.self, forKey: .ttsHotkeyKeyCode) ?? Self.default.ttsHotkeyKeyCode
+        ttsHotkeyModifiers = try container.decodeIfPresent(UInt32.self, forKey: .ttsHotkeyModifiers) ?? Self.default.ttsHotkeyModifiers
         language = try container.decodeIfPresent(AppLanguage.self, forKey: .language) ?? Self.default.language
         theme = try container.decodeIfPresent(AppTheme.self, forKey: .theme) ?? Self.default.theme
         dateIconStyle = try container.decodeIfPresent(DateIconStyle.self, forKey: .dateIconStyle) ?? Self.default.dateIconStyle
@@ -322,6 +340,7 @@ extension AppSettings {
             forKey: .recording
         ) ?? Self.default.recording
         speech = try container.decodeIfPresent(SpeechSettings.self, forKey: .speech) ?? Self.default.speech
+        tts = try container.decodeIfPresent(TtsSettings.self, forKey: .tts) ?? Self.default.tts
         healthReminder = try container.decodeIfPresent(
             HealthReminderSettings.self,
             forKey: .healthReminder

@@ -969,6 +969,18 @@ final class HotkeyService: @unchecked Sendable {
         registerHotkey(id: 14, keyCode: keyCode, modifiers: modifiers, pressedAction: action)
     }
 
+    func registerTtsSelectionHotkey(
+        keyCode: UInt32,
+        modifiers: UInt32,
+        action: @escaping () -> Void
+    ) -> RegistrationResult {
+        registerHotkey(id: 15, keyCode: keyCode, modifiers: modifiers, pressedAction: action)
+    }
+
+    func unregisterTtsSelectionHotkey() {
+        unregisterHotkey(id: 15)
+    }
+
     func unregisterScreenshotHotkeys() {
         unregisterHotkey(id: 4)
         unregisterHotkey(id: 5)
