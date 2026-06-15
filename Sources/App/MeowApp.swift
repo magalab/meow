@@ -399,6 +399,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             maxStorageMB: settings.screenshot.maxStorageMB
         )
         recordingService.apply(settings: settings.recording)
+        if recordingStateShowsControls {
+            if settings.recording.showFloatingControls {
+                showRecordingControl()
+            } else {
+                hideRecordingControl()
+            }
+        } else {
+            hideRecordingControl()
+        }
         authenticatorService.apply(
             enabled: settings.authenticatorEnabled,
             iCloudSyncEnabled: settings.authenticatorICloudSyncEnabled,
@@ -926,7 +935,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 try await prepareCameraOverlayIfNeeded(for: source)
                 await recordingService.start(source: source)
                 if recordingService.state.isActive {
-                    showRecordingControl()
+                    showRecordingControlIfNeeded()
                 }
             } catch {
                 presentRecordingError(error)
@@ -955,7 +964,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 try await prepareCameraOverlayIfNeeded(for: source)
                 await recordingService.start(source: source)
                 if recordingService.state.isActive {
-                    showRecordingControl()
+                    showRecordingControlIfNeeded()
                 }
             } catch {
                 presentRecordingError(error)
@@ -978,7 +987,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             recordingAllowsVisualOverlays = false
             await recordingService.start(source: .contentFilter(filter))
             if recordingService.state.isActive {
-                showRecordingControl()
+                showRecordingControlIfNeeded()
             }
         }
     }
@@ -1001,7 +1010,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
                 await recordingService.start(source: .systemAudio(display))
                 if recordingService.state.isActive {
-                    showRecordingControl()
+                    showRecordingControlIfNeeded()
                 }
             } catch {
                 presentRecordingError(error)
@@ -1022,7 +1031,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             defer { self.recordingTask = nil }
             await recordingService.start(source: .mobileDevice(device.uniqueID))
             if recordingService.state.isActive {
-                showRecordingControl()
+                showRecordingControlIfNeeded()
             }
         }
     }
@@ -1131,6 +1140,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 NSLog("[Meow] Failed to save recording frame: %@", String(describing: error))
                 presentRecordingError(error)
             }
+        }
+    }
+
+    private func showRecordingControlIfNeeded() {
+        if viewModel.settings.recording.showFloatingControls {
+            showRecordingControl()
+        } else {
+            hideRecordingControl()
+        }
+    }
+
+    private var recordingStateShowsControls: Bool {
+        switch recordingService.state {
+        case .recording, .paused:
+            return true
+        default:
+            return false
         }
     }
 
