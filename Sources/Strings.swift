@@ -202,6 +202,10 @@ enum L10n {
         loc("action.menu.ask.ai")
     }
 
+    static var actionMenuSpeak: String {
+        loc("action.menu.speak")
+    }
+
     static var actionMenuPinImage: String { loc("action.menu.pin.image") }
     static var actionMenuRecognizeText: String { loc("action.menu.recognize.text") }
     static var actionMenuTranslateImage: String { loc("action.menu.translate.image") }
@@ -335,7 +339,11 @@ enum L10n {
     static var speechPageOverview: String { loc("speech.page.overview") }
     static var speechPageModel: String { loc("speech.page.model") }
     static var speechPageShortcuts: String { loc("speech.page.shortcuts") }
+    static var speechPageRecognition: String { loc("speech.page.recognition") }
+    static var speechPageSynthesis: String { loc("speech.page.synthesis") }
+    static var speechPageModels: String { loc("speech.page.models") }
     static var speechPageHistory: String { loc("speech.page.history") }
+    static var speechRecognitionDisabled: String { loc("speech.recognition.disabled") }
     static var speechHotkeyTitle: String { loc("speech.hotkey.title") }
     static var speechHotkeySubtitle: String { loc("speech.hotkey.subtitle") }
     static var speechSoundTitle: String { loc("speech.sound.title") }
@@ -394,6 +402,68 @@ enum L10n {
     static var speechOverlayCancelHint: String { loc("speech.overlay.cancel.hint") }
     static var speechRecordingFailed: String { loc("speech.error.recording.failed") }
     static var speechTooShort: String { loc("speech.error.too.short") }
+
+    // MARK: - Text to Speech
+
+    static var ttsEnabledTitle: String { loc("tts.enabled.title") }
+    static var ttsEnabledSubtitle: String { loc("tts.enabled.subtitle") }
+    static var ttsDisabled: String { loc("tts.disabled") }
+    static var ttsInputTitle: String { loc("tts.input.title") }
+    static var ttsInputPlaceholder: String { loc("tts.input.placeholder") }
+    static var ttsVoiceTitle: String { loc("tts.voice.title") }
+    static var ttsVoiceAmericanEnglish: String { loc("tts.voice.american.english") }
+    static var ttsVoiceBritishEnglish: String { loc("tts.voice.british.english") }
+    static var ttsVoiceChineseFemale: String { loc("tts.voice.chinese.female") }
+    static var ttsVoiceChineseMale: String { loc("tts.voice.chinese.male") }
+    static var ttsVoiceMatchaSingle: String { loc("tts.voice.matcha.single") }
+    static var ttsGenerate: String { loc("tts.generate") }
+    static var ttsPlay: String { loc("tts.play") }
+    static var ttsPause: String { loc("tts.pause") }
+    static var ttsResume: String { loc("tts.resume") }
+    static var ttsStop: String { loc("tts.stop") }
+    static var ttsExport: String { loc("tts.export") }
+    static var ttsExportErrorTitle: String { loc("tts.export.error.title") }
+    static var ttsStatusIdle: String { loc("tts.status.idle") }
+    static var ttsStatusNeedsModel: String { loc("tts.status.needs.model") }
+    static var ttsStatusLoading: String { loc("tts.status.loading") }
+    static var ttsStatusSynthesizing: String { loc("tts.status.synthesizing") }
+    static var ttsStatusReady: String { loc("tts.status.ready") }
+    static var ttsStatusReadyDuration: String { loc("tts.status.ready.duration") }
+    static var ttsStatusPlaying: String { loc("tts.status.playing") }
+    static var ttsStatusPaused: String { loc("tts.status.paused") }
+    static var ttsModelMatchaTitle: String { loc("tts.model.matcha.title") }
+    static var ttsModelMatchaSubtitle: String { loc("tts.model.matcha.subtitle") }
+    static var ttsModelKokoroTitle: String { loc("tts.model.kokoro.title") }
+    static var ttsModelKokoroSubtitle: String { loc("tts.model.kokoro.subtitle") }
+    static var ttsModelLicense: String { loc("tts.model.license") }
+    static var ttsModelSource: String { loc("tts.model.source") }
+    static var ttsModelNotInstalled: String { loc("tts.model.not.installed") }
+    static var ttsModelInstalled: String { loc("tts.model.installed") }
+    static var ttsModelDownloading: String { loc("tts.model.downloading") }
+    static var ttsModelDownload: String { loc("tts.model.download") }
+    static var ttsModelOpenFolder: String { loc("tts.model.open.folder") }
+    static var ttsModelDelete: String { loc("tts.model.delete") }
+    static var ttsModelDownloadConfirmTitle: String { loc("tts.model.download.confirm.title") }
+    static var ttsModelDownloadConfirmMessage: String { loc("tts.model.download.confirm.message") }
+    static var ttsModelDeleteConfirmTitle: String { loc("tts.model.delete.confirm.title") }
+    static var ttsModelDeleteConfirmMessage: String { loc("tts.model.delete.confirm.message") }
+    static var ttsModelChecksumFailed: String { loc("tts.model.checksum.failed") }
+    static var ttsModelDownloadFailed: String { loc("tts.model.download.failed") }
+    static var ttsErrorIncompleteModel: String { loc("tts.error.incomplete.model") }
+    static var ttsErrorLoadModel: String { loc("tts.error.load.model") }
+    static var ttsErrorGenerationFailed: String { loc("tts.error.generation.failed") }
+    static var ttsErrorEmptyAudio: String { loc("tts.error.empty.audio") }
+    static var ttsSelectionUnavailableTitle: String { loc("tts.selection.unavailable.title") }
+    static var ttsSelectionPermissionMessage: String { loc("tts.selection.permission.message") }
+    static var ttsSelectionEmptyMessage: String { loc("tts.selection.empty.message") }
+    static var ttsErrorEmptyText: String { loc("tts.error.empty.text") }
+    static var ttsErrorPlaybackFailed: String { loc("tts.error.playback.failed") }
+    static var ttsErrorNoAudio: String { loc("tts.error.no.audio") }
+    static var ttsErrorExportFailed: String { loc("tts.error.export.failed") }
+    static var cmdTtsClipboardTitle: String { loc("cmd.tts.clipboard.title") }
+    static var cmdTtsClipboardSubtitle: String { loc("cmd.tts.clipboard.subtitle") }
+    static var cmdTtsSelectionTitle: String { loc("cmd.tts.selection.title") }
+    static var cmdTtsSelectionSubtitle: String { loc("cmd.tts.selection.subtitle") }
 
     static var prefsDockTitle: String {
         loc("prefs.dock.title")
@@ -1398,6 +1468,14 @@ enum L10n {
 
     static var prefsTranslateHotkeySubtitle: String {
         loc("prefs.translate.hotkey.subtitle")
+    }
+
+    static var prefsTtsHotkeyTitle: String {
+        loc("prefs.tts.hotkey.title")
+    }
+
+    static var prefsTtsHotkeySubtitle: String {
+        loc("prefs.tts.hotkey.subtitle")
     }
 
     // MARK: - AI chat

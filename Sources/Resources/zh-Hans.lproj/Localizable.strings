@@ -24,6 +24,7 @@
 "action.menu.copy" = "复制";
 "action.menu.save.as" = "另存为…";
 "action.menu.ask.ai" = "询问 AI";
+"action.menu.speak" = "朗读";
 "action.menu.delete" = "删除";
 "action.menu.more" = "更多操作";
 "action.menu.execute" = "执行";
@@ -65,6 +66,8 @@
 
 "prefs.translate.hotkey.title" = "翻译快捷键";
 "prefs.translate.hotkey.subtitle" = "选中文字后按下快捷键即可翻译";
+"prefs.tts.hotkey.title" = "朗读选中文本快捷键";
+"prefs.tts.hotkey.subtitle" = "选中文字后按下快捷键即可合成并播放";
 
 "prefs.dock.title" = "显示 Dock 图标";
 "prefs.dock.subtitle" = "在 Dock 中显示 Meow 以便快速访问";
@@ -450,7 +453,11 @@
 "speech.page.overview" = "概览";
 "speech.page.model" = "模型";
 "speech.page.shortcuts" = "快捷键";
+"speech.page.recognition" = "识别";
+"speech.page.synthesis" = "合成";
+"speech.page.models" = "模型";
 "speech.page.history" = "历史";
+"speech.recognition.disabled" = "请先在上方启用离线语音识别。";
 "speech.hotkey.title" = "按住说话快捷键";
 "speech.hotkey.subtitle" = "按住录音，松开后识别并粘贴";
 "speech.sound.title" = "开始与结束提示音";
@@ -509,6 +516,66 @@
 "speech.overlay.cancel.hint" = "按 Esc 取消";
 "speech.error.recording.failed" = "无法启动麦克风。";
 "speech.error.too.short" = "录音时间太短。";
+
+"tts.enabled.title" = "离线语音合成";
+"tts.enabled.subtitle" = "使用 sherpa-onnx 在本机生成中文和英文语音";
+"tts.disabled" = "请先在上方启用离线语音合成。";
+"tts.input.title" = "朗读文本";
+"tts.input.placeholder" = "输入中文、英文或中英混合文本…";
+"tts.voice.title" = "声音";
+"tts.voice.american.english" = "美式英语 · %@";
+"tts.voice.british.english" = "英式英语 · %@";
+"tts.voice.chinese.female" = "中文女声 · %@";
+"tts.voice.chinese.male" = "中文男声 · %@";
+"tts.voice.matcha.single" = "Matcha 中英双语 · 稳定单音色";
+"tts.generate" = "生成";
+"tts.play" = "播放";
+"tts.pause" = "暂停";
+"tts.resume" = "继续";
+"tts.stop" = "停止";
+"tts.export" = "导出 WAV";
+"tts.export.error.title" = "无法导出音频";
+"tts.status.idle" = "可在本机生成语音";
+"tts.status.needs.model" = "请前往“模型”页下载 TTS 模型";
+"tts.status.loading" = "正在加载模型…";
+"tts.status.synthesizing" = "正在生成 %.0f%%";
+"tts.status.ready" = "语音已生成";
+"tts.status.ready.duration" = "已生成 · %.1f 秒";
+"tts.status.playing" = "正在播放";
+"tts.status.paused" = "已暂停";
+"tts.model.matcha.title" = "Matcha 中英双语";
+"tts.model.matcha.subtitle" = "中文、英文及中英混合 · 稳定单音色 · 约 140 MB";
+"tts.model.kokoro.title" = "Kokoro 中英双语 int8";
+"tts.model.kokoro.subtitle" = "中文、英文及中英混合 · 103 个声音 · 约 140 MB";
+"tts.model.license" = "Matcha Icefall zh-en · 由 sherpa-onnx 分发";
+"tts.model.source" = "查看官方模型文档";
+"tts.model.not.installed" = "离线合成需要此模型，文本不会发送到服务器。";
+"tts.model.installed" = "TTS 模型已安装";
+"tts.model.downloading" = "已下载 %.0f%%";
+"tts.model.download" = "下载";
+"tts.model.open.folder" = "打开文件夹";
+"tts.model.delete" = "删除模型";
+"tts.model.download.confirm.title" = "下载 TTS 模型？";
+"tts.model.download.confirm.message" = "将从 sherpa-onnx 官方发布下载约 %d MB，模型仅保存在本机。";
+"tts.model.delete.confirm.title" = "删除 TTS 模型？";
+"tts.model.delete.confirm.message" = "已下载的模型将被移除，之后可重新下载。";
+"tts.model.checksum.failed" = "下载的 TTS 模型未通过完整性校验。";
+"tts.model.download.failed" = "TTS 模型下载后文件不完整。";
+"tts.error.incomplete.model" = "TTS 模型文件不完整。";
+"tts.error.load.model" = "无法加载 TTS 模型。";
+"tts.error.generation.failed" = "语音生成失败。";
+"tts.error.empty.audio" = "模型没有返回音频。";
+"tts.selection.unavailable.title" = "无法读取选中文本";
+"tts.selection.permission.message" = "请在系统设置中授予 Meow 辅助功能权限，然后先选中文本，再打开启动器。";
+"tts.selection.empty.message" = "请先在其他应用中选中文本，再打开启动器重试。";
+"tts.error.empty.text" = "请输入需要朗读的文本。";
+"tts.error.playback.failed" = "无法播放生成的音频。";
+"tts.error.no.audio" = "请先生成语音再导出。";
+"tts.error.export.failed" = "无法导出生成的音频。";
+"cmd.tts.clipboard.title" = "朗读剪贴板";
+"cmd.tts.clipboard.subtitle" = "将最近复制的文本生成为语音";
+"cmd.tts.selection.title" = "朗读选中文本";
+"cmd.tts.selection.subtitle" = "朗读打开启动器前选中的文本";
 
 /* Authenticator */
 "prefs.section.authenticator" = "身份验证器";

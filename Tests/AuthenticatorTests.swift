@@ -1,4 +1,5 @@
 import AppKit
+import AVFoundation
 import Foundation
 import Testing
 @testable import Meow
@@ -51,10 +52,138 @@ func olderSettingsCompatibility() throws {
     #expect(settings.authenticatorICloudSyncEnabled == false)
     #expect(settings.screenshot == .default)
     #expect(settings.recording == .default)
+    #expect(settings.tts == .default)
     #expect(!settings.screenshot.automaticallyIndexOCRText)
     #expect(settings.screenshot.postCaptureActionDuration == .tenSeconds)
     #expect(settings.ai.supportsVision)
     #expect(settings.ai.imageMaxDimension == 1600)
+}
+
+@Test("TTS settings decode missing fields and normalize invalid values")
+func ttsSettingsCompatibility() throws {
+    let decoded = try JSONDecoder().decode(
+        TtsSettings.self,
+        from: Data(#"{"enabled":true,"speed":9,"voiceID":999}"#.utf8)
+    )
+    let normalized = decoded.normalized()
+
+    #expect(decoded.enabled)
+    #expect(decoded.model == .matchaChineseEnglish)
+    #expect(normalized.speed == 1)
+    #expect(normalized.voiceID == 0)
+    #expect(decoded.autoPlay)
+
+    let migrated = try JSONDecoder().decode(
+        TtsSettings.self,
+        from: Data(#"{"enabled":true,"model":"kokoroMultilingualInt8","voiceID":57}"#.utf8)
+    )
+    #expect(migrated.model == .matchaChineseEnglish)
+    #expect(migrated.voiceID == 0)
+}
+
+@Test("TTS model manifest identifies a complete installation")
+@MainActor
+func ttsModelManifestValidation() throws {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("Meow-TTS-Test-\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let model = TtsModelKind.matchaChineseEnglish
+    let modelDirectory = root.appendingPathComponent(model.storageDirectoryName, isDirectory: true)
+    try FileManager.default.createDirectory(at: modelDirectory, withIntermediateDirectories: true)
+    let store = TtsModelStore(modelsRootDirectory: root)
+    #expect(!store.isInstalled)
+
+    for relativePath in model.requiredRelativePaths {
+        let url = modelDirectory.appendingPathComponent(relativePath)
+        if url.pathExtension.isEmpty {
+            try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        } else {
+            try Data().write(to: url)
+        }
+    }
+    store.refreshState()
+
+    #expect(store.isInstalled)
+    #expect(store.state == .installed)
+    #expect(model.archive.fileName == "matcha-icefall-zh-en.tar.bz2")
+    #expect(model.additionalFiles.map(\.relativePath) == ["vocos-16khz-univ.onnx"])
+}
+
+@Test("Kokoro compatibility exposes every bundled voice identifier")
+func kokoroCompatibilityVoiceManifest() {
+    #expect(TtsVoice.available.count == 103)
+    #expect(Set(TtsVoice.available.map(\.id)) == Set(Int32(0)...Int32(102)))
+    #expect(TtsVoice.voice(for: 21).name == "032")
+    #expect(TtsVoice.voice(for: 22).name == "036")
+    #expect(TtsVoice.voice(for: 25).name == "040")
+    #expect(TtsVoice.voice(for: 56).name == "094")
+    #expect(TtsVoice.voice(for: 69).name == "030")
+    #expect(TtsVoice.voice(for: 70).name == "031")
+    #expect(TtsVoice.voice(for: 100).name == "097")
+}
+
+@Test("TTS text normalization and chunking preserve mixed-language content")
+func ttsTextChunking() {
+    let normalized = SpeechSynthesisService.normalizedText("  Hello   世界。\n下一句  ")
+    #expect(normalized == "Hello 世界。下一句")
+    #expect(SpeechSynthesisService.normalizedText("你好，") == "你好")
+    #expect(
+        SpeechSynthesisService.normalizedText("你好， 我是你的好朋友，小汪.")
+            == "你好，我是你的好朋友，小汪。"
+    )
+    #expect(
+        SpeechSynthesisService.normalizedText("按 ⌘S 保存，或用 ⌥D 翻译。")
+            == "按 Command plus essay 保存，或用 Option plus deep 翻译。"
+    )
+
+    let longText = Array(repeating: "中文 and English sentence。", count: 40).joined(separator: " ")
+    let chunks = SpeechSynthesisService.chunks(from: longText, maximumLength: 120)
+    #expect(chunks.count > 1)
+    #expect(chunks.allSatisfy { !$0.isEmpty })
+    #expect(chunks.joined(separator: " ").contains("中文"))
+    #expect(chunks.joined(separator: " ").contains("English"))
+
+    let chineseChunks = SpeechSynthesisService.chunks(from: "你好，我是你的好朋友，小汪。", maximumLength: 120)
+    #expect(chineseChunks == ["你好，我是你的好朋友，小汪。"])
+}
+
+@Test("TTS WAV export preserves sample rate and duration")
+func ttsWAVExport() throws {
+    let url = FileManager.default.temporaryDirectory
+        .appendingPathComponent("Meow-TTS-\(UUID().uuidString).wav")
+    defer { try? FileManager.default.removeItem(at: url) }
+    let result = TtsAudioResult(
+        samples: Array(repeating: 0.1, count: 2_400),
+        sampleRate: 24_000,
+        text: "test",
+        voiceID: 0
+    )
+
+    try SpeechSynthesisService.writeWAV(result, to: url)
+    let audioFile = try AVAudioFile(forReading: url)
+    #expect(Int(audioFile.fileFormat.sampleRate) == 24_000)
+    #expect(audioFile.length == 2_400)
+    #expect(abs(result.duration - 0.1) < 0.0001)
+}
+
+@Test("Installed Matcha model synthesizes Chinese and English")
+func installedMatchaModelSmokeTest() async throws {
+    guard let modelPath = ProcessInfo.processInfo.environment["MEOW_TTS_MODEL_DIR"] else {
+        return
+    }
+    let synthesizer = try SherpaOnnxSynthesizer(
+        model: .matchaChineseEnglish,
+        modelDirectory: URL(fileURLWithPath: modelPath)
+    )
+    let result = try await synthesizer.synthesize(
+        text: "Hello from Meow. 你好，欢迎使用离线语音合成。",
+        voiceID: 0,
+        speed: 1,
+        progress: { _ in }
+    )
+    #expect(result.sampleRate == 16_000)
+    #expect(result.samples.count > 16_000)
 }
 
 @Test("Recording settings decode missing fields with current defaults")

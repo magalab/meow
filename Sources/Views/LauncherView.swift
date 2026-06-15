@@ -332,6 +332,7 @@ struct LauncherView: View {
                 let actions = actionMenuActions(for: selected)
                 ActionMenu(
                     selectedItem: selected,
+                    showsSpeakAction: viewModel.settings.tts.enabled,
                     highlightedAction: actions.isEmpty ? nil : actions[actionMenuSelectionIndex.clamped(to: 0 ... (actions.count - 1))],
                     onAction: { action in
                         executeActionMenu(action, selected: selected)
@@ -454,6 +455,9 @@ struct LauncherView: View {
                     .recognizeText, .translateImageText, .scanQRCode,
                 ]
             }
+            if viewModel.settings.tts.enabled, case .text = entry.content {
+                actions.append(.speak)
+            }
             actions += [.askAI, .delete]
             return actions
         case .command:
@@ -482,7 +486,7 @@ struct LauncherView: View {
         switch (selectedItem, action) {
         case (.app, .open), (.app, .showInFinder), (.app, .copyPath):
             return true
-        case (.clipboard, .paste), (.clipboard, .copy), (.clipboard, .askAI),
+        case (.clipboard, .paste), (.clipboard, .copy), (.clipboard, .speak), (.clipboard, .askAI),
              (.clipboard, .openImage), (.clipboard, .saveImageAs),
              (.clipboard, .pin), (.clipboard, .recognizeText),
              (.clipboard, .translateImageText), (.clipboard, .scanQRCode),
@@ -510,6 +514,8 @@ struct LauncherView: View {
             copySelectedPath()
         case .copy:
             copyClipboardContent()
+        case .speak:
+            viewModel.speakClipboardText(selected)
         case .askAI:
             askAIAboutClipboard(selected)
         case .pin:

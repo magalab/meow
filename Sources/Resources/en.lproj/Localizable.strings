@@ -24,6 +24,7 @@
 "action.menu.copy" = "Copy";
 "action.menu.save.as" = "Save As…";
 "action.menu.ask.ai" = "Ask AI";
+"action.menu.speak" = "Read Aloud";
 "action.menu.delete" = "Delete";
 "action.menu.more" = "More Actions";
 "action.menu.execute" = "Execute";
@@ -65,6 +66,8 @@
 
 "prefs.translate.hotkey.title" = "Translate Hotkey";
 "prefs.translate.hotkey.subtitle" = "Select text, then press to translate it";
+"prefs.tts.hotkey.title" = "Read Selection Hotkey";
+"prefs.tts.hotkey.subtitle" = "Select text, then press to synthesize and play it";
 
 "prefs.dock.title" = "Show Dock Icon";
 "prefs.dock.subtitle" = "Display Meow in Dock for quick access";
@@ -450,7 +453,11 @@
 "speech.page.overview" = "Overview";
 "speech.page.model" = "Model";
 "speech.page.shortcuts" = "Shortcuts";
+"speech.page.recognition" = "Recognition";
+"speech.page.synthesis" = "Synthesis";
+"speech.page.models" = "Models";
 "speech.page.history" = "History";
+"speech.recognition.disabled" = "Enable Offline Speech Recognition above to use recognition controls.";
 "speech.hotkey.title" = "Hold-to-Talk Shortcut";
 "speech.hotkey.subtitle" = "Hold to record, then release to recognize and paste";
 "speech.sound.title" = "Start and Stop Sounds";
@@ -509,6 +516,66 @@
 "speech.overlay.cancel.hint" = "Press Esc to cancel";
 "speech.error.recording.failed" = "The microphone could not be started.";
 "speech.error.too.short" = "The recording was too short.";
+
+"tts.enabled.title" = "Offline Speech Synthesis";
+"tts.enabled.subtitle" = "Generate Chinese and English speech locally with sherpa-onnx";
+"tts.disabled" = "Enable Offline Speech Synthesis above to generate and play speech.";
+"tts.input.title" = "Text to Speak";
+"tts.input.placeholder" = "Enter Chinese, English, or mixed text…";
+"tts.voice.title" = "Voice";
+"tts.voice.american.english" = "English US · %@";
+"tts.voice.british.english" = "English UK · %@";
+"tts.voice.chinese.female" = "Chinese Female · %@";
+"tts.voice.chinese.male" = "Chinese Male · %@";
+"tts.voice.matcha.single" = "Matcha Chinese-English · single stable voice";
+"tts.generate" = "Generate";
+"tts.play" = "Play";
+"tts.pause" = "Pause";
+"tts.resume" = "Resume";
+"tts.stop" = "Stop";
+"tts.export" = "Export WAV";
+"tts.export.error.title" = "Could Not Export Audio";
+"tts.status.idle" = "Ready to generate locally";
+"tts.status.needs.model" = "Download the TTS model on the Models page";
+"tts.status.loading" = "Loading model…";
+"tts.status.synthesizing" = "Generating %.0f%%";
+"tts.status.ready" = "Audio is ready";
+"tts.status.ready.duration" = "Ready · %.1f seconds";
+"tts.status.playing" = "Playing";
+"tts.status.paused" = "Paused";
+"tts.model.matcha.title" = "Matcha Chinese-English";
+"tts.model.matcha.subtitle" = "Chinese, English, and mixed text · single stable voice · about 140 MB";
+"tts.model.kokoro.title" = "Kokoro Chinese + English int8";
+"tts.model.kokoro.subtitle" = "Chinese, English, and mixed text · 103 voices · about 140 MB";
+"tts.model.license" = "Matcha Icefall zh-en · distributed by sherpa-onnx";
+"tts.model.source" = "Official model documentation";
+"tts.model.not.installed" = "Required for offline synthesis. Text never leaves this Mac.";
+"tts.model.installed" = "TTS model is installed";
+"tts.model.downloading" = "%.0f%% downloaded";
+"tts.model.download" = "Download";
+"tts.model.open.folder" = "Open Folder";
+"tts.model.delete" = "Delete Model";
+"tts.model.download.confirm.title" = "Download TTS Model?";
+"tts.model.download.confirm.message" = "Downloads approximately %d MB from the official sherpa-onnx release. The model stays on this Mac.";
+"tts.model.delete.confirm.title" = "Delete TTS Model?";
+"tts.model.delete.confirm.message" = "The downloaded model will be removed. You can download it again later.";
+"tts.model.checksum.failed" = "The downloaded TTS model failed integrity verification.";
+"tts.model.download.failed" = "The TTS model download did not produce a complete model.";
+"tts.error.incomplete.model" = "The TTS model is incomplete.";
+"tts.error.load.model" = "The TTS model could not be loaded.";
+"tts.error.generation.failed" = "Speech generation failed.";
+"tts.error.empty.audio" = "The model returned no audio.";
+"tts.selection.unavailable.title" = "Could Not Read Selected Text";
+"tts.selection.permission.message" = "Grant Meow Accessibility permission in System Settings, then select text before opening the launcher.";
+"tts.selection.empty.message" = "Select text in another app before opening the launcher, then try again.";
+"tts.error.empty.text" = "Enter text before generating speech.";
+"tts.error.playback.failed" = "The generated audio could not be played.";
+"tts.error.no.audio" = "Generate audio before exporting.";
+"tts.error.export.failed" = "The generated audio could not be exported.";
+"cmd.tts.clipboard.title" = "Read Clipboard Aloud";
+"cmd.tts.clipboard.subtitle" = "Generate speech from the latest copied text";
+"cmd.tts.selection.title" = "Read Selected Text Aloud";
+"cmd.tts.selection.subtitle" = "Read the text selected before opening the launcher";
 
 /* Authenticator */
 "prefs.section.authenticator" = "Authenticator";

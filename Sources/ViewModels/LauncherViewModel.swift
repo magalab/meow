@@ -30,6 +30,8 @@ final class LauncherViewModel: ObservableObject {
     var onHealthCommand: ((HealthReminderCommand) -> Void)?
     var onScreenshotCommand: ((ScreenshotCommand) -> Void)?
     var onRecordingCommand: ((RecordingCommand) -> Void)?
+    var onSpeakText: ((String) -> Void)?
+    var onSpeakSelectedText: (() -> Void)?
     var onPinClipboardImage: ((ImageClipboardContent) -> Void)?
     var onRecognizeClipboardImage: ((ImageClipboardContent) -> Void)?
     var onTranslateClipboardImage: ((ImageClipboardContent) -> Void)?
@@ -227,6 +229,27 @@ final class LauncherViewModel: ObservableObject {
                 at: min(2, entries.count)
             )
         }
+        if settings.tts.enabled {
+            entries.insert(
+                contentsOf: [
+                    CommandEntry(
+                        id: "meow.tts.selection",
+                        title: L10n.cmdTtsSelectionTitle,
+                        subtitle: L10n.cmdTtsSelectionSubtitle,
+                        keywords: ["speak", "read", "tts", "selection", "selected text",
+                                   "朗读", "语音合成", "选中文本", "选择"]
+                    ),
+                    CommandEntry(
+                        id: "meow.tts.clipboard",
+                        title: L10n.cmdTtsClipboardTitle,
+                        subtitle: L10n.cmdTtsClipboardSubtitle,
+                        keywords: ["speak", "read", "tts", "clipboard", "voice",
+                                   "朗读", "语音合成", "剪贴板", "文字转语音"]
+                    ),
+                ],
+                at: min(2, entries.count)
+            )
+        }
         return entries
     }
 
@@ -344,6 +367,19 @@ final class LauncherViewModel: ObservableObject {
         onSaveClipboardImage?(image)
     }
 
+    func speakClipboardText(_ item: SearchItem) {
+        guard settings.tts.enabled,
+              case let .clipboard(entry) = item,
+              case let .text(text) = entry.content
+        else { return }
+        onSpeakText?(text)
+    }
+
+    func speakLatestClipboardText() {
+        guard settings.tts.enabled, let text = latestClipboardText() else { return }
+        onSpeakText?(text)
+    }
+
     func openAIChat(prompt: String?) {
         guard let prompt else {
             onOpenAIChat?(nil)
@@ -450,6 +486,10 @@ final class LauncherViewModel: ObservableObject {
             onRecordingCommand?(.openHistory)
         case "meow.recording.mobile":
             onRecordingCommand?(.recordMobileDevice)
+        case "meow.tts.clipboard":
+            speakLatestClipboardText()
+        case "meow.tts.selection":
+            onSpeakSelectedText?()
         case "meow.quit":
             NSApp.terminate(nil)
         default:
@@ -513,6 +553,17 @@ final class LauncherViewModel: ObservableObject {
         for entry in clipboardStore.getEntries() {
             if case let .image(image) = entry.content {
                 return image
+            }
+        }
+        return nil
+    }
+
+    private func latestClipboardText() -> String? {
+        for entry in clipboardStore.getEntries() {
+            if case let .text(text) = entry.content,
+               !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            {
+                return text
             }
         }
         return nil

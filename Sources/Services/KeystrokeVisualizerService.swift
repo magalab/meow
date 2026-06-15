@@ -184,6 +184,10 @@ final class KeystrokeVisualizerService: ObservableObject {
 
     fileprivate func handleEvent(type: CGEventType, keyCode: UInt32, flags: CGEventFlags) {
         guard isEnabled else { return }
+        guard !InternalInputEventSuppressor.isSuppressed else {
+            cancelPendingModifierDisplay()
+            return
+        }
 
         switch type {
         case .keyDown:
