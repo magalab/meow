@@ -2,16 +2,19 @@ import Foundation
 
 enum TtsModelKind: String, Codable, CaseIterable, Identifiable, Sendable {
     case matchaChineseEnglish
-    case kokoroMultilingualInt8
 
     var id: String { rawValue }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let rawValue = try container.decode(String.self)
+        self = TtsModelKind(rawValue: rawValue) ?? .matchaChineseEnglish
+    }
 
     var displayName: String {
         switch self {
         case .matchaChineseEnglish:
             return L10n.ttsModelMatchaTitle
-        case .kokoroMultilingualInt8:
-            return L10n.ttsModelKokoroTitle
         }
     }
 
@@ -19,8 +22,6 @@ enum TtsModelKind: String, Codable, CaseIterable, Identifiable, Sendable {
         switch self {
         case .matchaChineseEnglish:
             return L10n.ttsModelMatchaSubtitle
-        case .kokoroMultilingualInt8:
-            return L10n.ttsModelKokoroSubtitle
         }
     }
 
@@ -28,8 +29,6 @@ enum TtsModelKind: String, Codable, CaseIterable, Identifiable, Sendable {
         switch self {
         case .matchaChineseEnglish:
             return "matcha-icefall-zh-en"
-        case .kokoroMultilingualInt8:
-            return "kokoro-int8-multi-lang-v1_1"
         }
     }
 
@@ -43,15 +42,6 @@ enum TtsModelKind: String, Codable, CaseIterable, Identifiable, Sendable {
                 fileName: "matcha-icefall-zh-en.tar.bz2",
                 sha256: nil,
                 approximateSizeMB: 90
-            )
-        case .kokoroMultilingualInt8:
-            return TtsModelArchive(
-                remoteURL: URL(
-                    string: "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-int8-multi-lang-v1_1.tar.bz2"
-                )!,
-                fileName: "kokoro-int8-multi-lang-v1_1.tar.bz2",
-                sha256: "a1e94694776049035c4f2c6529f003aaece993c76aae9a78995831c3c4dcafc6",
-                approximateSizeMB: 140
             )
         }
     }
@@ -69,8 +59,6 @@ enum TtsModelKind: String, Codable, CaseIterable, Identifiable, Sendable {
                     approximateSizeMB: 51
                 ),
             ]
-        case .kokoroMultilingualInt8:
-            return []
         }
     }
 
@@ -80,8 +68,6 @@ enum TtsModelKind: String, Codable, CaseIterable, Identifiable, Sendable {
             return URL(
                 string: "https://k2-fsa.github.io/sherpa/onnx/tts/all/Chinese-English/matcha-icefall-zh-en.html"
             )!
-        case .kokoroMultilingualInt8:
-            return URL(string: "https://k2-fsa.github.io/sherpa/onnx/tts/pretrained_models/kokoro.html")!
         }
     }
 
@@ -102,18 +88,6 @@ enum TtsModelKind: String, Codable, CaseIterable, Identifiable, Sendable {
                 "phone-zh.fst",
                 "number-zh.fst",
             ]
-        case .kokoroMultilingualInt8:
-            return [
-                "model.int8.onnx",
-                "voices.bin",
-                "tokens.txt",
-                "espeak-ng-data",
-                "lexicon-us-en.txt",
-                "lexicon-zh.txt",
-                "date-zh.fst",
-                "phone-zh.fst",
-                "number-zh.fst",
-            ]
         }
     }
 }
@@ -130,68 +104,6 @@ struct TtsModelFile: Sendable {
     let relativePath: String
     let sha256: String?
     let approximateSizeMB: Int
-}
-
-struct TtsVoice: Identifiable, Hashable, Sendable {
-    let id: Int32
-    let name: String
-    let language: TtsVoiceLanguage
-
-    var displayName: String {
-        switch language {
-        case .americanEnglish:
-            return String(format: L10n.ttsVoiceAmericanEnglish, name)
-        case .britishEnglish:
-            return String(format: L10n.ttsVoiceBritishEnglish, name)
-        case .chineseFemale:
-            return String(format: L10n.ttsVoiceChineseFemale, name)
-        case .chineseMale:
-            return String(format: L10n.ttsVoiceChineseMale, name)
-        }
-    }
-
-    private static let englishVoices: [TtsVoice] = [
-        TtsVoice(id: 0, name: "Maple", language: .americanEnglish),
-        TtsVoice(id: 1, name: "Sol", language: .americanEnglish),
-        TtsVoice(id: 2, name: "Vale", language: .britishEnglish),
-    ]
-
-    private static let chineseFemaleNames = [
-        "001", "002", "003", "004", "005", "006", "007", "008", "017", "018",
-        "019", "021", "022", "023", "024", "026", "027", "028", "032", "036",
-        "038", "039", "040", "042", "043", "044", "046", "047", "048", "049",
-        "051", "059", "060", "067", "070", "071", "072", "073", "074", "075",
-        "076", "077", "078", "079", "083", "084", "085", "086", "087", "088",
-        "090", "092", "093", "094", "099",
-    ]
-
-    private static let chineseMaleNames = [
-        "009", "010", "011", "012", "013", "014", "015", "016", "020", "025",
-        "029", "030", "031", "033", "034", "035", "037", "041", "045", "050",
-        "052", "053", "054", "055", "056", "057", "058", "061", "062", "063",
-        "064", "065", "066", "068", "069", "080", "081", "082", "089", "091",
-        "095", "096", "097", "098", "100",
-    ]
-
-    static let available: [TtsVoice] =
-        englishVoices
-        + chineseFemaleNames.enumerated().map { offset, name in
-            TtsVoice(id: Int32(offset + 3), name: name, language: .chineseFemale)
-        }
-        + chineseMaleNames.enumerated().map { offset, name in
-            TtsVoice(id: Int32(offset + 58), name: name, language: .chineseMale)
-        }
-
-    static func voice(for id: Int32) -> TtsVoice {
-        available.first(where: { $0.id == id }) ?? available[3]
-    }
-}
-
-enum TtsVoiceLanguage: Sendable {
-    case americanEnglish
-    case britishEnglish
-    case chineseFemale
-    case chineseMale
 }
 
 struct TtsSettings: Codable, Equatable, Sendable {
@@ -239,16 +151,10 @@ extension TtsSettings {
 
     func normalized() -> TtsSettings {
         var copy = self
-        if copy.model == .kokoroMultilingualInt8 {
-            copy.model = .matchaChineseEnglish
-        }
+        copy.model = .matchaChineseEnglish
         copy.speed = 1
         copy.autoPlay = true
-        if copy.model == .matchaChineseEnglish {
-            copy.voiceID = 0
-        } else if !TtsVoice.available.contains(where: { $0.id == voiceID }) {
-            copy.voiceID = Self.default.voiceID
-        }
+        copy.voiceID = 0
         return copy
     }
 }

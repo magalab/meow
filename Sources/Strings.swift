@@ -410,11 +410,6 @@ enum L10n {
     static var ttsDisabled: String { loc("tts.disabled") }
     static var ttsInputTitle: String { loc("tts.input.title") }
     static var ttsInputPlaceholder: String { loc("tts.input.placeholder") }
-    static var ttsVoiceTitle: String { loc("tts.voice.title") }
-    static var ttsVoiceAmericanEnglish: String { loc("tts.voice.american.english") }
-    static var ttsVoiceBritishEnglish: String { loc("tts.voice.british.english") }
-    static var ttsVoiceChineseFemale: String { loc("tts.voice.chinese.female") }
-    static var ttsVoiceChineseMale: String { loc("tts.voice.chinese.male") }
     static var ttsVoiceMatchaSingle: String { loc("tts.voice.matcha.single") }
     static var ttsGenerate: String { loc("tts.generate") }
     static var ttsPlay: String { loc("tts.play") }
@@ -433,8 +428,6 @@ enum L10n {
     static var ttsStatusPaused: String { loc("tts.status.paused") }
     static var ttsModelMatchaTitle: String { loc("tts.model.matcha.title") }
     static var ttsModelMatchaSubtitle: String { loc("tts.model.matcha.subtitle") }
-    static var ttsModelKokoroTitle: String { loc("tts.model.kokoro.title") }
-    static var ttsModelKokoroSubtitle: String { loc("tts.model.kokoro.subtitle") }
     static var ttsModelLicense: String { loc("tts.model.license") }
     static var ttsModelSource: String { loc("tts.model.source") }
     static var ttsModelNotInstalled: String { loc("tts.model.not.installed") }

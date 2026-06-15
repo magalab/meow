@@ -55,19 +55,10 @@ struct TtsPreferencesView: View {
                     )
 
                 HStack(spacing: 12) {
-                    if normalizedModel != .matchaChineseEnglish {
-                        Picker(L10n.ttsVoiceTitle, selection: $settings.voiceID) {
-                            ForEach(TtsVoice.available) { voice in
-                                Text(voice.displayName).tag(voice.id)
-                            }
-                        }
-                        .frame(maxWidth: 260)
-                    } else {
-                        Text(L10n.ttsVoiceMatchaSingle)
-                            .font(.system(size: 12, weight: .medium, design: .rounded))
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: 260, alignment: .leading)
-                    }
+                    Text(L10n.ttsVoiceMatchaSingle)
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: 260, alignment: .leading)
                     Spacer()
                 }
 

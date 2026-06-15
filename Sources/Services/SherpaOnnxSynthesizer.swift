@@ -30,8 +30,6 @@ final class SherpaOnnxSynthesizer: @unchecked Sendable {
         switch model {
         case .matchaChineseEnglish:
             created = try Self.createMatchaSynthesizer(modelDirectory: modelDirectory)
-        case .kokoroMultilingualInt8:
-            created = try Self.createKokoroSynthesizer(modelDirectory: modelDirectory)
         }
 
         guard let created else {
@@ -84,64 +82,6 @@ final class SherpaOnnxSynthesizer: @unchecked Sendable {
                                     config.model.matcha.tokens = tokensPath
                                     config.model.matcha.data_dir = dataPath
                                     config.model.matcha.lexicon = lexiconPath
-                                    config.rule_fsts = ruleFSTs.isEmpty ? nil : rulesPath
-                                    return SherpaOnnxCreateOfflineTts(&config)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private static func createKokoroSynthesizer(modelDirectory: URL) throws -> OpaquePointer? {
-        let modelURL = modelDirectory.appendingPathComponent("model.int8.onnx")
-        let voicesURL = modelDirectory.appendingPathComponent("voices.bin")
-        let tokensURL = modelDirectory.appendingPathComponent("tokens.txt")
-        let dataDirectory = modelDirectory.appendingPathComponent("espeak-ng-data", isDirectory: true)
-        let englishLexiconURL = modelDirectory.appendingPathComponent("lexicon-us-en.txt")
-        let chineseLexiconURL = modelDirectory.appendingPathComponent("lexicon-zh.txt")
-        let ruleURLs = ["date-zh.fst", "phone-zh.fst", "number-zh.fst"].map {
-            modelDirectory.appendingPathComponent($0)
-        }
-        let requiredURLs = [
-            modelURL,
-            voicesURL,
-            tokensURL,
-            dataDirectory,
-            englishLexiconURL,
-            chineseLexiconURL,
-        ]
-        guard requiredURLs.allSatisfy({ FileManager.default.fileExists(atPath: $0.path) }) else {
-            throw SherpaOnnxSynthesizerError.invalidModel
-        }
-
-        var config = SherpaOnnxOfflineTtsConfig()
-        config.model.num_threads = Int32(max(1, min(ProcessInfo.processInfo.activeProcessorCount / 2, 4)))
-        config.model.debug = 0
-        config.max_num_sentences = 1
-        config.silence_scale = 0.2
-
-        let lexicons = [englishLexiconURL.path, chineseLexiconURL.path].joined(separator: ",")
-        let ruleFSTs = ruleURLs
-            .filter { FileManager.default.fileExists(atPath: $0.path) }
-            .map(\.path)
-            .joined(separator: ",")
-
-        return modelURL.path.withCString { modelPath in
-            voicesURL.path.withCString { voicesPath in
-                tokensURL.path.withCString { tokensPath in
-                    dataDirectory.path.withCString { dataPath in
-                        lexicons.withCString { lexiconPath in
-                            ruleFSTs.withCString { rulesPath in
-                                "cpu".withCString { provider in
-                                    config.model.provider = provider
-                                    config.model.kokoro.model = modelPath
-                                    config.model.kokoro.voices = voicesPath
-                                    config.model.kokoro.tokens = tokensPath
-                                    config.model.kokoro.data_dir = dataPath
-                                    config.model.kokoro.lexicon = lexiconPath
                                     config.rule_fsts = ruleFSTs.isEmpty ? nil : rulesPath
                                     return SherpaOnnxCreateOfflineTts(&config)
                                 }
