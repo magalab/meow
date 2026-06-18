@@ -60,33 +60,89 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let autoLaunchService = AutoLaunchService()
     private let hotkeyService = HotkeyService()
     private let keystrokeVisualizerService = KeystrokeVisualizerService()
-    private let authenticatorService = AuthenticatorService()
+    private var authenticatorServiceLoaded = false
+    private lazy var authenticatorService: AuthenticatorService = {
+        authenticatorServiceLoaded = true
+        let service = AuthenticatorService()
+        configureAuthenticatorService(service)
+        service.apply(
+            enabled: viewModel.settings.authenticatorEnabled,
+            iCloudSyncEnabled: viewModel.settings.authenticatorICloudSyncEnabled,
+            theme: viewModel.settings.theme
+        )
+        return service
+    }()
     private let healthReminderService = HealthReminderService()
     private let clipboardStore = ClipboardStore()
-    private let screenCaptureService = ScreenCaptureService()
+    private lazy var screenCaptureService = ScreenCaptureService()
     private let captureOverlayController = CaptureOverlayController()
-    private let recordingContentPickerController = RecordingContentPickerController()
-    private let captureStore = CaptureStore()
-    private let recordingStore = RecordingStore()
-    private lazy var recordingService = RecordingService(store: recordingStore)
-    private let recordingNotificationService = RecordingNotificationService()
+    private lazy var recordingContentPickerController = RecordingContentPickerController()
+    private var captureStoreLoaded = false
+    private lazy var captureStore: CaptureStore = {
+        captureStoreLoaded = true
+        let store = CaptureStore()
+        configureCaptureStore(store)
+        let settings = viewModel.settings.screenshot
+        store.applyRetention(
+            historyLimit: settings.historyLimit,
+            retentionDays: settings.retentionDays,
+            maxStorageMB: settings.maxStorageMB
+        )
+        return store
+    }()
+    private lazy var recordingStore = RecordingStore()
+    private var recordingServiceLoaded = false
+    private lazy var recordingService: RecordingService = {
+        recordingServiceLoaded = true
+        let service = RecordingService(store: recordingStore)
+        configureRecordingService(service)
+        service.apply(settings: viewModel.settings.recording)
+        recordingNotificationService.requestAuthorization()
+        return service
+    }()
+    private lazy var recordingNotificationService = RecordingNotificationService()
     private let cameraOverlayController = CameraOverlayController()
     private let screenMagnifierController = ScreenMagnifierController()
-    private let captureEditorController = CaptureEditorController()
-    private let postCaptureActionsController = PostCaptureActionsController()
-    private let pinnedImageController = PinnedImageController()
-    private let imageRecognitionService = ImageRecognitionService()
-    private let preferencesNavigation = PreferencesNavigationState()
-    private let aiChatHistoryStore = AIChatHistoryStore()
-    private let speechModelStore = SpeechModelStore()
-    private let speechHistoryStore = SpeechHistoryStore()
-    private let ttsModelStore = TtsModelStore()
-    private lazy var speechRecognitionService = SpeechRecognitionService(
-        modelStore: speechModelStore,
-        historyStore: speechHistoryStore,
-        clipboardStore: clipboardStore
-    )
-    private lazy var speechSynthesisService = SpeechSynthesisService(modelStore: ttsModelStore)
+    private lazy var captureEditorController = CaptureEditorController()
+    private lazy var postCaptureActionsController = PostCaptureActionsController()
+    private lazy var pinnedImageController = PinnedImageController()
+    private lazy var imageRecognitionService = ImageRecognitionService()
+    private lazy var preferencesNavigation = PreferencesNavigationState()
+    private var aiChatHistoryStoreLoaded = false
+    private lazy var aiChatHistoryStore: AIChatHistoryStore = {
+        aiChatHistoryStoreLoaded = true
+        let store = AIChatHistoryStore()
+        store.setPersistenceEnabled(viewModel.settings.ai.chatHistoryEnabled)
+        return store
+    }()
+    private lazy var speechModelStore = SpeechModelStore()
+    private lazy var speechHistoryStore = SpeechHistoryStore()
+    private lazy var ttsModelStore = TtsModelStore()
+    private var speechRecognitionServiceLoaded = false
+    private lazy var speechRecognitionService: SpeechRecognitionService = {
+        speechRecognitionServiceLoaded = true
+        let service = SpeechRecognitionService(
+            modelStore: speechModelStore,
+            historyStore: speechHistoryStore,
+            clipboardStore: clipboardStore
+        )
+        service.onNeedsModel = { [weak self] in
+            self?.showPreferences(section: .speech)
+        }
+        speechOverlayController.connect(to: service)
+        service.apply(settings: viewModel.settings.speech)
+        return service
+    }()
+    private var speechSynthesisServiceLoaded = false
+    private lazy var speechSynthesisService: SpeechSynthesisService = {
+        speechSynthesisServiceLoaded = true
+        let service = SpeechSynthesisService(modelStore: ttsModelStore)
+        service.onNeedsModel = { [weak self] in
+            self?.showPreferences(section: .speech)
+        }
+        service.apply(settings: viewModel.settings.tts.normalized())
+        return service
+    }()
     private let speechOverlayController = SpeechOverlayController()
 
     private let translationService = TranslationService()
@@ -152,16 +208,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.hideLauncher()
             self?.authenticatorService.showPanel()
         }
-        authenticatorService.onCopyCode = { [weak self] code in
-            self?.clipboardStore.writePrivateTextToPasteboard(code)
-        }
-        authenticatorService.onSensitiveTextUsed = { [weak self] value in
-            self?.clipboardStore.removePrivateTextFromHistory(value)
-        }
-        authenticatorService.onICloudSyncPreferenceRejected = { [weak self] in
-            guard let self, self.viewModel.settings.authenticatorICloudSyncEnabled else { return }
-            self.viewModel.settings.authenticatorICloudSyncEnabled = false
-        }
         viewModel.onHealthCommand = { [weak self] command in
             self?.handleHealthCommand(command)
         }
@@ -178,26 +224,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         viewModel.onSpeakSelectedText = { [weak self] in
             self?.speakCapturedSelection()
-        }
-        recordingService.onCompleted = { [weak self] artifact in
-            self?.hideRecordingControl()
-            self?.cameraOverlayController.stop()
-            self?.screenMagnifierController.stop()
-            self?.recordingAllowsVisualOverlays = false
-            self?.recordingNotificationService.notifyCompleted(artifact)
-            if self?.viewModel.settings.recording.showPreview == true {
-                self?.showRecordingPreview(artifact)
-            }
-        }
-        recordingService.onError = { [weak self] error in
-            self?.hideRecordingControl()
-            self?.cameraOverlayController.stop()
-            self?.screenMagnifierController.stop()
-            self?.recordingAllowsVisualOverlays = false
-            self?.presentRecordingError(error)
-        }
-        recordingService.onStateChanged = { [weak self] state, elapsed in
-            self?.statusItemService.updateRecordingState(state, elapsed: elapsed)
         }
         viewModel.onPinClipboardImage = { [weak self] image in
             self?.hideLauncher()
@@ -224,11 +250,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         viewModel.onSettingsChanged = { [weak self] settings in
             self?.apply(settings: settings)
         }
-        captureStore.onArtifactsRemoved = { [weak self] ids in
-            guard let self else { return }
-            clipboardStore.removeCaptureEntries(ids: ids)
-            viewModel.refresh()
-        }
         keystrokeVisualizerService.onOverlayPlacementChanged = { [weak self] position, point in
             guard let self else { return }
             guard self.viewModel.settings.keystrokeVisualizerOverlayPosition != position ||
@@ -237,13 +258,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
             self.viewModel.updateKeystrokeOverlayPlacement(position: position, point: point)
         }
-        speechRecognitionService.onNeedsModel = { [weak self] in
-            self?.showPreferences(section: .speech)
-        }
-        speechSynthesisService.onNeedsModel = { [weak self] in
-            self?.showPreferences(section: .speech)
-        }
-        speechOverlayController.connect(to: speechRecognitionService)
         viewModel.onPasteClipboard = { [weak self] entry in
             guard let self else { return }
             // Hide launcher first so target app becomes frontmost
@@ -267,22 +281,62 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         viewModel.load()
 
-        recordingNotificationService.requestAuthorization()
         setupStatusItem()
         let initial = settingsStore.load()
         dockIconService.start(style: initial.dockIconStyle)
         apply(settings: initial)
-        createLauncherWindow()
-        createTranslationWindow()
-        createAIChatWindow()
         setupOutsideClickDismissMonitor()
+    }
+
+    private func configureAuthenticatorService(_ service: AuthenticatorService) {
+        service.onCopyCode = { [weak self] code in
+            self?.clipboardStore.writePrivateTextToPasteboard(code)
+        }
+        service.onSensitiveTextUsed = { [weak self] value in
+            self?.clipboardStore.removePrivateTextFromHistory(value)
+        }
+        service.onICloudSyncPreferenceRejected = { [weak self] in
+            guard let self, self.viewModel.settings.authenticatorICloudSyncEnabled else { return }
+            self.viewModel.settings.authenticatorICloudSyncEnabled = false
+        }
+    }
+
+    private func configureCaptureStore(_ store: CaptureStore) {
+        store.onArtifactsRemoved = { [weak self] ids in
+            guard let self else { return }
+            clipboardStore.removeCaptureEntries(ids: ids)
+            viewModel.refresh()
+        }
+    }
+
+    private func configureRecordingService(_ service: RecordingService) {
+        service.onCompleted = { [weak self] artifact in
+            self?.hideRecordingControl()
+            self?.cameraOverlayController.stop()
+            self?.screenMagnifierController.stop()
+            self?.recordingAllowsVisualOverlays = false
+            self?.recordingNotificationService.notifyCompleted(artifact)
+            if self?.viewModel.settings.recording.showPreview == true {
+                self?.showRecordingPreview(artifact)
+            }
+        }
+        service.onError = { [weak self] error in
+            self?.hideRecordingControl()
+            self?.cameraOverlayController.stop()
+            self?.screenMagnifierController.stop()
+            self?.recordingAllowsVisualOverlays = false
+            self?.presentRecordingError(error)
+        }
+        service.onStateChanged = { [weak self] state, elapsed in
+            self?.statusItemService.updateRecordingState(state, elapsed: elapsed)
+        }
     }
 
     func applicationWillTerminate(_: Notification) {
         hotkeyService.unregister()
         captureTask?.cancel()
         recordingTask?.cancel()
-        if recordingService.state.isActive {
+        if recordingServiceLoaded, recordingService.state.isActive {
             Task { await recordingService.stop() }
         }
         cameraOverlayController.stop()
@@ -291,8 +345,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         captureEditorController.cancel()
         postCaptureActionsController.close()
         pinnedImageController.closeAll()
-        speechRecognitionService.cancel()
-        speechSynthesisService.cancel()
+        if speechRecognitionServiceLoaded {
+            speechRecognitionService.cancel()
+        }
+        if speechSynthesisServiceLoaded {
+            speechSynthesisService.cancel()
+        }
         speechOverlayController.hide()
         keystrokeVisualizerService.stop()
         healthReminderService.stop()
@@ -318,7 +376,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidBecomeActive(_: Notification) {
         keystrokeVisualizerService.retryAfterPermissionChange()
-        speechRecognitionService.refreshPermissionState()
+        if speechRecognitionServiceLoaded || viewModel.settings.speech.enabled {
+            speechRecognitionService.refreshPermissionState()
+        }
     }
 
     private func createLauncherWindow() {
@@ -428,13 +488,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItemService.setVisible(settings.showStatusItem)
         statusItemService.updateToggleStates(settings)
         statusItemService.updateDateIconStyle(settings.dateIconStyle)
-        aiChatHistoryStore.setPersistenceEnabled(settings.ai.chatHistoryEnabled)
-        captureStore.applyRetention(
-            historyLimit: settings.screenshot.historyLimit,
-            retentionDays: settings.screenshot.retentionDays,
-            maxStorageMB: settings.screenshot.maxStorageMB
-        )
-        recordingService.apply(settings: settings.recording)
+        if aiChatHistoryStoreLoaded {
+            aiChatHistoryStore.setPersistenceEnabled(settings.ai.chatHistoryEnabled)
+        }
+        if captureStoreLoaded {
+            captureStore.applyRetention(
+                historyLimit: settings.screenshot.historyLimit,
+                retentionDays: settings.screenshot.retentionDays,
+                maxStorageMB: settings.screenshot.maxStorageMB
+            )
+        }
+        if recordingServiceLoaded {
+            recordingService.apply(settings: settings.recording)
+        }
         if recordingStateShowsControls {
             if settings.recording.showFloatingControls {
                 showRecordingControl()
@@ -444,17 +510,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             hideRecordingControl()
         }
-        authenticatorService.apply(
-            enabled: settings.authenticatorEnabled,
-            iCloudSyncEnabled: settings.authenticatorICloudSyncEnabled,
-            theme: settings.theme
-        )
+        if settings.authenticatorEnabled || authenticatorServiceLoaded {
+            authenticatorService.apply(
+                enabled: settings.authenticatorEnabled,
+                iCloudSyncEnabled: settings.authenticatorICloudSyncEnabled,
+                theme: settings.theme
+            )
+        }
         keystrokeVisualizerService.apply(settings: settings)
         healthReminderService.apply(settings: settings)
-        speechModelStore.apply(selectedModel: settings.speech.model)
-        speechRecognitionService.apply(settings: settings.speech)
-        ttsModelStore.apply(selectedModel: normalizedTTSSettings.model)
-        speechSynthesisService.apply(settings: normalizedTTSSettings)
+        if settings.speech.enabled || speechRecognitionServiceLoaded {
+            speechModelStore.apply(selectedModel: settings.speech.model)
+            speechRecognitionService.apply(settings: settings.speech)
+        }
+        if normalizedTTSSettings.enabled || speechSynthesisServiceLoaded {
+            ttsModelStore.apply(selectedModel: normalizedTTSSettings.model)
+            speechSynthesisService.apply(settings: normalizedTTSSettings)
+        }
         let actualAutoLaunchEnabled = autoLaunchService.apply(enabled: settings.autoLaunch)
         let toggleHotkeyResult = hotkeyService.registerToggleHotkey(
             keyCode: settings.hotkeyKeyCode,
@@ -1220,6 +1292,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private var recordingStateShowsControls: Bool {
+        guard recordingServiceLoaded else { return false }
         switch recordingService.state {
         case .recording, .paused:
             return true
@@ -1606,6 +1679,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func showLauncher() {
+        createLauncherWindow()
         // Keep app list fresh so newly installed apps appear without restarting Meow.
         if !viewModel.refreshInstalledApps() {
             viewModel.refresh()
@@ -1729,7 +1803,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         globalKeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
-            if event.keyCode == 53, self?.speechRecognitionService.state.isActive == true {
+            if event.keyCode == 53,
+               self?.speechRecognitionServiceLoaded == true,
+               self?.speechRecognitionService.state.isActive == true
+            {
                 self?.speechRecognitionService.cancel()
             }
             self?.dismissTranslationIfEscape(event)
@@ -1740,7 +1817,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         localKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
             if event.keyCode == 53 {
                 var handled = false
-                if self?.speechRecognitionService.state.isActive == true {
+                if self?.speechRecognitionServiceLoaded == true,
+                   self?.speechRecognitionService.state.isActive == true
+                {
                     self?.speechRecognitionService.cancel()
                     handled = true
                 }
@@ -1952,6 +2031,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         axPermissionDenied: Bool,
         sourceImagePath: String? = nil
     ) {
+        createTranslationWindow()
         let view = AnyView(
             TranslationPanelView(
                 sourceText: text,

@@ -20,7 +20,7 @@ final class SpeechRecognitionService: ObservableObject {
     private let historyStore: SpeechHistoryStore
     private let clipboardStore: ClipboardStore
     private let recognitionEngine = SpeechRecognitionEngine()
-    private let audioEngine = AVAudioEngine()
+    private lazy var audioEngine = AVAudioEngine()
 
     private var captureContext: SpeechCaptureContext?
     private var isInputTapInstalled = false
@@ -272,13 +272,15 @@ final class SpeechRecognitionService: ObservableObject {
     private func stopAudioEngine(removeContext: Bool = true) {
         durationTimer?.invalidate()
         durationTimer = nil
+        guard isInputTapInstalled else {
+            if removeContext { captureContext = nil }
+            return
+        }
         if audioEngine.isRunning {
             audioEngine.stop()
         }
-        if isInputTapInstalled {
-            audioEngine.inputNode.removeTap(onBus: 0)
-            isInputTapInstalled = false
-        }
+        audioEngine.inputNode.removeTap(onBus: 0)
+        isInputTapInstalled = false
         if removeContext {
             captureContext = nil
         }

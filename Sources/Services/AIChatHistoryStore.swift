@@ -36,11 +36,13 @@ final class AIChatHistoryStore: ObservableObject {
     @Published var selectedConversationID: UUID?
 
     private let fileManager = FileManager.default
+    private let appSupportMeowURLOverride: URL?
     private var persistenceEnabled = true
+    private var loadedConversationIDs = Set<UUID>()
 
-    init() {
-        load()
-        removeOrphanAttachments()
+    init(appSupportMeowURL: URL? = nil) {
+        self.appSupportMeowURLOverride = appSupportMeowURL
+        loadIndex()
         selectedConversationID = conversations.first?.id
     }
 
@@ -50,7 +52,8 @@ final class AIChatHistoryStore: ObservableObject {
     }
 
     func conversation(id: UUID) -> AIChatConversation? {
-        conversations.first { $0.id == id }
+        loadConversationBodyIfNeeded(id)
+        return conversations.first { $0.id == id }
     }
 
     func messages(for id: UUID?) -> [AIChatMessage] {
@@ -69,6 +72,7 @@ final class AIChatHistoryStore: ObservableObject {
             updatedAt: now
         )
         conversations.insert(conversation, at: 0)
+        loadedConversationIDs.insert(conversation.id)
         if select {
             selectedConversationID = conversation.id
         }
@@ -92,6 +96,10 @@ final class AIChatHistoryStore: ObservableObject {
     }
 
     func append(_ message: AIChatMessage, to id: UUID) {
+        if !loadConversationBodyIfNeeded(id) {
+            preserveUnreadableConversationFile(for: id)
+            loadedConversationIDs.insert(id)
+        }
         guard let index = conversations.firstIndex(where: { $0.id == id }) else { return }
 
         var conversation = conversations[index]
@@ -111,20 +119,20 @@ final class AIChatHistoryStore: ObservableObject {
         selectedConversationID = id
         prune()
         save()
-        removeOrphanAttachments()
     }
 
     func deleteConversation(_ id: UUID) {
         conversations.removeAll { $0.id == id }
+        loadedConversationIDs.remove(id)
         if selectedConversationID == id {
             selectedConversationID = conversations.first?.id
         }
         save()
-        removeOrphanAttachments()
     }
 
     func clearAll() {
         conversations = []
+        loadedConversationIDs.removeAll()
         selectedConversationID = nil
         removePersistedHistory()
     }
@@ -133,7 +141,7 @@ final class AIChatHistoryStore: ObservableObject {
         guard persistenceEnabled != enabled else { return }
         persistenceEnabled = enabled
         if enabled {
-            load()
+            loadIndex()
             selectedConversationID = conversations.first?.id
         } else {
             clearAll()
@@ -161,21 +169,25 @@ final class AIChatHistoryStore: ObservableObject {
         historyRootURL
     }
 
-    private func load() {
+    private func loadIndex() {
         guard persistenceEnabled else {
             conversations = []
             selectedConversationID = nil
             return
         }
+        loadedConversationIDs.removeAll()
 
-        if let loaded = loadIndexedConversations() {
+        if let loaded = loadIndexedConversationsLightweight() {
             conversations = loaded.sorted { $0.updatedAt > $1.updatedAt }
             prune()
             return
         }
 
-        if let legacyFileConversations = loadLegacyFileConversations() {
-            conversations = legacyFileConversations.sorted { $0.updatedAt > $1.updatedAt }
+        if let loaded = loadLegacyFileConversations() {
+            conversations = loaded.sorted { $0.updatedAt > $1.updatedAt }
+            for conversation in conversations where !conversation.messages.isEmpty {
+                loadedConversationIDs.insert(conversation.id)
+            }
             prune()
             save()
             try? fileManager.removeItem(at: legacyHistoryFileURL)
@@ -186,6 +198,9 @@ final class AIChatHistoryStore: ObservableObject {
            let decoded = try? JSONDecoder().decode([AIChatConversation].self, from: legacyData)
         {
             conversations = decoded.sorted { $0.updatedAt > $1.updatedAt }
+            for conversation in conversations where !conversation.messages.isEmpty {
+                loadedConversationIDs.insert(conversation.id)
+            }
             prune()
             save()
             UserDefaults.standard.removeObject(forKey: Storage.legacyDefaultsKey)
@@ -193,6 +208,40 @@ final class AIChatHistoryStore: ObservableObject {
         }
 
         conversations = []
+    }
+
+    @discardableResult
+    private func loadConversationBodyIfNeeded(_ id: UUID) -> Bool {
+        guard !loadedConversationIDs.contains(id),
+              let index = conversations.firstIndex(where: { $0.id == id })
+        else { return true }
+
+        let fileURL = conversationFileURL(for: id)
+        do {
+            let data = try Data(contentsOf: fileURL)
+            let full = try JSONDecoder().decode(AIChatConversation.self, from: data)
+            conversations[index] = full
+            loadedConversationIDs.insert(id)
+            return true
+        } catch {
+            NSLog("[Meow AI] Failed to load chat conversation \(id.uuidString): \(error.localizedDescription)")
+            return false
+        }
+    }
+
+    private func preserveUnreadableConversationFile(for id: UUID) {
+        let fileURL = conversationFileURL(for: id)
+        guard fileManager.fileExists(atPath: fileURL.path) else { return }
+
+        let preservedURL = fileURL.deletingPathExtension()
+            .appendingPathExtension("invalid-\(UUID().uuidString.lowercased())")
+            .appendingPathExtension("json")
+        do {
+            try fileManager.moveItem(at: fileURL, to: preservedURL)
+            NSLog("[Meow AI] Preserved unreadable chat conversation at \(preservedURL.path)")
+        } catch {
+            NSLog("[Meow AI] Failed to preserve unreadable chat conversation \(id.uuidString): \(error.localizedDescription)")
+        }
     }
 
     private func save() {
@@ -208,7 +257,7 @@ final class AIChatHistoryStore: ObservableObject {
             try indexData.write(to: indexFileURL, options: .atomic)
 
             let validFileNames = Set(conversations.map { conversationFileURL(for: $0.id).lastPathComponent })
-            for conversation in conversations {
+            for conversation in conversations where loadedConversationIDs.contains(conversation.id) {
                 let data = try encoder.encode(conversation)
                 try data.write(to: conversationFileURL(for: conversation.id), options: .atomic)
             }
@@ -227,6 +276,9 @@ final class AIChatHistoryStore: ObservableObject {
     }
 
     private var appSupportMeowURL: URL {
+        if let appSupportMeowURLOverride {
+            return appSupportMeowURLOverride
+        }
         let appSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support", isDirectory: true)
         return appSupport.appendingPathComponent(Storage.appSupportDirectoryName, isDirectory: true)
@@ -256,20 +308,20 @@ final class AIChatHistoryStore: ObservableObject {
         conversationsDirectoryURL.appendingPathComponent("\(id.uuidString.lowercased()).json")
     }
 
-    private func loadIndexedConversations() -> [AIChatConversation]? {
+    private func loadIndexedConversationsLightweight() -> [AIChatConversation]? {
         guard let indexData = try? Data(contentsOf: indexFileURL),
               let index = try? JSONDecoder().decode([AIChatConversationIndexEntry].self, from: indexData)
         else { return nil }
 
-        let conversations = index.compactMap { entry -> AIChatConversation? in
-            let fileURL = conversationFileURL(for: entry.id)
-            guard let data = try? Data(contentsOf: fileURL),
-                  let conversation = try? JSONDecoder().decode(AIChatConversation.self, from: data)
-            else { return nil }
-            return conversation
+        return index.map { entry in
+            AIChatConversation(
+                id: entry.id,
+                title: entry.title,
+                messages: [],
+                createdAt: entry.createdAt,
+                updatedAt: entry.updatedAt
+            )
         }
-
-        return conversations
     }
 
     private func loadLegacyFileConversations() -> [AIChatConversation]? {
@@ -293,22 +345,11 @@ final class AIChatHistoryStore: ObservableObject {
         guard let files = try? fileManager.contentsOfDirectory(at: conversationsDirectoryURL, includingPropertiesForKeys: nil) else {
             return
         }
-        for file in files where file.pathExtension == "json" && !validFileNames.contains(file.lastPathComponent) {
-            try? fileManager.removeItem(at: file)
-        }
-    }
-
-    private func removeOrphanAttachments() {
-        guard let files = try? fileManager.contentsOfDirectory(
-            at: attachmentsDirectoryURL,
-            includingPropertiesForKeys: nil
-        ) else { return }
-        let referencedPaths = Set(
-            conversations
-                .flatMap(\.messages)
-                .compactMap(\.imagePath)
-        )
-        for file in files where !referencedPaths.contains(file.path) {
+        for file in files
+            where file.pathExtension == "json"
+                && UUID(uuidString: file.deletingPathExtension().lastPathComponent) != nil
+                && !validFileNames.contains(file.lastPathComponent)
+        {
             try? fileManager.removeItem(at: file)
         }
     }
@@ -316,6 +357,7 @@ final class AIChatHistoryStore: ObservableObject {
     private func prune() {
         if conversations.count > Self.maxConversations {
             conversations = Array(conversations.prefix(Self.maxConversations))
+            loadedConversationIDs.formIntersection(conversations.map(\.id))
         }
     }
 
