@@ -39,6 +39,7 @@ final class LauncherViewModel: ObservableObject {
     var onEditClipboardImage: ((ImageClipboardContent) -> Void)?
     var onOpenClipboardImage: ((ImageClipboardContent) -> Void)?
     var onSaveClipboardImage: ((ImageClipboardContent) -> Void)?
+    var onUploadClipboard: (() -> Void)?
 
     private let settingsStore: SettingsStore
     private let discoveryService: AppDiscoveryService
@@ -112,6 +113,17 @@ final class LauncherViewModel: ObservableObject {
                                "验证码", "两步验证", "动态口令", "认证器", "身份验证器"]
                 ),
                 at: 2
+            )
+        }
+        if settings.fileHosting.s3.isEnabled {
+            entries.insert(
+                CommandEntry(
+                    id: "meow.upload.clipboard",
+                    title: L10n.cmdUploadClipboardTitle,
+                    subtitle: L10n.cmdUploadClipboardSubtitle,
+                    keywords: ["upload", "file", "image", "clipboard", "上传", "文件", "图片", "剪贴板"]
+                ),
+                at: min(2, entries.count)
             )
         }
         if settings.screenshot.enabled {
@@ -440,6 +452,8 @@ final class LauncherViewModel: ObservableObject {
             onOpenAIChat?(nil)
         case "meow.authenticator":
             onOpenAuthenticator?()
+        case "meow.upload.clipboard":
+            onUploadClipboard?()
         case "meow.health.start":
             onHealthCommand?(.start)
         case "meow.health.pause":

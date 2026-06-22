@@ -11,6 +11,7 @@ enum PreferenceSection: String, CaseIterable, Identifiable {
     case speech
     case health
     case ai
+    case fileHosting
     case about
 
     var id: String {
@@ -28,6 +29,7 @@ enum PreferenceSection: String, CaseIterable, Identifiable {
         case .speech: return L10n.prefsSectionSpeech
         case .health: return L10n.prefsSectionHealth
         case .ai: return L10n.prefsSectionAI
+        case .fileHosting: return L10n.prefsSectionFileHosting
         case .about: return L10n.prefsSectionAbout
         }
     }
@@ -43,6 +45,7 @@ enum PreferenceSection: String, CaseIterable, Identifiable {
         case .speech: return "waveform"
         case .health: return "figure.mind.and.body"
         case .ai: return "sparkles"
+        case .fileHosting: return "externaldrive.badge.icloud"
         case .about: return "info.circle"
         }
     }
@@ -107,6 +110,7 @@ struct PreferencesView: View {
     @ObservedObject var speechRecognitionService: SpeechRecognitionService
     @ObservedObject var ttsModelStore: TtsModelStore
     @ObservedObject var speechSynthesisService: SpeechSynthesisService
+    @ObservedObject var fileUploadService: FileUploadService
     let makeCaptureHistoryView: (AppTheme) -> CaptureHistoryView
     let recordingHistoryContext: RecordingHistoryContext
     @ObservedObject private var lang = LanguageManager.shared
@@ -245,6 +249,17 @@ struct PreferencesView: View {
                                 )
                             )
                             .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+                        }
+
+                        if navigation.selectedSection == .fileHosting {
+                            FileHostingPreferencesView(
+                                settings: Binding(
+                                    get: { viewModel.settings.fileHosting },
+                                    set: { viewModel.settings.fileHosting = $0 }
+                                ),
+                                service: fileUploadService,
+                                theme: viewModel.settings.theme
+                            )
                         }
 
                         if navigation.selectedSection == .keyboard {

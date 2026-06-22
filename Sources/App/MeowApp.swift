@@ -105,6 +105,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let screenMagnifierController = ScreenMagnifierController()
     private lazy var captureEditorController = CaptureEditorController()
     private lazy var postCaptureActionsController = PostCaptureActionsController()
+    private lazy var uploadHistoryStore = UploadHistoryStore()
+    private let uploadSuccessHUDController = UploadSuccessHUDController()
+    private lazy var fileUploadService = FileUploadService(
+        historyStore: uploadHistoryStore,
+        settings: { [weak self] in self?.viewModel.settings.fileHosting ?? .default },
+        notifySuccess: { [weak self] filename in
+            FileUploadNotifications.notifySuccess(filename: filename)
+            self?.uploadSuccessHUDController.show(
+                filename: filename,
+                relativeTo: self?.statusItemService.statusItemButton
+            )
+        }
+    )
     private lazy var pinnedImageController = PinnedImageController()
     private lazy var imageRecognitionService = ImageRecognitionService()
     private lazy var preferencesNavigation = PreferencesNavigationState()
@@ -185,11 +198,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var lastRegisteredRecordingStopHotkey: (keyCode: UInt32, modifiers: UInt32)?
     private var lastRegisteredRecordingFrameHotkey: (keyCode: UInt32, modifiers: UInt32)?
     private var lastRegisteredRecordingMagnifierHotkey: (keyCode: UInt32, modifiers: UInt32)?
+    private var lastRegisteredUploadHotkey: (keyCode: UInt32, modifiers: UInt32)?
     private var recordingAllowsVisualOverlays = false
     private var captureTask: Task<Void, Never>?
     private var clipboardMonitoringEnabled = false
     private var calendarPopover: NSPopover?
     private var calendarPopoverController: NSHostingController<CalendarPopoverView>?
+    private var uploadShutdownForTermination = false
+    private var uploadNotificationAuthorizationRequested = false
 
     func applicationDidFinishLaunching(_: Notification) {
         viewModel = LauncherViewModel(
@@ -216,6 +232,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         viewModel.onRecordingCommand = { [weak self] command in
             self?.handleRecordingCommand(command)
+        }
+        viewModel.onUploadClipboard = { [weak self] in
+            self?.hideLauncher()
+            self?.uploadFromClipboard()
         }
         viewModel.onSpeakText = { [weak self] text in
             guard let self else { return }
@@ -334,6 +354,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_: Notification) {
         hotkeyService.unregister()
+        fileUploadService.cancel()
         captureTask?.cancel()
         recordingTask?.cancel()
         if recordingServiceLoaded, recordingService.state.isActive {
@@ -372,6 +393,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSEvent.removeMonitor(localKeyMonitor)
             self.localKeyMonitor = nil
         }
+    }
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard !uploadShutdownForTermination else { return .terminateNow }
+        uploadShutdownForTermination = true
+        Task { @MainActor [weak self, weak sender] in
+            await self?.fileUploadService.shutdown()
+            sender?.reply(toApplicationShouldTerminate: true)
+        }
+        return .terminateLater
     }
 
     func applicationDidBecomeActive(_: Notification) {
@@ -456,6 +487,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             openRecordingHistory: { [weak self] in
                 self?.showRecordingHistory()
             },
+            uploadDroppedFile: { [weak self] url in
+                guard self?.viewModel.settings.fileHosting.s3.isEnabled == true else { return }
+                self?.upload(fileURL: url)
+            },
             quit: {
                 NSApp.terminate(nil)
             }
@@ -488,6 +523,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItemService.setVisible(settings.showStatusItem)
         statusItemService.updateToggleStates(settings)
         statusItemService.updateDateIconStyle(settings.dateIconStyle)
+        if settings.fileHosting.s3.isEnabled, !uploadNotificationAuthorizationRequested {
+            uploadNotificationAuthorizationRequested = true
+            FileUploadNotifications.requestAuthorization()
+        }
         if aiChatHistoryStoreLoaded {
             aiChatHistoryStore.setPersistenceEnabled(settings.ai.chatHistoryEnabled)
         }
@@ -629,6 +668,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         applyScreenshotHotkeys(settings.screenshot)
         applyRecordingHotkeys(settings.recording)
+        applyUploadHotkey(settings.fileHosting)
 
         if settings.clipboardHistoryEnabled != clipboardMonitoringEnabled {
             if settings.clipboardHistoryEnabled {
@@ -1471,7 +1511,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func triggerScreenshot(
         mode: ScreenshotCaptureMode,
-        editAfterCapture: Bool = false
+        editAfterCapture: Bool = false,
+        uploadAfterCapture: Bool = false
     ) {
         guard captureTask == nil else { return }
         hideLauncher()
@@ -1507,9 +1548,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     outputKind = kind
                 }
                 let artifact = try processCapturedImage(outputImage, kind: outputKind)
-                showPostCaptureActionsIfNeeded(for: artifact)
+                if uploadAfterCapture {
+                    try await fileUploadService.upload(fileURL: artifact.imageURL)
+                } else {
+                    showPostCaptureActionsIfNeeded(for: artifact)
+                }
             } catch {
-                presentScreenshotError(error)
+                if uploadAfterCapture {
+                    presentUploadError(error)
+                } else {
+                    presentScreenshotError(error)
+                }
             }
         }
     }
@@ -2191,7 +2240,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard settings.showPostCaptureActions else { return }
         postCaptureActionsController.show(
             artifact: artifact,
-            duration: settings.postCaptureActionDuration
+            duration: settings.postCaptureActionDuration,
+            includesUpload: viewModel.settings.fileHosting.s3.isEnabled
         ) { [weak self] action, artifact in
             self?.handlePostCaptureAction(action, artifact: artifact)
         }
@@ -2232,7 +2282,73 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 prompt: L10n.aiImagePrompt,
                 imagePath: artifact.imageURL.path
             )
+        case .upload:
+            upload(fileURL: artifact.imageURL)
         }
+    }
+
+    private func applyUploadHotkey(_ settings: FileHostSettings) {
+        guard settings.s3.isEnabled,
+              settings.uploadHotkeyKeyCode != 0,
+              settings.uploadHotkeyModifiers != 0
+        else {
+            hotkeyService.unregisterUploadHotkey()
+            lastRegisteredUploadHotkey = nil
+            return
+        }
+        let result = hotkeyService.registerUploadHotkey(
+            keyCode: settings.uploadHotkeyKeyCode,
+            modifiers: settings.uploadHotkeyModifiers
+        ) { [weak self] in
+            self?.triggerScreenshot(mode: .region, uploadAfterCapture: true)
+        }
+        handleHotkeyRegistrationResult(
+            result,
+            name: "upload screenshot",
+            keyCode: settings.uploadHotkeyKeyCode,
+            modifiers: settings.uploadHotkeyModifiers,
+            previous: lastRegisteredUploadHotkey
+        ) { [weak self] keyCode, modifiers in
+            self?.viewModel.settings.fileHosting.uploadHotkeyKeyCode = keyCode
+            self?.viewModel.settings.fileHosting.uploadHotkeyModifiers = modifiers
+        } onSuccess: { [weak self] in
+            self?.lastRegisteredUploadHotkey = (settings.uploadHotkeyKeyCode, settings.uploadHotkeyModifiers)
+        }
+    }
+
+    private func upload(fileURL: URL) {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                _ = try await fileUploadService.upload(fileURL: fileURL)
+            } catch {
+                presentUploadError(error)
+            }
+        }
+    }
+
+    private func uploadFromClipboard() {
+        guard viewModel.settings.fileHosting.s3.isEnabled else {
+            presentUploadError(UploadError.notConfigured)
+            return
+        }
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                _ = try await fileUploadService.uploadFromClipboard()
+            } catch {
+                presentUploadError(error)
+            }
+        }
+    }
+
+    private func presentUploadError(_ error: Error) {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = L10n.uploadErrorTitle
+        alert.informativeText = error.localizedDescription
+        alert.addButton(withTitle: L10n.actionOK)
+        alert.runModal()
     }
 
     private func captureImageContent(for artifact: CaptureArtifact) -> ImageClipboardContent {
@@ -2345,6 +2461,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 speechRecognitionService: speechRecognitionService,
                 ttsModelStore: ttsModelStore,
                 speechSynthesisService: speechSynthesisService,
+                fileUploadService: fileUploadService,
                 makeCaptureHistoryView: { [weak self] theme in
                     guard let self else {
                         return CaptureHistoryView(

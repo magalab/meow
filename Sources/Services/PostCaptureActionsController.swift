@@ -9,6 +9,7 @@ enum PostCaptureAction: CaseIterable, Identifiable {
     case recognizeText
     case translate
     case askAI
+    case upload
 
     var id: String {
         switch self {
@@ -19,6 +20,7 @@ enum PostCaptureAction: CaseIterable, Identifiable {
         case .recognizeText: return "recognizeText"
         case .translate: return "translate"
         case .askAI: return "askAI"
+        case .upload: return "upload"
         }
     }
 
@@ -31,6 +33,7 @@ enum PostCaptureAction: CaseIterable, Identifiable {
         case .recognizeText: return L10n.actionMenuRecognizeText
         case .translate: return L10n.actionMenuTranslateImage
         case .askAI: return L10n.actionMenuAskAI
+        case .upload: return L10n.uploadAction
         }
     }
 
@@ -43,6 +46,7 @@ enum PostCaptureAction: CaseIterable, Identifiable {
         case .recognizeText: return "text.viewfinder"
         case .translate: return "translate"
         case .askAI: return "sparkles"
+        case .upload: return "arrow.up.circle"
         }
     }
 }
@@ -58,13 +62,16 @@ final class PostCaptureActionsController {
     func show(
         artifact: CaptureArtifact,
         duration: PostCaptureActionDuration,
+        includesUpload: Bool,
         actionHandler: @escaping (PostCaptureAction, CaptureArtifact) -> Void
     ) {
         close()
         dismissRemaining = duration.seconds
+        let actions = PostCaptureAction.allCases.filter { includesUpload || $0 != .upload }
 
         let view = PostCaptureActionsView(
             artifact: artifact,
+            actions: actions,
             onAction: { [weak self] action in
                 self?.close()
                 actionHandler(action, artifact)
@@ -82,7 +89,7 @@ final class PostCaptureActionsController {
         )
         let hosting = NSHostingController(rootView: view)
         let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 510, height: 86),
+            contentRect: NSRect(x: 0, y: 0, width: 202 + CGFloat(actions.count) * 44, height: 86),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -167,6 +174,7 @@ final class PostCaptureActionsController {
 
 private struct PostCaptureActionsView: View {
     let artifact: CaptureArtifact
+    let actions: [PostCaptureAction]
     let onAction: (PostCaptureAction) -> Void
     let onClose: () -> Void
     let onHoverChanged: (Bool) -> Void
@@ -184,7 +192,7 @@ private struct PostCaptureActionsView: View {
             WindowDragHandle()
                 .frame(width: 12, height: 40)
 
-            ForEach(PostCaptureAction.allCases) { action in
+            ForEach(actions) { action in
                 Button {
                     onAction(action)
                 } label: {

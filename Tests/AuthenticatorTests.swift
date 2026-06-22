@@ -57,6 +57,7 @@ func olderSettingsCompatibility() throws {
     #expect(settings.screenshot.postCaptureActionDuration == .tenSeconds)
     #expect(settings.ai.supportsVision)
     #expect(settings.ai.imageMaxDimension == 1600)
+    #expect(settings.fileHosting == .default)
 }
 
 @Test("TTS settings decode missing fields and normalize invalid values")

@@ -207,6 +207,59 @@ final class DockIconService {
     }
 }
 
+final class StatusItemDropView: NSView {
+    var isDropEnabled: Bool
+    private let onDrop: (URL) -> Void
+
+    init(isEnabled: Bool, onDrop: @escaping (URL) -> Void) {
+        isDropEnabled = isEnabled
+        self.onDrop = onDrop
+        super.init(frame: .zero)
+        registerForDraggedTypes([.fileURL])
+        setAccessibilityElement(false)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { nil }
+
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        guard isDropEnabled, hasFileURL(sender) else { return [] }
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.controlAccentColor.withAlphaComponent(0.18).cgColor
+        return .copy
+    }
+
+    override func draggingExited(_ sender: NSDraggingInfo?) {
+        layer?.backgroundColor = nil
+    }
+
+    override func prepareForDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        isDropEnabled && hasFileURL(sender)
+    }
+
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        layer?.backgroundColor = nil
+        guard isDropEnabled,
+              let urls = sender.draggingPasteboard.readObjects(
+                  forClasses: [NSURL.self],
+                  options: [.urlReadingFileURLsOnly: true]
+              ) as? [URL],
+              let url = urls.first
+        else { return false }
+        onDrop(url)
+        return true
+    }
+
+    private func hasFileURL(_ sender: NSDraggingInfo) -> Bool {
+        sender.draggingPasteboard.canReadObject(
+            forClasses: [NSURL.self],
+            options: [.urlReadingFileURLsOnly: true]
+        )
+    }
+}
+
 @MainActor
 final class StatusItemService {
     private var statusItem: NSStatusItem?
@@ -222,6 +275,7 @@ final class StatusItemService {
     private var recordingPauseItem: NSMenuItem?
     private var recordingStopItem: NSMenuItem?
     private var recordingHistoryItem: NSMenuItem?
+    private weak var dropView: StatusItemDropView?
     private var dateRefreshTimer: Timer?
     private var recordingActive = false
 
@@ -242,6 +296,7 @@ final class StatusItemService {
         pauseRecording: @escaping () -> Void,
         stopRecording: @escaping () -> Void,
         openRecordingHistory: @escaping () -> Void,
+        uploadDroppedFile: @escaping (URL) -> Void,
         quit: @escaping () -> Void
     ) {
         guard statusItem == nil else { return }
@@ -253,6 +308,14 @@ final class StatusItemService {
             button.toolTip = "Meow"
             scheduleDateRefresh(for: button)
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+            let dropView = StatusItemDropView(
+                isEnabled: initialSettings.fileHosting.s3.isEnabled,
+                onDrop: uploadDroppedFile
+            )
+            dropView.frame = button.bounds
+            dropView.autoresizingMask = [.width, .height]
+            button.addSubview(dropView)
+            self.dropView = dropView
         }
 
         let menu = NSMenu()
@@ -266,6 +329,8 @@ final class StatusItemService {
         openItem.action = #selector(BlockActionTarget.invoke)
         menu.addItem(openItem)
         self.openItem = openItem
+
+        menu.addItem(.separator())
 
         let recordingStatusItem = NSMenuItem(
             title: L10n.recordingStatusIdle,
@@ -432,6 +497,7 @@ final class StatusItemService {
         dockIconItem?.state = settings.showDockIcon ? .on : .off
         statusBarIconItem?.state = settings.showStatusItem ? .on : .off
         recordingHistoryItem?.isHidden = !settings.recording.enabled
+        dropView?.isDropEnabled = settings.fileHosting.s3.isEnabled
     }
 
     func updateL10n() {
@@ -979,6 +1045,14 @@ final class HotkeyService: @unchecked Sendable {
 
     func unregisterTtsSelectionHotkey() {
         unregisterHotkey(id: 15)
+    }
+
+    func registerUploadHotkey(keyCode: UInt32, modifiers: UInt32, action: @escaping () -> Void) -> RegistrationResult {
+        registerHotkey(id: 16, keyCode: keyCode, modifiers: modifiers, pressedAction: action)
+    }
+
+    func unregisterUploadHotkey() {
+        unregisterHotkey(id: 16)
     }
 
     func unregisterScreenshotHotkeys() {
