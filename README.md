@@ -13,6 +13,8 @@ A lightweight macOS launcher with gadgets, built with SwiftUI + AppKit.
   selection, full-resolution local history, and configurable copy/save output
 - Native screen recording for displays, regions, windows, applications, system audio,
   cameras, and connected mobile capture devices
+- S3-compatible file uploads with AWS S3, Cloudflare R2, MinIO, custom endpoints,
+  upload shortcuts, clipboard commands, and menu bar drag-and-drop
 - Built-in commands (Preferences / Ask AI / Quit)
 - OpenAI-compatible AI chat assistant with local chat history
 - Ask AI from clipboard entries
@@ -66,7 +68,7 @@ APP_BUNDLE_ID=tech.lury.meow bash scripts/build-dmg.sh
 2. Type to search apps or commands.
 3. Use `Up/Down` to select and press Enter to launch or run a command.
 4. Use the action menu on clipboard entries to paste, copy, delete, reveal files, or ask AI.
-5. Open Preferences to adjust language, theme, hotkeys, Dock, menu bar, clipboard, authenticator, health reminders, keyboard overlay, and AI settings.
+5. Open Preferences to adjust language, theme, hotkeys, Dock, menu bar, clipboard, file hosting, authenticator, health reminders, keyboard overlay, and AI settings.
 
 ## Screenshots
 
@@ -98,6 +100,29 @@ displays and `Esc` cancels an active capture. Screen Recording and Accessibility
 permissions are independent. macOS associates Screen Recording approval with the
 application identity; unsigned or frequently rebuilt ad-hoc apps may require approval
 again, while a consistently signed app retains a stable permission identity.
+
+## File Uploads
+
+Configure S3-compatible file hosting from Preferences -> File Hosting.
+
+- Supports saved configurations for AWS S3, Cloudflare R2, MinIO, and custom S3-compatible endpoints
+- Stores Secret Access Keys in macOS Keychain; non-secret configuration remains in Meow settings
+- Uploads screenshots from the post-capture action bar or an independent region-capture shortcut
+- Uploads clipboard files or images from the Launcher command
+- Accepts files dragged onto the menu bar icon without adding upload items to its context menu
+- Streams regular uploads and switches to multipart uploads for files of 64 MB or larger
+- Supports custom-domain, public-bucket, and expiring presigned links in URL, Markdown, or HTML format
+- Keeps local upload history with thumbnails, source labels, refreshed presigned links, and optional remote-object deletion
+- Copies the resulting link and shows an in-app completion banner after upload
+
+Upload history is stored under:
+
+```text
+~/Library/Application Support/Meow/Uploads/
+```
+
+S3-compatible providers differ in endpoint, signing, public access, and multipart behavior.
+Use Test Upload to validate both object upload and final link access before relying on a configuration.
 
 ## Screen Recording
 
@@ -215,8 +240,8 @@ Meow shows the destination endpoint and compression settings before each upload.
 - `Sources/ViewModels/LauncherViewModel.swift`: search and ranking logic
 - `Sources/Views/`: launcher, AI chat, authenticator, preferences, translation, and UI components
 - `Sources/Theme.swift`: theme palette system
-- `Sources/Services/`: hotkey, status item, auto-launch, clipboard, translation, speech recognition, authenticator, AI chat, and persistence
-- `Sources/Models/`: app, clipboard, authenticator, and settings models
+- `Sources/Services/`: hotkey, status item, auto-launch, clipboard, file upload, translation, speech recognition, authenticator, AI chat, and persistence
+- `Sources/Models/`: app, clipboard, file hosting, authenticator, and settings models
 - `Sources/Resources/`: localization resources
 - `Tests/`: Swift Testing coverage
 
@@ -227,4 +252,5 @@ Meow shows the destination endpoint and compression settings before each upload.
 - For AI changes, manually check configured and unconfigured states, model fetch/manual entry, Enter send, Shift+Enter newline, chat history, and opening the history folder.
 - For health reminder changes, manually check timer start/pause/resume, break start/skip/done, daily goal progress, activity-paused countdown, and menu bar calendar controls.
 - For keyboard overlay changes, manually check Accessibility permission denied/granted states, hotkey conflict behavior, dragging/resetting the overlay, and non-US keyboard layouts.
+- For file-upload changes, manually check AWS S3, R2, and MinIO configurations, public and presigned links, files above 64 MB, cancellation, clipboard cleanup, drag-and-drop, remote deletion, and Keychain credential handling.
 - See [DEVELOPMENT.md](DEVELOPMENT.md) for development details.

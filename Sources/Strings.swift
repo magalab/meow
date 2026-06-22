@@ -106,6 +106,87 @@ final class LanguageManager: ObservableObject {
 /// Type-safe localized string lookup. All keys are defined in Localizable.strings.
 /// Properties are computed dynamically to support runtime language switching.
 enum L10n {
+    // MARK: - File Upload
+
+    static var uploadErrorNotConfigured: String { loc("upload.error.not.configured") }
+    static var uploadErrorFileTooLarge: String { loc("upload.error.file.too.large") }
+    static var uploadErrorInvalidResponse: String { loc("upload.error.invalid.response") }
+    static var uploadErrorClipboardContentUnavailable: String { loc("upload.error.clipboard.content.unavailable") }
+    static var uploadErrorFileUnreadable: String { loc("upload.error.file.unreadable") }
+    static var uploadErrorSecretRequired: String { loc("upload.error.secret.required") }
+    static var uploadErrorCredentialUnavailable: String { loc("upload.error.credential.unavailable") }
+    static var uploadErrorShareURLNotConfigured: String { loc("upload.error.share.url.not.configured") }
+    static var uploadErrorPublicURLUnavailable: String { loc("upload.error.public.url.unavailable") }
+    static var uploadErrorShareURLVerificationFailed: String { loc("upload.error.share.url.verification.failed") }
+    static var uploadErrorShareURLInvalidResponse: String { loc("upload.error.share.url.invalid.response") }
+    static var uploadErrorInvalidR2Endpoint: String { loc("upload.error.invalid.r2.endpoint") }
+    static var uploadErrorAlreadyUploading: String { loc("upload.error.already.uploading") }
+    static var uploadErrorInvalidObjectKey: String { loc("upload.error.invalid.object.key") }
+    static var uploadErrorCancelled: String { loc("upload.error.cancelled") }
+    static var uploadNotificationTitle: String { loc("upload.notification.title") }
+    static var uploadAction: String { loc("upload.action") }
+    static var uploadErrorTitle: String { loc("upload.error.title") }
+    static var cmdUploadClipboardTitle: String { loc("cmd.upload.clipboard.title") }
+    static var cmdUploadClipboardSubtitle: String { loc("cmd.upload.clipboard.subtitle") }
+    static var prefsSectionFileHosting: String { loc("prefs.section.file.hosting") }
+    static var uploadEnabled: String { loc("upload.enabled") }
+    static var uploadS3Configuration: String { loc("upload.s3.configuration") }
+    static var uploadPageConfiguration: String { loc("upload.page.configuration") }
+    static var uploadPageUpload: String { loc("upload.page.upload") }
+    static var uploadPageHistory: String { loc("upload.page.history") }
+    static var uploadConfiguration: String { loc("upload.configuration") }
+    static var uploadConfigurationName: String { loc("upload.configuration.name") }
+    static var uploadAddConfiguration: String { loc("upload.configuration.add") }
+    static var uploadDeleteConfiguration: String { loc("upload.configuration.delete") }
+    static var uploadConfigurationDeleted: String { loc("upload.configuration.deleted") }
+    static var uploadNewConfigurationName: String { loc("upload.configuration.new.name") }
+    static var uploadEndpoint: String { loc("upload.endpoint") }
+    static var uploadEndpointAWSAutomatic: String { loc("upload.endpoint.aws.automatic") }
+    static var uploadRegion: String { loc("upload.region") }
+    static var uploadBucket: String { loc("upload.bucket") }
+    static var uploadAccessKeyID: String { loc("upload.access.key.id") }
+    static var uploadSecretAccessKey: String { loc("upload.secret.access.key") }
+    static var uploadObjectKeyTemplate: String { loc("upload.object.key.template") }
+    static var uploadURLStrategy: String { loc("upload.url.strategy") }
+    static var uploadURLCustom: String { loc("upload.url.custom") }
+    static var uploadURLPublic: String { loc("upload.url.public") }
+    static var uploadURLPresigned: String { loc("upload.url.presigned") }
+    static var uploadExpiration: String { loc("upload.expiration") }
+    static var uploadPublicBaseURL: String { loc("upload.public.base.url") }
+    static var uploadURLStyle: String { loc("upload.url.style") }
+    static var uploadLinkFormat: String { loc("upload.link.format") }
+    static var uploadHotkey: String { loc("upload.hotkey") }
+    static var uploadHotkeySubtitle: String { loc("upload.hotkey.subtitle") }
+    static var uploadSaveCredential: String { loc("upload.save.credential") }
+    static var uploadTest: String { loc("upload.test") }
+    static var uploadCopied: String { loc("upload.copied") }
+    static var uploadCredentialSaved: String { loc("upload.credential.saved") }
+    static var uploadSucceeded: String { loc("upload.succeeded") }
+    static var uploadHistoryTitle: String { loc("upload.history.title") }
+    static var uploadHistoryClear: String { loc("upload.history.clear") }
+    static var uploadHistoryEmpty: String { loc("upload.history.empty") }
+    static var uploadHistoryCopy: String { loc("upload.history.copy") }
+    static var uploadSourceS3: String { loc("upload.source.s3") }
+    static var uploadHistoryDeleteRemote: String { loc("upload.history.delete.remote") }
+    static var uploadHistoryDeleteTitle: String { loc("upload.history.delete.title") }
+    static var uploadHistoryDeleteSingleMessage: String { loc("upload.history.delete.single.message") }
+    static var uploadHistoryDeleteAllMessage: String { loc("upload.history.delete.all.message") }
+    static var uploadHistoryDeleteRemoteWarning: String { loc("upload.history.delete.remote.warning") }
+    static var uploadHistoryDeleteAction: String { loc("upload.history.delete.action") }
+    static var uploadErrorRemoteDeletionFailed: String { loc("upload.error.remote.deletion.failed") }
+    static var uploadPreset: String { loc("upload.preset") }
+    static var uploadPresetCustom: String { loc("upload.preset.custom") }
+    static var uploadObjectKeyHint: String { loc("upload.object.key.hint") }
+    static var uploadHistoryLimit: String { loc("upload.history.limit") }
+    static var uploadMaximumFileSize: String { loc("upload.maximum.file.size") }
+    static var uploadResetConfiguration: String { loc("upload.reset.configuration") }
+    static var uploadConfigurationReset: String { loc("upload.configuration.reset") }
+    static var uploadURLStylePath: String { loc("upload.url.style.path") }
+    static var uploadURLStyleVirtualHosted: String { loc("upload.url.style.virtual.hosted") }
+    static var uploadLinkFormatURL: String { loc("upload.link.format.url") }
+    static var uploadLinkFormatMarkdown: String { loc("upload.link.format.markdown") }
+    static var uploadLinkFormatHTML: String { loc("upload.link.format.html") }
+
     // MARK: - Launcher
 
     static var searchPlaceholder: String {

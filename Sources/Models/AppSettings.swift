@@ -171,6 +171,7 @@ struct AppSettings: Codable {
     var dateIconStyle: DateIconStyle
     var dockIconStyle: DockIconStyle
     var ai: AISettings
+    var fileHosting: FileHostSettings
     var screenshot: ScreenshotSettings
     var recording: RecordingSettings
     var speech: SpeechSettings
@@ -206,6 +207,7 @@ struct AppSettings: Codable {
         dateIconStyle: DateIconStyle = .pawPrint,
         dockIconStyle: DockIconStyle = .calendar,
         ai: AISettings = .default,
+        fileHosting: FileHostSettings = .default,
         screenshot: ScreenshotSettings = .default,
         recording: RecordingSettings = .default,
         speech: SpeechSettings = .default,
@@ -240,6 +242,7 @@ struct AppSettings: Codable {
         self.dateIconStyle = dateIconStyle
         self.dockIconStyle = dockIconStyle
         self.ai = ai
+        self.fileHosting = fileHosting
         self.screenshot = screenshot
         self.recording = recording
         self.speech = speech
@@ -294,6 +297,7 @@ extension AppSettings {
         case dateIconStyle
         case dockIconStyle
         case ai
+        case fileHosting
         case screenshot
         case recording
         case speech
@@ -331,6 +335,7 @@ extension AppSettings {
         dateIconStyle = try container.decodeIfPresent(DateIconStyle.self, forKey: .dateIconStyle) ?? Self.default.dateIconStyle
         dockIconStyle = try container.decodeIfPresent(DockIconStyle.self, forKey: .dockIconStyle) ?? Self.default.dockIconStyle
         ai = try container.decodeIfPresent(AISettings.self, forKey: .ai) ?? Self.default.ai
+        fileHosting = try container.decodeIfPresent(FileHostSettings.self, forKey: .fileHosting) ?? Self.default.fileHosting
         screenshot = try container.decodeIfPresent(
             ScreenshotSettings.self,
             forKey: .screenshot

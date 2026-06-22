@@ -10,6 +10,9 @@ let package = Package(
     products: [
         .executable(name: "Meow", targets: ["Meow"]),
     ],
+    dependencies: [
+        .package(url: "https://github.com/soto-project/soto.git", from: "7.0.0"),
+    ],
     targets: [
         .binaryTarget(
             name: "SherpaOnnxC",
@@ -24,6 +27,7 @@ let package = Package(
             dependencies: [
                 "SherpaOnnxC",
                 "ONNXRuntime",
+                .product(name: "SotoS3", package: "soto"),
             ],
             path: "Sources",
             resources: [
