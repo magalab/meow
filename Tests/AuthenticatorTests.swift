@@ -82,6 +82,23 @@ func ttsSettingsCompatibility() throws {
     #expect(migrated.voiceID == 0)
 }
 
+@Test("SenseVoice downloads accept the flat file staging layout")
+func senseVoiceDownloadStagingValidation() throws {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("Meow-ASR-Test-\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    try Data("model".utf8).write(to: root.appendingPathComponent("model.int8.onnx"))
+    try Data("tokens".utf8).write(to: root.appendingPathComponent("tokens.txt"))
+
+    try SpeechModelStore.validateStagingContents(for: .senseVoice, in: root)
+
+    try FileManager.default.removeItem(at: root.appendingPathComponent("tokens.txt"))
+    #expect(throws: (any Error).self) {
+        try SpeechModelStore.validateStagingContents(for: .senseVoice, in: root)
+    }
+}
+
 @Test("TTS model manifest identifies a complete installation")
 @MainActor
 func ttsModelManifestValidation() throws {

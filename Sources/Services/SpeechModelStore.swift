@@ -168,10 +168,7 @@ final class SpeechModelStore: ObservableObject {
             try Self.extractArchive(at: archiveURL, into: staging)
         }
 
-        let extractedRoot = staging.appendingPathComponent(model.storageDirectoryName)
-        guard fileManager.fileExists(atPath: extractedRoot.path) else {
-            throw SpeechModelError.missingDownload
-        }
+        try Self.validateStagingContents(for: model, in: staging, fileManager: fileManager)
 
         let targetDirectory = directory(for: model)
         let replacement = modelsRootDirectory.appendingPathComponent(".\(model.storageDirectoryName)-\(UUID().uuidString)", isDirectory: true)
@@ -185,6 +182,7 @@ final class SpeechModelStore: ObservableObject {
                 )
             }
         } else {
+            let extractedRoot = staging.appendingPathComponent(model.storageDirectoryName)
             try fileManager.moveItem(at: extractedRoot, to: replacement)
         }
 
@@ -194,6 +192,24 @@ final class SpeechModelStore: ObservableObject {
             try fileManager.moveItem(at: replacement, to: targetDirectory)
         } else {
             try fileManager.moveItem(at: replacement, to: targetDirectory)
+        }
+    }
+
+    nonisolated static func validateStagingContents(
+        for model: SpeechModelKind,
+        in staging: URL,
+        fileManager: FileManager = .default
+    ) throws {
+        switch model.downloadSource {
+        case let .files(files):
+            guard files.allSatisfy({
+                fileManager.fileExists(atPath: staging.appendingPathComponent($0.localFileName).path)
+            }) else { throw SpeechModelError.missingDownload }
+        case .archive:
+            let extractedRoot = staging.appendingPathComponent(model.storageDirectoryName)
+            guard fileManager.fileExists(atPath: extractedRoot.path) else {
+                throw SpeechModelError.missingDownload
+            }
         }
     }
 
