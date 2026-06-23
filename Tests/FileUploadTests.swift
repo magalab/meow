@@ -1,7 +1,11 @@
 import AppKit
 import Foundation
 import Testing
+#if MEOW_VOICE
+@testable import Miao
+#else
 @testable import Meow
+#endif
 
 @Test("SwiftPM executable mode disables UserNotifications safely")
 func swiftPMNotificationFallback() {

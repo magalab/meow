@@ -2,7 +2,11 @@ import AppKit
 import AVFoundation
 import Foundation
 import Testing
+#if MEOW_VOICE
+@testable import Miao
+#else
 @testable import Meow
+#endif
 
 @Test("TOTP generation matches RFC 6238 SHA-1 vector")
 func totpRFC6238Vector() {
@@ -82,6 +86,7 @@ func ttsSettingsCompatibility() throws {
     #expect(migrated.voiceID == 0)
 }
 
+#if MEOW_VOICE
 @Test("SenseVoice downloads accept the flat file staging layout")
 func senseVoiceDownloadStagingValidation() throws {
     let root = FileManager.default.temporaryDirectory
@@ -190,6 +195,7 @@ func installedMatchaModelSmokeTest() async throws {
     #expect(result.sampleRate == 16_000)
     #expect(result.samples.count > 16_000)
 }
+#endif
 
 @Test("Recording settings decode missing fields with current defaults")
 func recordingSettingsCompatibility() throws {

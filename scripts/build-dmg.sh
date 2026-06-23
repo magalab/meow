@@ -1,9 +1,27 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_NAME="${APP_NAME:-Meow}"
-BINARY_NAME="${BINARY_NAME:-Meow}"
-APP_BUNDLE_ID="${APP_BUNDLE_ID:-tech.lury.meow}"
+MEOW_EDITION="${MEOW_EDITION:-base}"
+case "$MEOW_EDITION" in
+    base)
+        DEFAULT_APP_NAME="Meow"
+        DEFAULT_BINARY_NAME="Meow"
+        DEFAULT_BUNDLE_ID="tech.lury.meow"
+        ;;
+    voice)
+        DEFAULT_APP_NAME="Miao"
+        DEFAULT_BINARY_NAME="Miao"
+        DEFAULT_BUNDLE_ID="tech.lury.miao"
+        ;;
+    *)
+        echo "Error: MEOW_EDITION must be 'base' or 'voice'."
+        exit 1
+        ;;
+esac
+
+APP_NAME="${APP_NAME:-$DEFAULT_APP_NAME}"
+BINARY_NAME="${BINARY_NAME:-$DEFAULT_BINARY_NAME}"
+APP_BUNDLE_ID="${APP_BUNDLE_ID:-$DEFAULT_BUNDLE_ID}"
 VERSION="${VERSION:-0.1.0}"
 TARGET="${TARGET:-}"
 
@@ -41,7 +59,7 @@ if [ ! -f "AppIcon.icns" ] || [ "logo.png" -nt "AppIcon.icns" ]; then
     bash "$SCRIPT_DIR/create-icon.sh" || echo "Warning: Failed to create icon"
 fi
 
-swift build -c release
+MEOW_EDITION="$MEOW_EDITION" swift build -c release --product "$BINARY_NAME"
 
 BUILD_RELEASE_DIR=".build/$TARGET/release"
 if [ ! -d "$BUILD_RELEASE_DIR" ]; then
@@ -58,13 +76,17 @@ rm -rf "$APP_DIR"
 mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources" "$APP_DIR/Contents/Frameworks"
 cp "$BUILD_RELEASE_DIR/$BINARY_NAME" "$APP_DIR/Contents/MacOS/$BINARY_NAME"
 
-ONNXRUNTIME_DYLIB="$BUILD_RELEASE_DIR/libonnxruntime.1.24.4.dylib"
-if [ ! -f "$ONNXRUNTIME_DYLIB" ]; then
-    echo "Error: ONNX Runtime library not found at $ONNXRUNTIME_DYLIB"
-    exit 1
+if [ "$MEOW_EDITION" = "voice" ]; then
+    ONNXRUNTIME_DYLIB="$BUILD_RELEASE_DIR/libonnxruntime.1.24.4.dylib"
+    if [ ! -f "$ONNXRUNTIME_DYLIB" ]; then
+        echo "Error: ONNX Runtime library not found at $ONNXRUNTIME_DYLIB"
+        exit 1
+    fi
+    cp "$ONNXRUNTIME_DYLIB" "$APP_DIR/Contents/Frameworks/"
+    install_name_tool -add_rpath "@loader_path/../Frameworks" "$APP_DIR/Contents/MacOS/$BINARY_NAME"
 fi
-cp "$ONNXRUNTIME_DYLIB" "$APP_DIR/Contents/Frameworks/"
-install_name_tool -add_rpath "@loader_path/../Frameworks" "$APP_DIR/Contents/MacOS/$BINARY_NAME"
+
+strip -x "$APP_DIR/Contents/MacOS/$BINARY_NAME" || echo "Warning: Failed to strip binary"
 
 # Copy app icon
 if [ -f "AppIcon.icns" ]; then
@@ -82,7 +104,7 @@ if [ -d "THIRD_PARTY_LICENSES" ]; then
 fi
 
 # Copy localization resources from the build bundle
-RESOURCE_BUNDLE="$BUILD_RELEASE_DIR/Meow_Meow.bundle"
+RESOURCE_BUNDLE="$BUILD_RELEASE_DIR/Meow_${BINARY_NAME}.bundle"
 if [ -d "$RESOURCE_BUNDLE" ]; then
     echo "Copying SwiftPM resource bundle from $RESOURCE_BUNDLE..."
     cp -R "$RESOURCE_BUNDLE" "$APP_DIR/Contents/Resources/"
@@ -127,7 +149,9 @@ EOF
 SIGN_IDENTITY="-"
 echo "Signing app bundle with identity: ${SIGN_IDENTITY}"
 
-codesign --force --sign "${SIGN_IDENTITY}" "$APP_DIR/Contents/Frameworks/libonnxruntime.1.24.4.dylib"
+if [ "$MEOW_EDITION" = "voice" ]; then
+    codesign --force --sign "${SIGN_IDENTITY}" "$APP_DIR/Contents/Frameworks/libonnxruntime.1.24.4.dylib"
+fi
 codesign --force --deep --entitlements "$SCRIPT_DIR/Meow.entitlements" --sign "${SIGN_IDENTITY}" "$APP_DIR"
 
 rm -f "$DMG_PATH"

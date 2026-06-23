@@ -241,7 +241,7 @@ final class LauncherViewModel: ObservableObject {
                 at: min(2, entries.count)
             )
         }
-        if settings.tts.enabled {
+        if BuildEdition.includesVoiceFeatures, settings.tts.enabled {
             entries.insert(
                 contentsOf: [
                     CommandEntry(
@@ -380,7 +380,7 @@ final class LauncherViewModel: ObservableObject {
     }
 
     func speakClipboardText(_ item: SearchItem) {
-        guard settings.tts.enabled,
+        guard BuildEdition.includesVoiceFeatures, settings.tts.enabled,
               case let .clipboard(entry) = item,
               case let .text(text) = entry.content
         else { return }
@@ -388,7 +388,7 @@ final class LauncherViewModel: ObservableObject {
     }
 
     func speakLatestClipboardText() {
-        guard settings.tts.enabled, let text = latestClipboardText() else { return }
+        guard BuildEdition.includesVoiceFeatures, settings.tts.enabled, let text = latestClipboardText() else { return }
         onSpeakText?(text)
     }
 
