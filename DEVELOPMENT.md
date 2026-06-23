@@ -147,6 +147,15 @@ swift build
 swift build -c release
 ```
 
+### Build Editions
+```bash
+# Base edition: Meow, without offline speech recognition or speech synthesis
+swift build -c release --product Meow
+
+# Voice edition: Miao, with offline speech recognition and speech synthesis
+MEOW_EDITION=voice swift build -c release --product Miao
+```
+
 ### Automated Tests
 ```bash
 swift test
@@ -155,13 +164,16 @@ swift test
 ### Create DMG Package
 ```bash
 bash scripts/build-dmg.sh
+
+# Voice edition DMG
+MEOW_EDITION=voice bash scripts/build-dmg.sh
 ```
 
 This will:
 1. Generate icon from `logo.png` if needed
 2. Build release binary
 3. Create `.app` bundle with resources
-4. Embed and sign ONNX Runtime in `Contents/Frameworks`
+4. Embed ONNX Runtime in `Contents/Frameworks` for the Miao voice edition
 5. Create `.dmg` installer
 
 ### Speech Native Dependencies
@@ -298,15 +310,19 @@ swift test
 
 # Check compilation
 swift build -v
+MEOW_EDITION=voice swift build --product Miao
 
 # Check release compilation
-swift build -c release
+swift build -c release --product Meow
+MEOW_EDITION=voice swift build -c release --product Miao
 
 # Build DMG
 bash scripts/build-dmg.sh
+MEOW_EDITION=voice bash scripts/build-dmg.sh
 
 # Verify app bundle
 ls -la dist/Meow.app/Contents/
+ls -la dist/Miao.app/Contents/
 ```
 
 ## Debugging
@@ -321,6 +337,7 @@ swift build && .build/debug/Meow
 ```bash
 # Verify .lproj bundles
 ls -la dist/Meow.app/Contents/Resources/
+ls -la dist/Miao.app/Contents/Resources/
 
 # Check Localizable.strings
 strings dist/Meow.app/Contents/Resources/en.lproj/Localizable.strings
@@ -330,6 +347,7 @@ strings dist/Meow.app/Contents/Resources/en.lproj/Localizable.strings
 In Terminal, monitor app behavior:
 ```bash
 log stream --predicate 'process == "Meow"'
+log stream --predicate 'process == "Miao"'
 ```
 
 ## Common Tasks

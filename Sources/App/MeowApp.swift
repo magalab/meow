@@ -128,6 +128,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         store.setPersistenceEnabled(viewModel.settings.ai.chatHistoryEnabled)
         return store
     }()
+    #if MEOW_VOICE
     private lazy var speechModelStore = SpeechModelStore()
     private lazy var speechHistoryStore = SpeechHistoryStore()
     private lazy var ttsModelStore = TtsModelStore()
@@ -157,6 +158,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return service
     }()
     private let speechOverlayController = SpeechOverlayController()
+    #endif
 
     private let translationService = TranslationService()
 
@@ -180,13 +182,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var localMouseMonitor: Any?
     private var globalKeyMonitor: Any?
     private var localKeyMonitor: Any?
+    #if MEOW_VOICE
     private var selectedTextForTts = ""
     private var ttsSelectionPermissionDenied = false
+    private var lastRegisteredTtsHotkey: (keyCode: UInt32, modifiers: UInt32)?
+    private var lastRegisteredSpeechHotkey: (keyCode: UInt32, modifiers: UInt32)?
+    #endif
     private var appliedLanguage: AppLanguage?
     private var lastRegisteredToggleHotkey: (keyCode: UInt32, modifiers: UInt32)?
     private var lastRegisteredTranslateHotkey: (keyCode: UInt32, modifiers: UInt32)?
-    private var lastRegisteredTtsHotkey: (keyCode: UInt32, modifiers: UInt32)?
-    private var lastRegisteredSpeechHotkey: (keyCode: UInt32, modifiers: UInt32)?
     private var lastRegisteredScreenshotRegionHotkey: (keyCode: UInt32, modifiers: UInt32)?
     private var lastRegisteredScreenshotEditHotkey: (keyCode: UInt32, modifiers: UInt32)?
     private var lastRegisteredScreenshotWindowHotkey: (keyCode: UInt32, modifiers: UInt32)?
@@ -237,6 +241,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.hideLauncher()
             self?.uploadFromClipboard()
         }
+        #if MEOW_VOICE
         viewModel.onSpeakText = { [weak self] text in
             guard let self else { return }
             self.hideLauncher()
@@ -245,6 +250,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         viewModel.onSpeakSelectedText = { [weak self] in
             self?.speakCapturedSelection()
         }
+        #endif
         viewModel.onPinClipboardImage = { [weak self] image in
             self?.hideLauncher()
             self?.pinnedImageController.pin(image)
@@ -366,6 +372,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         captureEditorController.cancel()
         postCaptureActionsController.close()
         pinnedImageController.closeAll()
+        #if MEOW_VOICE
         if speechRecognitionServiceLoaded {
             speechRecognitionService.cancel()
         }
@@ -373,6 +380,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             speechSynthesisService.cancel()
         }
         speechOverlayController.hide()
+        #endif
         keystrokeVisualizerService.stop()
         healthReminderService.stop()
         clipboardStore.stopMonitoring()
@@ -407,9 +415,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidBecomeActive(_: Notification) {
         keystrokeVisualizerService.retryAfterPermissionChange()
+        #if MEOW_VOICE
         if speechRecognitionServiceLoaded || viewModel.settings.speech.enabled {
             speechRecognitionService.refreshPermissionState()
         }
+        #endif
     }
 
     private func createLauncherWindow() {
@@ -503,11 +513,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func apply(settings: AppSettings) {
         var settings = settings
+        #if MEOW_VOICE
         let normalizedTTSSettings = settings.tts.normalized()
         if settings.tts != normalizedTTSSettings {
             settings.tts = normalizedTTSSettings
             viewModel.settings.tts = normalizedTTSSettings
         }
+        #endif
         let languageChanged = appliedLanguage != settings.language
         if languageChanged {
             LanguageManager.shared.apply(settings.language)
@@ -558,6 +570,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         keystrokeVisualizerService.apply(settings: settings)
         healthReminderService.apply(settings: settings)
+        #if MEOW_VOICE
         if settings.speech.enabled || speechRecognitionServiceLoaded {
             speechModelStore.apply(selectedModel: settings.speech.model)
             speechRecognitionService.apply(settings: settings.speech)
@@ -566,6 +579,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             ttsModelStore.apply(selectedModel: normalizedTTSSettings.model)
             speechSynthesisService.apply(settings: normalizedTTSSettings)
         }
+        #endif
         let actualAutoLaunchEnabled = autoLaunchService.apply(enabled: settings.autoLaunch)
         let toggleHotkeyResult = hotkeyService.registerToggleHotkey(
             keyCode: settings.hotkeyKeyCode,
@@ -592,6 +606,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.triggerTranslation()
         }
 
+        #if MEOW_VOICE
         if settings.speech.enabled {
             let speechHotkeyResult = hotkeyService.registerSpeechHotkey(
                 keyCode: settings.speech.hotkeyKeyCode,
@@ -623,6 +638,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             hotkeyService.unregisterSpeechHotkey()
             lastRegisteredSpeechHotkey = nil
         }
+        #else
+        hotkeyService.unregisterSpeechHotkey()
+        #endif
         handleHotkeyRegistrationResult(
             translateHotkeyResult,
             name: "translation",
@@ -638,6 +656,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             )
         }
 
+        #if MEOW_VOICE
         if normalizedTTSSettings.enabled {
             let ttsHotkeyResult = hotkeyService.registerTtsSelectionHotkey(
                 keyCode: settings.ttsHotkeyKeyCode,
@@ -665,6 +684,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             hotkeyService.unregisterTtsSelectionHotkey()
             lastRegisteredTtsHotkey = nil
         }
+        #else
+        hotkeyService.unregisterTtsSelectionHotkey()
+        #endif
 
         applyScreenshotHotkeys(settings.screenshot)
         applyRecordingHotkeys(settings.recording)
@@ -1733,6 +1755,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if !viewModel.refreshInstalledApps() {
             viewModel.refresh()
         }
+        #if MEOW_VOICE
         if viewModel.settings.tts.enabled {
             selectedTextForTts = translationService.captureViaAccessibility()
             ttsSelectionPermissionDenied = translationService.axPermissionDenied
@@ -1740,10 +1763,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             selectedTextForTts = ""
             ttsSelectionPermissionDenied = false
         }
+        #endif
         launcherWindow?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
 
+    #if MEOW_VOICE
     private func speakCapturedSelection() {
         let text = selectedTextForTts
         let permissionDenied = ttsSelectionPermissionDenied
@@ -1795,6 +1820,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ttsSelectionPermissionDenied = translationService.axPermissionDenied
         speakCapturedSelection()
     }
+    #endif
 
     private func hideLauncher() {
         launcherWindow?.orderOut(nil)
@@ -1852,12 +1878,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         globalKeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
+            #if MEOW_VOICE
             if event.keyCode == 53,
                self?.speechRecognitionServiceLoaded == true,
                self?.speechRecognitionService.state.isActive == true
             {
                 self?.speechRecognitionService.cancel()
             }
+            #endif
             self?.dismissTranslationIfEscape(event)
         }
 
@@ -1866,12 +1894,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         localKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
             if event.keyCode == 53 {
                 var handled = false
+                #if MEOW_VOICE
                 if self?.speechRecognitionServiceLoaded == true,
                    self?.speechRecognitionService.state.isActive == true
                 {
                     self?.speechRecognitionService.cancel()
                     handled = true
                 }
+                #endif
                 if self?.dismissTranslationIfEscape(event) == true {
                     handled = true
                 }
@@ -2449,6 +2479,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let isFirstPresentation = preferencesWindow == nil
         if preferencesWindow == nil {
+            let makeCaptureHistoryView: (AppTheme) -> CaptureHistoryView = { [weak self] theme in
+                guard let self else {
+                    return CaptureHistoryView(
+                        store: CaptureStore(),
+                        theme: theme,
+                        onCopy: { _ in },
+                        onPin: { _ in },
+                        onEdit: { _ in },
+                        onRecognizeText: { _ in },
+                        onTranslate: { _ in },
+                        onScanQRCode: { _ in },
+                        onAskAI: { _ in },
+                        onDelete: { _ in },
+                        onClear: {}
+                    )
+                }
+                return self.makeCaptureHistoryView(theme: theme)
+            }
+            let recordingHistoryContext = RecordingHistoryContext(
+                store: recordingStore,
+                onDelete: { [weak self] artifact in
+                    self?.recordingStore.delete(artifact)
+                },
+                onTrim: { [weak self] artifact in
+                    self?.showRecordingTrimmer(for: artifact.fileURL)
+                }
+            )
+            #if MEOW_VOICE
             let prefs = PreferencesView(
                 viewModel: viewModel,
                 navigation: preferencesNavigation,
@@ -2462,34 +2520,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 ttsModelStore: ttsModelStore,
                 speechSynthesisService: speechSynthesisService,
                 fileUploadService: fileUploadService,
-                makeCaptureHistoryView: { [weak self] theme in
-                    guard let self else {
-                        return CaptureHistoryView(
-                            store: CaptureStore(),
-                            theme: theme,
-                            onCopy: { _ in },
-                            onPin: { _ in },
-                            onEdit: { _ in },
-                            onRecognizeText: { _ in },
-                            onTranslate: { _ in },
-                            onScanQRCode: { _ in },
-                            onAskAI: { _ in },
-                            onDelete: { _ in },
-                            onClear: {}
-                        )
-                    }
-                    return self.makeCaptureHistoryView(theme: theme)
-                },
-                recordingHistoryContext: RecordingHistoryContext(
-                    store: recordingStore,
-                    onDelete: { [weak self] artifact in
-                        self?.recordingStore.delete(artifact)
-                    },
-                    onTrim: { [weak self] artifact in
-                        self?.showRecordingTrimmer(for: artifact.fileURL)
-                    }
-                )
+                makeCaptureHistoryView: makeCaptureHistoryView,
+                recordingHistoryContext: recordingHistoryContext
             )
+            #else
+            let prefs = PreferencesView(
+                viewModel: viewModel,
+                navigation: preferencesNavigation,
+                aiChatHistoryStore: aiChatHistoryStore,
+                keystrokeVisualizerService: keystrokeVisualizerService,
+                authenticatorService: authenticatorService,
+                healthReminderService: healthReminderService,
+                fileUploadService: fileUploadService,
+                makeCaptureHistoryView: makeCaptureHistoryView,
+                recordingHistoryContext: recordingHistoryContext
+            )
+            #endif
             let hosting = NSHostingController(rootView: prefs)
 
             let window = NSWindow(

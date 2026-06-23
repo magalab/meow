@@ -105,11 +105,13 @@ struct PreferencesView: View {
     @ObservedObject var keystrokeVisualizerService: KeystrokeVisualizerService
     @ObservedObject var authenticatorService: AuthenticatorService
     @ObservedObject var healthReminderService: HealthReminderService
+    #if MEOW_VOICE
     @ObservedObject var speechModelStore: SpeechModelStore
     @ObservedObject var speechHistoryStore: SpeechHistoryStore
     @ObservedObject var speechRecognitionService: SpeechRecognitionService
     @ObservedObject var ttsModelStore: TtsModelStore
     @ObservedObject var speechSynthesisService: SpeechSynthesisService
+    #endif
     @ObservedObject var fileUploadService: FileUploadService
     let makeCaptureHistoryView: (AppTheme) -> CaptureHistoryView
     let recordingHistoryContext: RecordingHistoryContext
@@ -134,7 +136,7 @@ struct PreferencesView: View {
             VStack(spacing: 0) {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
-                        ForEach(PreferenceSection.allCases) { section in
+                        ForEach(availableSections) { section in
                             Button {
                                 withAnimation(.snappy(duration: 0.22)) {
                                     navigation.selectedSection = section
@@ -219,6 +221,7 @@ struct PreferencesView: View {
                                 .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
                         }
 
+                        #if MEOW_VOICE
                         if navigation.selectedSection == .speech {
                             PreferenceSpeechSection(
                                 theme: viewModel.settings.theme,
@@ -238,6 +241,7 @@ struct PreferencesView: View {
                             )
                             .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
                         }
+                        #endif
 
                         if navigation.selectedSection == .health {
                             PreferenceHealthReminderSection(
@@ -330,6 +334,12 @@ struct PreferencesView: View {
         }
         .frame(width: 760, height: 500)
         .id(lang.refreshToken)
+    }
+
+    private var availableSections: [PreferenceSection] {
+        BuildEdition.includesVoiceFeatures
+            ? PreferenceSection.allCases
+            : PreferenceSection.allCases.filter { $0 != .speech }
     }
 
     private var generalPreferencesSection: some View {

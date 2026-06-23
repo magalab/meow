@@ -53,6 +53,20 @@ bash scripts/build-dmg.sh
 
 当 `logo.png` 比当前生成的 `AppIcon.icns` 更新时，DMG 构建脚本会自动重新生成应用图标。
 
+Meow 提供两个构建版本：
+
+```bash
+# 基础版：Meow，不包含离线语音识别和语音合成
+swift build -c release --product Meow
+bash scripts/build-dmg.sh
+
+# 语音版：Miao，包含离线语音识别和语音合成
+MEOW_EDITION=voice swift build -c release --product Miao
+MEOW_EDITION=voice bash scripts/build-dmg.sh
+```
+
+默认 Bundle ID 分别是：Meow 使用 `tech.lury.meow`，Miao 使用 `tech.lury.miao`。
+
 如需自定义 Bundle ID：
 
 ```bash
@@ -146,7 +160,7 @@ iCloud 钥匙串同步需要稳定的 Apple 签名及相应 entitlement。未签
 
 ## 离线语音识别
 
-可在「偏好设置 -> 语音」中配置。
+离线语音识别仅在 Miao 语音版中提供。可在「偏好设置 -> 语音」中配置。
 
 - 启用功能后，按住 `Option+R` 录音（最长 30 秒），松开后识别并粘贴到当前应用
 - 使用 sherpa-onnx 与本地语音模型，全程本地运行，支持多语言 SenseVoice Small int8 和英文 Parakeet int8
@@ -164,7 +178,7 @@ iCloud 钥匙串同步需要稳定的 Apple 签名及相应 entitlement。未签
 
 ## 离线语音合成
 
-可在「偏好设置 -> 语音 -> 合成」中配置。
+离线语音合成仅在 Miao 语音版中提供。可在「偏好设置 -> 语音 -> 合成」中配置。
 
 - 复用现有 sherpa-onnx 运行库，使用 Matcha 中英双语模型
 - 支持中文、英文、中英混合文本和稳定单音色

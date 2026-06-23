@@ -332,7 +332,7 @@ struct LauncherView: View {
                 let actions = actionMenuActions(for: selected)
                 ActionMenu(
                     selectedItem: selected,
-                    showsSpeakAction: viewModel.settings.tts.enabled,
+                    showsSpeakAction: BuildEdition.includesVoiceFeatures && viewModel.settings.tts.enabled,
                     highlightedAction: actions.isEmpty ? nil : actions[actionMenuSelectionIndex.clamped(to: 0 ... (actions.count - 1))],
                     onAction: { action in
                         executeActionMenu(action, selected: selected)
@@ -455,7 +455,7 @@ struct LauncherView: View {
                     .recognizeText, .translateImageText, .scanQRCode,
                 ]
             }
-            if viewModel.settings.tts.enabled, case .text = entry.content {
+            if BuildEdition.includesVoiceFeatures, viewModel.settings.tts.enabled, case .text = entry.content {
                 actions.append(.speak)
             }
             actions += [.askAI, .delete]

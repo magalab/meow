@@ -204,13 +204,16 @@ final class CalendarService {
 
         if let resourceURL = Bundle.main.resourceURL {
             candidates.append(resourceURL.appendingPathComponent("solar_terms.json"))
+            candidates.append(resourceURL.appendingPathComponent("Meow_\(BuildEdition.productName).bundle/solar_terms.json"))
             candidates.append(resourceURL.appendingPathComponent("Meow_Meow.bundle/solar_terms.json"))
         }
 
+        candidates.append(Bundle.main.bundleURL.appendingPathComponent("Meow_\(BuildEdition.productName).bundle/solar_terms.json"))
         candidates.append(Bundle.main.bundleURL.appendingPathComponent("Meow_Meow.bundle/solar_terms.json"))
 
         let executableDirectory = URL(fileURLWithPath: CommandLine.arguments[0])
             .deletingLastPathComponent()
+        candidates.append(executableDirectory.appendingPathComponent("Meow_\(BuildEdition.productName).bundle/solar_terms.json"))
         candidates.append(executableDirectory.appendingPathComponent("Meow_Meow.bundle/solar_terms.json"))
 
         return candidates.first { fileManager.fileExists(atPath: $0.path) }

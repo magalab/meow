@@ -41,9 +41,13 @@ jobs:
           ARCH="$(uname -m)"
           echo "arch=$ARCH" >> $GITHUB_OUTPUT
       
-      - name: Build DMG
+      - name: Build Meow DMG
         working-directory: .
         run: VERSION="${{ steps.version.outputs.version }}" bash scripts/build-dmg.sh
+
+      - name: Build Miao DMG
+        working-directory: .
+        run: MEOW_EDITION=voice VERSION="${{ steps.version.outputs.version }}" bash scripts/build-dmg.sh
       
       - name: List artifacts
         working-directory: .
@@ -62,5 +66,5 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: meow-macos-${{ steps.version.outputs.version }}-${{ steps.arch.outputs.arch }}
-          path: dist/Meow*.dmg
+          path: dist/*.dmg
           retention-days: 30

@@ -57,11 +57,15 @@ final class LanguageManager: ObservableObject {
         // Fallback: look for resource bundle in executable directory (swift run case)
         if langBundle == nil {
             let exeDir = (exePath as NSString).deletingLastPathComponent
-            let resourceBundlePath = (exeDir as NSString).appendingPathComponent("Meow_Meow.bundle")
-            if fileManager.fileExists(atPath: resourceBundlePath),
-               let path = findLprojPath(in: resourceBundlePath, for: code)
-            {
-                langBundle = Bundle(path: path)
+            let bundleNames = ["Meow_\(BuildEdition.productName).bundle", "Meow_Meow.bundle"]
+            for bundleName in bundleNames {
+                let resourceBundlePath = (exeDir as NSString).appendingPathComponent(bundleName)
+                if fileManager.fileExists(atPath: resourceBundlePath),
+                   let path = findLprojPath(in: resourceBundlePath, for: code)
+                {
+                    langBundle = Bundle(path: path)
+                    break
+                }
             }
         }
 

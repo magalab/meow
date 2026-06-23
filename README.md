@@ -56,6 +56,20 @@ bash scripts/build-dmg.sh
 
 The DMG build script regenerates `AppIcon.icns` when `logo.png` is newer than the current generated icon.
 
+Meow has two build editions:
+
+```bash
+# Base edition: Meow, without offline speech recognition or speech synthesis
+swift build -c release --product Meow
+bash scripts/build-dmg.sh
+
+# Voice edition: Miao, with offline speech recognition and speech synthesis
+MEOW_EDITION=voice swift build -c release --product Miao
+MEOW_EDITION=voice bash scripts/build-dmg.sh
+```
+
+The default bundle identifiers are `tech.lury.meow` for Meow and `tech.lury.miao` for Miao.
+
 To override bundle identifier:
 
 ```bash
@@ -161,7 +175,7 @@ iCloud Keychain sync requires a stable Apple-signed build with the required enti
 
 ## Offline Speech Recognition
 
-Configure speech recognition from Preferences -> Speech.
+Offline speech recognition is available in the Miao voice edition. Configure it from Preferences -> Speech.
 
 - Enable the feature, then hold `Option+R` for up to 30 seconds and release to recognize and paste
 - Uses sherpa-onnx and on-device speech models, including multilingual SenseVoice Small int8 and English Parakeet int8
@@ -179,7 +193,7 @@ Speech history and models are stored under:
 
 ## Offline Speech Synthesis
 
-Configure speech synthesis from Preferences -> Speech -> Synthesis.
+Offline speech synthesis is available in the Miao voice edition. Configure it from Preferences -> Speech -> Synthesis.
 
 - Uses the existing sherpa-onnx runtime with the Matcha Chinese-English model
 - Supports Chinese, English, mixed-language text, and a stable single voice

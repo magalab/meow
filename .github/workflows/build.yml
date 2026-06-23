@@ -5,9 +5,11 @@ on:
     branches: [ main, develop ]
     paths:
       - 'Sources/**'
+      - 'Tests/**'
       - 'scripts/**'
       - 'Package.swift'
       - '.github/workflows/build.yml'
+      - 'Vendor/**'
   workflow_dispatch:
 
 concurrency:
@@ -17,6 +19,16 @@ concurrency:
 jobs:
   build-and-lint:
     runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - edition: base
+            product: Meow
+            env: ''
+          - edition: voice
+            product: Miao
+            env: MEOW_EDITION=voice
 
     steps:
       - uses: actions/checkout@v6
@@ -28,7 +40,7 @@ jobs:
 
       - name: Quick validation
         run: |
-          xcrun swift package describe > /dev/null
+          ${{ matrix.env }} xcrun swift package describe > /dev/null
           echo "✓ Package.swift valid"
 
       - name: Check formatting hygiene
@@ -55,15 +67,18 @@ jobs:
             exit 1
           fi
 
-      - name: Build Debug and capture warnings
+      - name: Build Debug and capture warnings (${{ matrix.product }})
         run: |
           set -euo pipefail
           BUILD_LOG="$(mktemp)"
-          xcrun swift build 2>&1 | tee "$BUILD_LOG"
+          ${{ matrix.env }} xcrun swift build --product "${{ matrix.product }}" 2>&1 | tee "$BUILD_LOG"
           if grep -i "warning:" "$BUILD_LOG"; then
             echo "Error: compilation warnings found"
             exit 1
           fi
 
-      - name: Build Release
-        run: xcrun swift build -c release
+      - name: Test (${{ matrix.product }})
+        run: ${{ matrix.env }} xcrun swift test
+
+      - name: Build Release (${{ matrix.product }})
+        run: ${{ matrix.env }} xcrun swift build -c release --product "${{ matrix.product }}"
