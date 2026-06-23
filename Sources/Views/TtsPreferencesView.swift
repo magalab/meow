@@ -11,6 +11,8 @@ struct TtsPreferencesView: View {
     let mode: TtsPreferenceMode
     let theme: AppTheme
     @Binding var settings: TtsSettings
+    @Binding var hotkeyKeyCode: UInt32
+    @Binding var hotkeyModifiers: UInt32
     @ObservedObject var modelStore: TtsModelStore
     @ObservedObject var synthesisService: SpeechSynthesisService
 
@@ -38,6 +40,18 @@ struct TtsPreferencesView: View {
 
     private var synthesisContent: some View {
         VStack(spacing: 10) {
+            PreferenceHotkeyRecorderRow(
+                title: L10n.prefsTtsHotkeyTitle,
+                subtitle: L10n.prefsTtsHotkeySubtitle,
+                symbol: "speaker.wave.2",
+                theme: theme,
+                keyCode: hotkeyKeyCode,
+                modifiers: hotkeyModifiers
+            ) { keyCode, modifiers in
+                hotkeyKeyCode = keyCode
+                hotkeyModifiers = modifiers
+            }
+
             VStack(alignment: .leading, spacing: 10) {
                 Text(L10n.ttsInputTitle)
                     .font(.system(size: 15, weight: .semibold, design: .rounded))

@@ -236,6 +236,14 @@ struct PreferencesView: View {
                                     get: { viewModel.settings.tts },
                                     set: { viewModel.settings.tts = $0 }
                                 ),
+                                ttsHotkeyKeyCode: Binding(
+                                    get: { viewModel.settings.ttsHotkeyKeyCode },
+                                    set: { viewModel.settings.ttsHotkeyKeyCode = $0 }
+                                ),
+                                ttsHotkeyModifiers: Binding(
+                                    get: { viewModel.settings.ttsHotkeyModifiers },
+                                    set: { viewModel.settings.ttsHotkeyModifiers = $0 }
+                                ),
                                 ttsModelStore: ttsModelStore,
                                 synthesisService: speechSynthesisService
                             )
@@ -332,7 +340,7 @@ struct PreferencesView: View {
             }
             .background(Color(nsColor: .windowBackgroundColor).opacity(colorScheme == .dark ? 0.76 : 0.84))
         }
-        .frame(width: 760, height: 500)
+        .frame(width: 840, height: 560)
         .id(lang.refreshToken)
     }
 
@@ -485,17 +493,6 @@ struct PreferencesView: View {
                 viewModel.settings.translateHotkeyModifiers = modifiers
             }
 
-            PreferenceHotkeyRecorderRow(
-                title: L10n.prefsTtsHotkeyTitle,
-                subtitle: L10n.prefsTtsHotkeySubtitle,
-                symbol: "speaker.wave.2",
-                theme: viewModel.settings.theme,
-                keyCode: viewModel.settings.ttsHotkeyKeyCode,
-                modifiers: viewModel.settings.ttsHotkeyModifiers
-            ) { keyCode, modifiers in
-                viewModel.settings.ttsHotkeyKeyCode = keyCode
-                viewModel.settings.ttsHotkeyModifiers = modifiers
-            }
         }
         .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
     }

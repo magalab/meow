@@ -75,6 +75,14 @@ enum RecordingBackgroundStyle: String, Codable, CaseIterable, Identifiable, Send
     var id: String { rawValue }
 }
 
+enum RecordingCameraOverlayShape: String, Codable, CaseIterable, Identifiable, Sendable {
+    case rectangle
+    case rounded
+    case circle
+
+    var id: String { rawValue }
+}
+
 struct RecordingSettings: Codable, Equatable, Sendable {
     var enabled: Bool
     var videoFormat: RecordingVideoFormat
@@ -99,6 +107,7 @@ struct RecordingSettings: Codable, Equatable, Sendable {
     var showPreview: Bool
     var cameraOverlayEnabled: Bool
     var cameraDeviceID: String
+    var cameraOverlayShape: RecordingCameraOverlayShape
     var recordHDR: Bool
     var backgroundStyle: RecordingBackgroundStyle
     var backgroundColorHex: String
@@ -146,6 +155,7 @@ struct RecordingSettings: Codable, Equatable, Sendable {
         showPreview: Bool,
         cameraOverlayEnabled: Bool,
         cameraDeviceID: String,
+        cameraOverlayShape: RecordingCameraOverlayShape,
         recordHDR: Bool,
         backgroundStyle: RecordingBackgroundStyle,
         backgroundColorHex: String,
@@ -192,6 +202,7 @@ struct RecordingSettings: Codable, Equatable, Sendable {
         self.showPreview = showPreview
         self.cameraOverlayEnabled = cameraOverlayEnabled
         self.cameraDeviceID = cameraDeviceID
+        self.cameraOverlayShape = cameraOverlayShape
         self.recordHDR = recordHDR
         self.backgroundStyle = backgroundStyle
         self.backgroundColorHex = backgroundColorHex
@@ -240,6 +251,7 @@ struct RecordingSettings: Codable, Equatable, Sendable {
         showPreview: true,
         cameraOverlayEnabled: false,
         cameraDeviceID: "",
+        cameraOverlayShape: .rounded,
         recordHDR: false,
         backgroundStyle: .desktop,
         backgroundColorHex: "#1C1C1E",
@@ -270,7 +282,7 @@ struct RecordingSettings: Codable, Equatable, Sendable {
         case includeMenuBar
         case excludeMeow, excludedApplicationBundleIDs, excludeDesktopIcons, excludeSystemOverlays
         case countdownSeconds, preventSleep, showFloatingControls, showPreview, cameraOverlayEnabled
-        case cameraDeviceID, recordHDR, backgroundStyle, backgroundColorHex, saveDirectory
+        case cameraDeviceID, cameraOverlayShape, recordHDR, backgroundStyle, backgroundColorHex, saveDirectory
         case fileNameTemplate, historyLimit, retentionDays, maxStorageMB
         case displayHotkeyKeyCode, displayHotkeyModifiers, regionHotkeyKeyCode, regionHotkeyModifiers
         case windowHotkeyKeyCode, windowHotkeyModifiers, pauseHotkeyKeyCode, pauseHotkeyModifiers
@@ -314,6 +326,10 @@ struct RecordingSettings: Codable, Equatable, Sendable {
         showPreview = try container.decodeIfPresent(Bool.self, forKey: .showPreview) ?? defaults.showPreview
         cameraOverlayEnabled = try container.decodeIfPresent(Bool.self, forKey: .cameraOverlayEnabled) ?? defaults.cameraOverlayEnabled
         cameraDeviceID = try container.decodeIfPresent(String.self, forKey: .cameraDeviceID) ?? defaults.cameraDeviceID
+        cameraOverlayShape = try container.decodeIfPresent(
+            RecordingCameraOverlayShape.self,
+            forKey: .cameraOverlayShape
+        ) ?? defaults.cameraOverlayShape
         recordHDR = try container.decodeIfPresent(Bool.self, forKey: .recordHDR) ?? defaults.recordHDR
         backgroundStyle = try container.decodeIfPresent(
             RecordingBackgroundStyle.self,

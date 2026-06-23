@@ -718,11 +718,16 @@
 "prefs.recording.preview.subtitle" = "使用默认播放器打开完成的文件";
 "prefs.recording.camera.title" = "摄像头叠加";
 "prefs.recording.camera.subtitle" = "在显示器和区域录制中显示可移动的摄像头画面";
+"prefs.recording.camera.shape.title" = "摄像头形状";
+"prefs.recording.camera.shape.subtitle" = "选择录制时摄像头预览的边框样式";
 "prefs.recording.camera.unavailable.title" = "未检测到摄像头";
 "prefs.recording.camera.unavailable.subtitle" = "连接摄像头，或允许 macOS 暴露可用摄像头后才能启用叠加。";
 "prefs.recording.mobile.unavailable.title" = "未检测到移动采集设备";
 "prefs.recording.mobile.unavailable.subtitle" = "连接并信任 iPhone、iPad 或支持的采集设备后才能录制移动设备。";
 "recording.camera.default" = "默认摄像头";
+"recording.camera.shape.rectangle" = "矩形";
+"recording.camera.shape.rounded" = "圆角";
+"recording.camera.shape.circle" = "圆形";
 "prefs.recording.hdr.title" = "HDR 录制";
 "prefs.recording.hdr.subtitle" = "使用 MOV 容器中的 HEVC Main10 捕获 HDR";
 "prefs.recording.hdr.unavailable.title" = "HDR 录制不可用";

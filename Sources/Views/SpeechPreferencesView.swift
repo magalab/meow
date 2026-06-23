@@ -34,6 +34,8 @@ struct PreferenceSpeechSection: View {
     @ObservedObject var historyStore: SpeechHistoryStore
     @ObservedObject var recognitionService: SpeechRecognitionService
     @Binding var ttsSettings: TtsSettings
+    @Binding var ttsHotkeyKeyCode: UInt32
+    @Binding var ttsHotkeyModifiers: UInt32
     @ObservedObject var ttsModelStore: TtsModelStore
     @ObservedObject var synthesisService: SpeechSynthesisService
 
@@ -152,6 +154,8 @@ struct PreferenceSpeechSection: View {
                 mode: .synthesis,
                 theme: theme,
                 settings: $ttsSettings,
+                hotkeyKeyCode: $ttsHotkeyKeyCode,
+                hotkeyModifiers: $ttsHotkeyModifiers,
                 modelStore: ttsModelStore,
                 synthesisService: synthesisService
             )
@@ -171,6 +175,8 @@ struct PreferenceSpeechSection: View {
                     mode: .model,
                     theme: theme,
                     settings: $ttsSettings,
+                    hotkeyKeyCode: $ttsHotkeyKeyCode,
+                    hotkeyModifiers: $ttsHotkeyModifiers,
                     modelStore: ttsModelStore,
                     synthesisService: synthesisService
                 )

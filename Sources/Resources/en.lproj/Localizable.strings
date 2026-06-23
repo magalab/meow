@@ -718,11 +718,16 @@
 "prefs.recording.preview.subtitle" = "Open the completed file in the default player";
 "prefs.recording.camera.title" = "Camera Overlay";
 "prefs.recording.camera.subtitle" = "Show a movable camera preview inside display and region recordings";
+"prefs.recording.camera.shape.title" = "Camera Shape";
+"prefs.recording.camera.shape.subtitle" = "Choose the preview frame style used while recording";
 "prefs.recording.camera.unavailable.title" = "No camera is available";
 "prefs.recording.camera.unavailable.subtitle" = "Connect a camera or allow macOS to expose one before enabling the overlay.";
 "prefs.recording.mobile.unavailable.title" = "No mobile capture device is available";
 "prefs.recording.mobile.unavailable.subtitle" = "Connect and trust an iPhone, iPad, or supported capture device to use mobile recording.";
 "recording.camera.default" = "Default Camera";
+"recording.camera.shape.rectangle" = "Rectangle";
+"recording.camera.shape.rounded" = "Rounded";
+"recording.camera.shape.circle" = "Circle";
 "prefs.recording.hdr.title" = "HDR Recording";
 "prefs.recording.hdr.subtitle" = "Capture HDR using HEVC Main10 in a MOV container";
 "prefs.recording.hdr.unavailable.title" = "HDR recording is unavailable";

@@ -1321,6 +1321,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         try await cameraOverlayController.start(
             deviceID: viewModel.settings.recording.cameraDeviceID,
+            shape: viewModel.settings.recording.cameraOverlayShape,
             on: display.flatMap { ScreenCaptureService.screen(for: $0.displayID) } ?? activeScreen()
         )
     }
@@ -2539,22 +2540,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let hosting = NSHostingController(rootView: prefs)
 
             let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 760, height: 500),
+                contentRect: NSRect(x: 0, y: 0, width: 840, height: 560),
                 styleMask: [.titled, .closable, .fullSizeContentView],
                 backing: .buffered,
                 defer: false
             )
-            window.setContentSize(NSSize(width: 760, height: 500))
+            window.setContentSize(NSSize(width: 840, height: 560))
             centerWindowOnScreen(window, on: activeScreen())
             window.title = L10n.windowPrefsTitle
             window.titleVisibility = .hidden
             window.titlebarAppearsTransparent = true
             window.toolbarStyle = .preference
-            window.minSize = NSSize(width: 760, height: 460)
+            window.minSize = NSSize(width: 820, height: 520)
             window.contentViewController = hosting
             window.isReleasedWhenClosed = false
             window.isMovableByWindowBackground = true
-            window.level = .modalPanel
+            window.level = .normal
             window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
             preferencesWindow = window
         }
@@ -2565,7 +2566,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if window.isVisible {
             window.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
+            NSApp.activate(ignoringOtherApps: false)
             return
         }
 
@@ -2591,7 +2592,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate(ignoringOtherApps: false)
     }
 
     func openPreferencesFromCommand() {

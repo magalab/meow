@@ -146,7 +146,7 @@ independent global shortcuts.
 - Records displays, regions, single or multiple windows, applications, system audio, and connected iPhone/iPad capture devices
 - Supports H.264, HEVC, HEVC with Alpha, SDR/HDR, Retina resolution, and up to 60 FPS from Preferences
 - Captures system audio and a selected microphone as mixed or separate tracks
-- Adds an optional movable camera overlay, native mouse-click highlights, a pointer magnifier, and PNG frame capture
+- Adds an optional movable camera overlay with rectangle, rounded, or circle shapes, native mouse-click highlights, a pointer magnifier, and PNG frame capture
 - Supports desktop, transparent, or custom solid-color backgrounds for filtered window content
 - Shows recording duration and pause/stop controls in the menu bar and a floating control panel
 - Saves to `~/Movies/Meow/` by default and indexes metadata and thumbnails under
@@ -200,6 +200,7 @@ Offline speech synthesis is available in the Miao voice edition. Configure it fr
 - Downloads the approximately 140 MB model and vocoder only after confirmation
 - Supports play, pause, resume, stop, and WAV export
 - Adds read-aloud actions for selected text, clipboard entries, and launcher commands when enabled
+- Configures the read-selection hotkey from Preferences -> Speech -> Synthesis
 - Reading selected text requires Accessibility permission
 - Runs fully offline after the model is installed
 
