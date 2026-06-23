@@ -344,27 +344,39 @@ struct RecordingPreferencesView: View {
     }
 
     private var cameraRow: some View {
-        row(symbol: "video") {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(L10n.prefsRecordingCameraTitle)
-                    .font(.system(size: 15, weight: .semibold, design: .rounded))
-                Text(L10n.prefsRecordingCameraSubtitle)
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-            if settings.cameraOverlayEnabled {
-                Picker("", selection: $settings.cameraDeviceID) {
-                    Text(L10n.recordingCameraDefault).tag("")
-                    ForEach(CameraOverlayController.devices(), id: \.uniqueID) {
-                        Text($0.localizedName).tag($0.uniqueID)
-                    }
+        VStack(spacing: 10) {
+            row(symbol: "video") {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(L10n.prefsRecordingCameraTitle)
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    Text(L10n.prefsRecordingCameraSubtitle)
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(.secondary)
                 }
-                .labelsHidden()
-                .frame(width: 170)
+                Spacer()
+                if settings.cameraOverlayEnabled {
+                    Picker("", selection: $settings.cameraDeviceID) {
+                        Text(L10n.recordingCameraDefault).tag("")
+                        ForEach(CameraOverlayController.devices(), id: \.uniqueID) {
+                            Text($0.localizedName).tag($0.uniqueID)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 170)
+                }
+                Toggle("", isOn: $settings.cameraOverlayEnabled)
+                    .labelsHidden()
             }
-            Toggle("", isOn: $settings.cameraOverlayEnabled)
-                .labelsHidden()
+
+            if settings.cameraOverlayEnabled {
+                pickerRow(
+                    title: L10n.prefsRecordingCameraShapeTitle,
+                    subtitle: L10n.prefsRecordingCameraShapeSubtitle,
+                    symbol: "rectangle.roundedtop",
+                    selection: $settings.cameraOverlayShape,
+                    options: RecordingCameraOverlayShape.allCases
+                ) { cameraShapeName($0) }
+            }
         }
     }
 
@@ -579,6 +591,14 @@ struct RecordingPreferencesView: View {
         case .desktop: return L10n.recordingBackgroundDesktop
         case .transparent: return L10n.recordingBackgroundTransparent
         case .solidColor: return L10n.recordingBackgroundSolid
+        }
+    }
+
+    private func cameraShapeName(_ shape: RecordingCameraOverlayShape) -> String {
+        switch shape {
+        case .rectangle: return L10n.recordingCameraShapeRectangle
+        case .rounded: return L10n.recordingCameraShapeRounded
+        case .circle: return L10n.recordingCameraShapeCircle
         }
     }
 

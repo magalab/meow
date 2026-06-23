@@ -1349,11 +1349,16 @@ enum L10n {
     static var prefsRecordingPreviewSubtitle: String { loc("prefs.recording.preview.subtitle") }
     static var prefsRecordingCameraTitle: String { loc("prefs.recording.camera.title") }
     static var prefsRecordingCameraSubtitle: String { loc("prefs.recording.camera.subtitle") }
+    static var prefsRecordingCameraShapeTitle: String { loc("prefs.recording.camera.shape.title") }
+    static var prefsRecordingCameraShapeSubtitle: String { loc("prefs.recording.camera.shape.subtitle") }
     static var prefsRecordingCameraUnavailableTitle: String { loc("prefs.recording.camera.unavailable.title") }
     static var prefsRecordingCameraUnavailableSubtitle: String { loc("prefs.recording.camera.unavailable.subtitle") }
     static var prefsRecordingMobileUnavailableTitle: String { loc("prefs.recording.mobile.unavailable.title") }
     static var prefsRecordingMobileUnavailableSubtitle: String { loc("prefs.recording.mobile.unavailable.subtitle") }
     static var recordingCameraDefault: String { loc("recording.camera.default") }
+    static var recordingCameraShapeRectangle: String { loc("recording.camera.shape.rectangle") }
+    static var recordingCameraShapeRounded: String { loc("recording.camera.shape.rounded") }
+    static var recordingCameraShapeCircle: String { loc("recording.camera.shape.circle") }
     static var prefsRecordingHDRTitle: String { loc("prefs.recording.hdr.title") }
     static var prefsRecordingHDRSubtitle: String { loc("prefs.recording.hdr.subtitle") }
     static var prefsRecordingHDRUnavailableTitle: String { loc("prefs.recording.hdr.unavailable.title") }
