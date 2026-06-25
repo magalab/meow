@@ -41,6 +41,30 @@ func screenshotRegionPixelConversion() {
     #expect(rect == CGRect(x: 20, y: 860, width: 200, height: 100))
 }
 
+@Test("Screen magnifier uses display-local point coordinates")
+@MainActor
+func screenMagnifierSourceRectCentersOnPointer() {
+    let rect = ScreenMagnifierController.sourceRect(
+        centeredAt: CGPoint(x: 500, y: 500),
+        in: CGRect(x: 100, y: 100, width: 1000, height: 700),
+        captureSize: CGSize(width: 120, height: 90)
+    )
+
+    #expect(rect == CGRect(x: 340, y: 255, width: 120, height: 90))
+}
+
+@Test("Screen magnifier source rect clamps to display edges")
+@MainActor
+func screenMagnifierSourceRectClampsToDisplay() {
+    let rect = ScreenMagnifierController.sourceRect(
+        centeredAt: CGPoint(x: 110, y: 790),
+        in: CGRect(x: 100, y: 100, width: 1000, height: 700),
+        captureSize: CGSize(width: 120, height: 90)
+    )
+
+    #expect(rect == CGRect(x: 0, y: 0, width: 120, height: 90))
+}
+
 @Test("Capture editor command stack supports undo and redo")
 @MainActor
 func captureEditorUndoRedo() {

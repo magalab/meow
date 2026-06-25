@@ -96,7 +96,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         recordingServiceLoaded = true
         let service = RecordingService(store: recordingStore)
         configureRecordingService(service)
-        service.apply(settings: viewModel.settings.recording)
+        service.apply(settings: viewModel.settings)
         recordingNotificationService.requestAuthorization()
         return service
     }()
@@ -550,7 +550,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             )
         }
         if recordingServiceLoaded {
-            recordingService.apply(settings: settings.recording)
+            recordingService.apply(settings: settings)
         }
         if recordingStateShowsControls {
             if settings.recording.showFloatingControls {
