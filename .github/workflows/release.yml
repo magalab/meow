@@ -14,9 +14,10 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    runs-on: macos-latest
-    
+  build:
+    name: Build arm64 DMGs
+    runs-on: macos-15
+
     steps:
       - uses: actions/checkout@v7
 
@@ -28,19 +29,13 @@ jobs:
       - name: Get version
         id: version
         run: |
-          VERSION=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || true)
-          if [ -z "$VERSION" ]; then
-            VERSION="0.1.0"
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="dev-${GITHUB_SHA::7}"
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
 
-      - name: Get architecture
-        id: arch
-        run: |
-          ARCH="$(uname -m)"
-          echo "arch=$ARCH" >> $GITHUB_OUTPUT
-      
       - name: Build Meow DMG
         working-directory: .
         run: VERSION="${{ steps.version.outputs.version }}" bash scripts/build-dmg.sh
@@ -52,19 +47,135 @@ jobs:
       - name: List artifacts
         working-directory: .
         run: ls -lh dist/
-      
-      - name: Create Release
-        uses: softprops/action-gh-release@v3
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          files: dist/*.dmg
-          generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: meow-macos-${{ steps.version.outputs.version }}-${{ steps.arch.outputs.arch }}
+          name: meow-macos-${{ steps.version.outputs.version }}-arm64
           path: dist/*.dmg
           retention-days: 30
+
+  release:
+    name: Publish GitHub Release
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List artifacts
+        run: ls -lh artifacts/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v3
+        with:
+          files: artifacts/*.dmg
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  homebrew:
+    name: Update Homebrew Tap
+    if: github.ref_type == 'tag'
+    needs: release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p release-assets
+          gh release download "${GITHUB_REF_NAME}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --pattern "Meow_*_*.dmg" \
+            --pattern "Miao_*_*.dmg" \
+            --dir release-assets
+
+          version="${GITHUB_REF_NAME#v}"
+          for asset in "Meow_${version}_arm64.dmg" "Miao_${version}_arm64.dmg"; do
+            if [ ! -f "release-assets/${asset}" ]; then
+              echo "Missing release asset: ${asset}"
+              echo "Downloaded assets:"
+              ls -lh release-assets
+              exit 1
+            fi
+          done
+
+      - name: Compute checksums
+        id: checksums
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+          echo "meow_arm64=$(sha256sum "release-assets/Meow_${version}_arm64.dmg" | awk '{print $1}')" >> "${GITHUB_OUTPUT}"
+          echo "miao_arm64=$(sha256sum "release-assets/Miao_${version}_arm64.dmg" | awk '{print $1}')" >> "${GITHUB_OUTPUT}"
+
+      - name: Checkout tap
+        uses: actions/checkout@v7
+        with:
+          repository: magalab/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: tap
+
+      - name: Update casks
+        shell: bash
+        run: |
+          mkdir -p tap/Casks
+          cat > tap/Casks/meow.rb <<'RUBY'
+          cask "meow" do
+            version "__VERSION__"
+            sha256 "__MEOW_ARM64_SHA256__"
+
+            url "https://github.com/${{ github.repository }}/releases/download/__TAG__/Meow_#{version}_arm64.dmg"
+            name "Meow"
+            desc "Lightweight macOS launcher with gadgets"
+            homepage "https://github.com/${{ github.repository }}"
+
+            depends_on macos: :sequoia
+
+            app "Meow.app"
+          end
+          RUBY
+
+          cat > tap/Casks/miao.rb <<'RUBY'
+          cask "miao" do
+            version "__VERSION__"
+            sha256 "__MIAO_ARM64_SHA256__"
+
+            url "https://github.com/${{ github.repository }}/releases/download/__TAG__/Miao_#{version}_arm64.dmg"
+            name "Miao"
+            desc "Meow voice edition with offline speech recognition and speech synthesis"
+            homepage "https://github.com/${{ github.repository }}"
+
+            depends_on macos: :sequoia
+
+            app "Miao.app"
+          end
+          RUBY
+
+          sed -i \
+            -e "s/__VERSION__/${{ steps.checksums.outputs.version }}/g" \
+            -e "s/__TAG__/${GITHUB_REF_NAME}/g" \
+            -e "s/__MEOW_ARM64_SHA256__/${{ steps.checksums.outputs.meow_arm64 }}/g" \
+            -e "s/__MIAO_ARM64_SHA256__/${{ steps.checksums.outputs.miao_arm64 }}/g" \
+            tap/Casks/meow.rb tap/Casks/miao.rb
+
+      - name: Commit casks
+        working-directory: tap
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Casks/meow.rb Casks/miao.rb
+          if git diff --cached --quiet; then
+            echo "Casks already up to date"
+            exit 0
+          fi
+          git commit -m "meow ${GITHUB_REF_NAME}"
+          git push
