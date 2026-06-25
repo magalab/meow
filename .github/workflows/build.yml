@@ -31,7 +31,7 @@ jobs:
             env: MEOW_EDITION=voice
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Toolchain info
         run: |
