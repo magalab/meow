@@ -52,6 +52,7 @@ final class RecordingService: NSObject, ObservableObject {
     private var writer: RecordingWriter?
     private var microphoneCapture: RecordingMicrophoneCapture?
     private var mobileCapture: RecordingMobileDeviceCapture?
+    private let mouseClickHighlighter = MouseClickHighlighterController()
     private var countdownTask: Task<Void, Never>?
     private var elapsedTimer: Timer?
     private var sleepAssertionID: IOPMAssertionID = 0
@@ -61,12 +62,14 @@ final class RecordingService: NSObject, ObservableObject {
         super.init()
     }
 
-    func apply(settings: RecordingSettings) {
-        self.settings = settings.normalized()
+    func apply(settings: AppSettings) {
+        self.settings = settings.recording.normalized()
+        mouseClickHighlighter.apply(settings: settings)
+        reconcileMouseClickHighlighter()
         store.applyRetentionPolicy(
-            historyLimit: settings.historyLimit,
-            retentionDays: settings.retentionDays,
-            maxStorageMB: settings.maxStorageMB
+            historyLimit: settings.recording.historyLimit,
+            retentionDays: settings.recording.retentionDays,
+            maxStorageMB: settings.recording.maxStorageMB
         )
     }
 
@@ -111,6 +114,7 @@ final class RecordingService: NSObject, ObservableObject {
     func pause() {
         guard case .recording = state else { return }
         writer?.setPaused(true)
+        mouseClickHighlighter.stop()
         stopElapsedTimer()
         state = .paused(elapsed: elapsed)
     }
@@ -118,6 +122,9 @@ final class RecordingService: NSObject, ObservableObject {
     func resume() {
         guard case .paused = state else { return }
         writer?.setPaused(false)
+        if settings.highlightMouseClicks, let preparedSource, Self.supportsCustomMouseClickHighlight(for: preparedSource.kind) {
+            mouseClickHighlighter.start()
+        }
         state = .recording(startedAt: Date().addingTimeInterval(-elapsed))
         startElapsedTimer()
     }
@@ -143,6 +150,7 @@ final class RecordingService: NSObject, ObservableObject {
         self.stream = nil
         microphoneCapture?.stop()
         microphoneCapture = nil
+        mouseClickHighlighter.stop()
         allowSleep()
 
         if let mobileCapture {
@@ -349,6 +357,9 @@ final class RecordingService: NSObject, ObservableObject {
         }
 
         try await stream.startCapture()
+        if settings.highlightMouseClicks, Self.supportsCustomMouseClickHighlight(for: source.kind) {
+            mouseClickHighlighter.start()
+        }
         if settings.preventSleep {
             preventSleep()
         }
@@ -369,6 +380,7 @@ final class RecordingService: NSObject, ObservableObject {
             }
             let overlayTitles = Set([
                 CameraOverlayController.windowTitle,
+                MouseClickHighlighterController.windowTitle,
                 ScreenMagnifierController.windowTitle,
             ])
             let systemOverlayBundleIDs: Set<String> = [
@@ -449,6 +461,7 @@ final class RecordingService: NSObject, ObservableObject {
         configuration.presenterOverlayPrivacyAlertSetting = .system
         configuration.showsCursor = settings.showCursor
         configuration.showMouseClicks = settings.highlightMouseClicks
+            && !Self.supportsCustomMouseClickHighlight(for: source.kind)
         if settings.videoCodec == .hevcWithAlpha || settings.backgroundStyle == .transparent {
             configuration.pixelFormat = kCVPixelFormatType_32BGRA
             configuration.backgroundColor = NSColor.clear.cgColor
@@ -564,6 +577,7 @@ final class RecordingService: NSObject, ObservableObject {
         }
         microphoneCapture?.stop()
         microphoneCapture = nil
+        mouseClickHighlighter.stop()
         mobileCapture = nil
         writer = nil
         allowSleep()
@@ -573,9 +587,31 @@ final class RecordingService: NSObject, ObservableObject {
     }
 
     private func reset() {
+        mouseClickHighlighter.stop()
         state = .idle
         preparedSource = nil
         elapsed = 0
+    }
+
+    private func reconcileMouseClickHighlighter() {
+        guard case .recording = state,
+              settings.highlightMouseClicks,
+              let preparedSource,
+              Self.supportsCustomMouseClickHighlight(for: preparedSource.kind)
+        else {
+            mouseClickHighlighter.stop()
+            return
+        }
+        mouseClickHighlighter.start()
+    }
+
+    private static func supportsCustomMouseClickHighlight(for source: RecordingSourceKind) -> Bool {
+        switch source {
+        case .display, .region:
+            return true
+        case .window, .application, .systemAudio, .mobileDevice:
+            return false
+        }
     }
 
     private static func supportsHardwareEncoder(codec: CMVideoCodecType) -> Bool {
