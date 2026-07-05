@@ -66,8 +66,21 @@
 
 "prefs.translate.hotkey.title" = "翻译快捷键";
 "prefs.translate.hotkey.subtitle" = "选中文字后按下快捷键即可翻译";
+"prefs.text.actions.hotkey.title" = "处理选中文本";
+"prefs.text.actions.hotkey.subtitle" = "选中文字后按下快捷键选择操作";
 "prefs.tts.hotkey.title" = "朗读选中文本快捷键";
 "prefs.tts.hotkey.subtitle" = "选中文字后按下快捷键即可合成并播放";
+
+"text.actions.title" = "处理选中文本";
+"text.actions.selection" = "选中的文本";
+"text.actions.translate" = "翻译";
+"text.actions.ask.ai" = "询问 AI";
+"text.actions.speak" = "朗读";
+"text.actions.unavailable.title" = "无法获取选中文本";
+"text.actions.accessibility.message" = "请在辅助功能设置中允许 Meow，以使用全局文本处理快捷键。";
+"text.actions.no.selection" = "请先在其他应用中选择文本，然后重试。";
+"text.actions.hotkey.conflict.title" = "快捷键不可用";
+"text.actions.hotkey.conflict.message" = "无法注册 %@，请在偏好设置中选择其他快捷键。";
 
 "prefs.dock.title" = "显示 Dock 图标";
 "prefs.dock.subtitle" = "在 Dock 中显示 Meow 以便快速访问";

@@ -19,6 +19,7 @@ A lightweight macOS launcher with gadgets, built with SwiftUI + AppKit.
 - OpenAI-compatible AI chat assistant with local chat history
 - Ask AI from clipboard entries
 - Translation panel for selected text (requires Accessibility permission)
+- System text service and `Option+X` action panel for translating, asking AI, or reading selected text aloud in Miao
 - Offline speech recognition with a hold-to-talk shortcut, automatic paste, and local WAV history
 - Offline Chinese and English speech synthesis with local playback, WAV export, and clipboard read-aloud actions
 - Keystroke visualizer with draggable overlay, display modes, duration, opacity, and history count
@@ -83,6 +84,14 @@ APP_BUNDLE_ID=tech.lury.meow bash scripts/build-dmg.sh
 3. Use `Up/Down` to select and press Enter to launch or run a command.
 4. Use the action menu on clipboard entries to paste, copy, delete, reveal files, or ask AI.
 5. Open Preferences to adjust language, theme, hotkeys, Dock, menu bar, clipboard, file hosting, authenticator, health reminders, keyboard overlay, and AI settings.
+
+## Selected Text Actions
+
+Select text in an app that supports macOS Services, then choose **Services -> Process with Meow** (or Miao) from its context or application menu. Meow opens one action panel for translation and Ask AI; Miao also shows Read Aloud when offline text-to-speech is enabled.
+
+The default global shortcut is `Option+X` and can be changed under Preferences -> General -> Shortcuts. The Services entry receives selected text directly and does not require Accessibility permission. The global shortcut uses Meow's selection capture fallback and therefore does require Accessibility permission. macOS normally places the entry in the Services submenu; Meow cannot force it into the top level of every app's context menu.
+
+Launch Services discovers this integration from the packaged application bundle. Run the packaged `.app` when testing the context-menu entry; invoking `.build/debug/Meow` directly is insufficient.
 
 ## Screenshots
 

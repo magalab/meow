@@ -1553,6 +1553,54 @@ enum L10n {
         loc("prefs.translate.hotkey.subtitle")
     }
 
+    static var prefsTextActionsHotkeyTitle: String {
+        loc("prefs.text.actions.hotkey.title")
+    }
+
+    static var prefsTextActionsHotkeySubtitle: String {
+        loc("prefs.text.actions.hotkey.subtitle")
+    }
+
+    static var textActionsTitle: String {
+        loc("text.actions.title")
+    }
+
+    static var textActionsSelection: String {
+        loc("text.actions.selection")
+    }
+
+    static var textActionsTranslate: String {
+        loc("text.actions.translate")
+    }
+
+    static var textActionsAskAI: String {
+        loc("text.actions.ask.ai")
+    }
+
+    static var textActionsSpeak: String {
+        loc("text.actions.speak")
+    }
+
+    static var textActionsUnavailableTitle: String {
+        loc("text.actions.unavailable.title")
+    }
+
+    static var textActionsAccessibilityMessage: String {
+        loc("text.actions.accessibility.message")
+    }
+
+    static var textActionsNoSelection: String {
+        loc("text.actions.no.selection")
+    }
+
+    static var textActionsHotkeyConflictTitle: String {
+        loc("text.actions.hotkey.conflict.title")
+    }
+
+    static var textActionsHotkeyConflictMessage: String {
+        loc("text.actions.hotkey.conflict.message")
+    }
+
     static var prefsTtsHotkeyTitle: String {
         loc("prefs.tts.hotkey.title")
     }

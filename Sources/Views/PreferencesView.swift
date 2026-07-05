@@ -493,6 +493,18 @@ struct PreferencesView: View {
                 viewModel.settings.translateHotkeyModifiers = modifiers
             }
 
+            PreferenceHotkeyRecorderRow(
+                title: L10n.prefsTextActionsHotkeyTitle,
+                subtitle: L10n.prefsTextActionsHotkeySubtitle,
+                symbol: TextActionsVisuals.symbol,
+                theme: viewModel.settings.theme,
+                keyCode: viewModel.settings.textActionsHotkeyKeyCode,
+                modifiers: viewModel.settings.textActionsHotkeyModifiers
+            ) { keyCode, modifiers in
+                viewModel.settings.textActionsHotkeyKeyCode = keyCode
+                viewModel.settings.textActionsHotkeyModifiers = modifiers
+            }
+
         }
         .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
     }

@@ -136,6 +136,21 @@ cat > "$APP_DIR/Contents/Info.plist" <<EOF
   <key>LSUIElement</key><true/>
   <key>NSHighResolutionCapable</key><true/>
   <key>NSRequiresIPhoneOS</key><false/>
+  <key>NSServices</key>
+  <array>
+    <dict>
+      <key>NSMenuItem</key>
+      <dict>
+        <key>default</key><string>Process with ${APP_NAME}</string>
+      </dict>
+      <key>NSMessage</key><string>processSelectedText</string>
+      <key>NSPortName</key><string>${APP_NAME}</string>
+      <key>NSSendTypes</key>
+      <array>
+        <string>public.utf8-plain-text</string>
+      </array>
+    </dict>
+  </array>
   <key>NSCalendarsFullAccessUsageDescription</key>
   <string>Meow shows calendar events for the selected day in the menu bar calendar.</string>
   <key>NSMicrophoneUsageDescription</key>
