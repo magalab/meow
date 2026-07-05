@@ -162,6 +162,10 @@ struct AppSettings: Codable {
     var translateHotkeyKeyCode: UInt32
     /// Carbon modifier flags for the translate-selection hotkey (default: 2048 = optionKey = ⌥D).
     var translateHotkeyModifiers: UInt32
+    /// Key code for the selected-text actions hotkey (default: 7 = kVK_ANSI_X).
+    var textActionsHotkeyKeyCode: UInt32
+    /// Carbon modifier flags for the selected-text actions hotkey (default: 2048 = optionKey = ⌥X).
+    var textActionsHotkeyModifiers: UInt32
     /// Key code for the text-to-speech selection hotkey (default: 1 = kVK_ANSI_S).
     var ttsHotkeyKeyCode: UInt32
     /// Carbon modifier flags for the text-to-speech selection hotkey (default: 2048 = optionKey = ⌥S).
@@ -200,6 +204,8 @@ struct AppSettings: Codable {
         hotkeyModifiers: UInt32,
         translateHotkeyKeyCode: UInt32,
         translateHotkeyModifiers: UInt32,
+        textActionsHotkeyKeyCode: UInt32 = 7,
+        textActionsHotkeyModifiers: UInt32 = 2048,
         ttsHotkeyKeyCode: UInt32,
         ttsHotkeyModifiers: UInt32,
         language: AppLanguage,
@@ -235,6 +241,8 @@ struct AppSettings: Codable {
         self.hotkeyModifiers = hotkeyModifiers
         self.translateHotkeyKeyCode = translateHotkeyKeyCode
         self.translateHotkeyModifiers = translateHotkeyModifiers
+        self.textActionsHotkeyKeyCode = textActionsHotkeyKeyCode
+        self.textActionsHotkeyModifiers = textActionsHotkeyModifiers
         self.ttsHotkeyKeyCode = ttsHotkeyKeyCode
         self.ttsHotkeyModifiers = ttsHotkeyModifiers
         self.language = language
@@ -272,6 +280,8 @@ struct AppSettings: Codable {
         hotkeyModifiers: 2048,
         translateHotkeyKeyCode: 2,
         translateHotkeyModifiers: 2048,
+        textActionsHotkeyKeyCode: 7,
+        textActionsHotkeyModifiers: 2048,
         ttsHotkeyKeyCode: 1,
         ttsHotkeyModifiers: 2048,
         language: .system,
@@ -290,6 +300,8 @@ extension AppSettings {
         case hotkeyModifiers
         case translateHotkeyKeyCode
         case translateHotkeyModifiers
+        case textActionsHotkeyKeyCode
+        case textActionsHotkeyModifiers
         case ttsHotkeyKeyCode
         case ttsHotkeyModifiers
         case language
@@ -328,6 +340,14 @@ extension AppSettings {
         hotkeyModifiers = try container.decodeIfPresent(UInt32.self, forKey: .hotkeyModifiers) ?? Self.default.hotkeyModifiers
         translateHotkeyKeyCode = try container.decodeIfPresent(UInt32.self, forKey: .translateHotkeyKeyCode) ?? Self.default.translateHotkeyKeyCode
         translateHotkeyModifiers = try container.decodeIfPresent(UInt32.self, forKey: .translateHotkeyModifiers) ?? Self.default.translateHotkeyModifiers
+        textActionsHotkeyKeyCode = try container.decodeIfPresent(
+            UInt32.self,
+            forKey: .textActionsHotkeyKeyCode
+        ) ?? Self.default.textActionsHotkeyKeyCode
+        textActionsHotkeyModifiers = try container.decodeIfPresent(
+            UInt32.self,
+            forKey: .textActionsHotkeyModifiers
+        ) ?? Self.default.textActionsHotkeyModifiers
         ttsHotkeyKeyCode = try container.decodeIfPresent(UInt32.self, forKey: .ttsHotkeyKeyCode) ?? Self.default.ttsHotkeyKeyCode
         ttsHotkeyModifiers = try container.decodeIfPresent(UInt32.self, forKey: .ttsHotkeyModifiers) ?? Self.default.ttsHotkeyModifiers
         language = try container.decodeIfPresent(AppLanguage.self, forKey: .language) ?? Self.default.language

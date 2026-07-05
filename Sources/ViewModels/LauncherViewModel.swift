@@ -425,6 +425,13 @@ final class LauncherViewModel: ObservableObject {
         settings = updated
     }
 
+    func updateTextActionsHotkey(keyCode: UInt32, modifiers: UInt32) {
+        var updated = settings
+        updated.textActionsHotkeyKeyCode = keyCode
+        updated.textActionsHotkeyModifiers = modifiers
+        settings = updated
+    }
+
     func activate(_ item: SearchItem) {
         switch item {
         case let .app(app):

@@ -66,8 +66,21 @@
 
 "prefs.translate.hotkey.title" = "Translate Hotkey";
 "prefs.translate.hotkey.subtitle" = "Select text, then press to translate it";
+"prefs.text.actions.hotkey.title" = "Selected Text Actions";
+"prefs.text.actions.hotkey.subtitle" = "Select text, then press to choose an action";
 "prefs.tts.hotkey.title" = "Read Selection Hotkey";
 "prefs.tts.hotkey.subtitle" = "Select text, then press to synthesize and play it";
+
+"text.actions.title" = "Process Selected Text";
+"text.actions.selection" = "Selected Text";
+"text.actions.translate" = "Translate";
+"text.actions.ask.ai" = "Ask AI";
+"text.actions.speak" = "Read Aloud";
+"text.actions.unavailable.title" = "Selected Text Unavailable";
+"text.actions.accessibility.message" = "Allow Meow in Accessibility settings to use the global selected-text shortcut.";
+"text.actions.no.selection" = "Select some text in another app, then try again.";
+"text.actions.hotkey.conflict.title" = "Shortcut Unavailable";
+"text.actions.hotkey.conflict.message" = "%@ could not be registered. Choose another shortcut in Preferences.";
 
 "prefs.dock.title" = "Show Dock Icon";
 "prefs.dock.subtitle" = "Display Meow in Dock for quick access";

@@ -31,6 +31,18 @@ private final class WindowCloseDelegate: NSObject, NSWindowDelegate {
     }
 }
 
+private final class WindowResignDelegate: NSObject, NSWindowDelegate {
+    private let onResign: () -> Void
+
+    init(onResign: @escaping () -> Void) {
+        self.onResign = onResign
+    }
+
+    func windowDidResignKey(_ notification: Notification) {
+        onResign()
+    }
+}
+
 @main
 struct MeowApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
@@ -161,11 +173,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     #endif
 
     private let translationService = TranslationService()
+    private let textServiceProvider = TextServiceProvider()
 
     private var launcherWindow: LauncherPanel?
     private var launcherHostingController: NSHostingController<LauncherView>?
     private var translationWindow: LauncherPanel?
     private var translationHostingController: NSHostingController<AnyView>?
+    private var textActionsWindow: LauncherPanel?
+    private var textActionsHostingController: NSHostingController<TextActionsPanelView>?
+    private var textActionsWindowDelegate: WindowResignDelegate?
     private var aiChatWindow: NSWindow?
     private var aiChatHostingController: NSHostingController<AnyView>?
     private var preferencesWindow: NSWindow?
@@ -191,6 +207,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var appliedLanguage: AppLanguage?
     private var lastRegisteredToggleHotkey: (keyCode: UInt32, modifiers: UInt32)?
     private var lastRegisteredTranslateHotkey: (keyCode: UInt32, modifiers: UInt32)?
+    private var lastRegisteredTextActionsHotkey: (keyCode: UInt32, modifiers: UInt32)?
     private var lastRegisteredScreenshotRegionHotkey: (keyCode: UInt32, modifiers: UInt32)?
     private var lastRegisteredScreenshotEditHotkey: (keyCode: UInt32, modifiers: UInt32)?
     private var lastRegisteredScreenshotWindowHotkey: (keyCode: UInt32, modifiers: UInt32)?
@@ -306,6 +323,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         viewModel.load()
+
+        textServiceProvider.onProcessText = { [weak self] text in
+            self?.presentTextActions(for: text)
+        }
+        NSApp.servicesProvider = textServiceProvider
 
         setupStatusItem()
         let initial = settingsStore.load()
@@ -606,6 +628,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.triggerTranslation()
         }
 
+        let textActionsHotkeyResult = hotkeyService.registerTextActionsHotkey(
+            keyCode: settings.textActionsHotkeyKeyCode,
+            modifiers: settings.textActionsHotkeyModifiers
+        ) { [weak self] in
+            self?.triggerTextActions()
+        }
+
         #if MEOW_VOICE
         if settings.speech.enabled {
             let speechHotkeyResult = hotkeyService.registerSpeechHotkey(
@@ -653,6 +682,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.lastRegisteredTranslateHotkey = (
                 settings.translateHotkeyKeyCode,
                 settings.translateHotkeyModifiers
+            )
+        }
+
+        handleHotkeyRegistrationResult(
+            textActionsHotkeyResult,
+            name: "selected-text actions",
+            keyCode: settings.textActionsHotkeyKeyCode,
+            modifiers: settings.textActionsHotkeyModifiers,
+            previous: lastRegisteredTextActionsHotkey
+        ) { [weak self] keyCode, modifiers in
+            self?.viewModel.updateTextActionsHotkey(keyCode: keyCode, modifiers: modifiers)
+        } onSuccess: { [weak self] in
+            self?.lastRegisteredTextActionsHotkey = (
+                settings.textActionsHotkeyKeyCode,
+                settings.textActionsHotkeyModifiers
+            )
+        }
+        if case .failed = textActionsHotkeyResult {
+            presentTextActionsHotkeyConflict(
+                keyCode: settings.textActionsHotkeyKeyCode,
+                modifiers: settings.textActionsHotkeyModifiers
             )
         }
 
@@ -1867,6 +1917,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             [weak self] _ in
             self?.dismissIfClickedOutsideLauncher()
             self?.dismissIfClickedOutsideTranslation()
+            self?.dismissIfClickedOutsideTextActions()
             self?.dismissIfClickedOutsideCalendarPopover()
         }
 
@@ -1874,6 +1925,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             [weak self] event in
             self?.dismissIfClickedOutsideLauncher()
             self?.dismissIfClickedOutsideTranslation()
+            self?.dismissIfClickedOutsideTextActions()
             self?.dismissIfClickedOutsideCalendarPopover()
             return event
         }
@@ -1888,6 +1940,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             #endif
             self?.dismissTranslationIfEscape(event)
+            self?.dismissTextActionsIfEscape(event)
         }
 
         // Use a single app-level shortcut path for Cmd+, because command routing can
@@ -1904,6 +1957,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
                 #endif
                 if self?.dismissTranslationIfEscape(event) == true {
+                    handled = true
+                }
+                if self?.dismissTextActionsIfEscape(event) == true {
                     handled = true
                 }
                 if handled {
@@ -1936,6 +1992,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let mouseLocation = NSEvent.mouseLocation
         if !translationWindow.frame.contains(mouseLocation) {
             hideTranslationPanel()
+        }
+    }
+
+    private func dismissIfClickedOutsideTextActions() {
+        guard let textActionsWindow, textActionsWindow.isVisible else { return }
+        let mouseLocation = NSEvent.mouseLocation
+        if !textActionsWindow.frame.contains(mouseLocation) {
+            hideTextActionsPanel()
         }
     }
 
@@ -1974,7 +2038,142 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return true
     }
 
+    @discardableResult
+    private func dismissTextActionsIfEscape(_ event: NSEvent) -> Bool {
+        guard event.keyCode == 53,
+              textActionsWindow?.isVisible == true
+        else { return false }
+
+        hideTextActionsPanel()
+        return true
+    }
+
     // MARK: - Translation panel
+
+    private func createTextActionsWindow() {
+        guard textActionsWindow == nil else { return }
+
+        let panel = LauncherPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 520, height: 280),
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+        panel.title = L10n.textActionsTitle
+        panel.isMovableByWindowBackground = true
+        panel.isFloatingPanel = true
+        panel.level = .floating
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
+        panel.isOpaque = false
+        panel.backgroundColor = NSColor.windowBackgroundColor
+        panel.hasShadow = true
+        panel.hidesOnDeactivate = true
+        panel.isReleasedWhenClosed = false
+        let delegate = WindowResignDelegate { [weak self] in
+            self?.hideTextActionsPanel()
+        }
+        panel.delegate = delegate
+        textActionsWindowDelegate = delegate
+        textActionsWindow = panel
+    }
+
+    private func presentTextActionsHotkeyConflict(keyCode: UInt32, modifiers: UInt32) {
+        let shortcut = KeyDisplayFormatter.shortcutLabel(keyCode: keyCode, modifiers: modifiers)
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = L10n.textActionsHotkeyConflictTitle
+        alert.informativeText = String(format: L10n.textActionsHotkeyConflictMessage, shortcut)
+        alert.addButton(withTitle: L10n.actionOK)
+        alert.runModal()
+    }
+
+    private func triggerTextActions() {
+        let text = translationService.captureWithFallback(promptForPermission: true)
+        guard !text.isEmpty else {
+            presentTextActionsCaptureError(permissionDenied: translationService.axPermissionDenied)
+            return
+        }
+        presentTextActions(for: text)
+    }
+
+    private func presentTextActionsCaptureError(permissionDenied: Bool) {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = L10n.textActionsUnavailableTitle
+        alert.informativeText = permissionDenied
+            ? L10n.textActionsAccessibilityMessage
+            : L10n.textActionsNoSelection
+        if permissionDenied {
+            alert.addButton(withTitle: L10n.translateOpenPrivacy)
+            alert.addButton(withTitle: L10n.actionCancel)
+            if alert.runModal() == .alertFirstButtonReturn {
+                NSWorkspace.shared.open(
+                    URL(
+                        string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
+                    )!
+                )
+            }
+        } else {
+            alert.addButton(withTitle: L10n.actionOK)
+            alert.runModal()
+        }
+    }
+
+    private func presentTextActions(for text: String) {
+        let normalized = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalized.isEmpty else {
+            presentTextActionsCaptureError(permissionDenied: false)
+            return
+        }
+
+        createTextActionsWindow()
+        #if MEOW_VOICE
+        let canSpeak = viewModel.settings.tts.enabled
+        #else
+        let canSpeak = false
+        #endif
+        let view = TextActionsPanelView(
+            text: normalized,
+            theme: viewModel.settings.theme,
+            canSpeak: canSpeak,
+            onAction: { [weak self] action in
+                self?.performTextAction(action, text: normalized)
+            },
+            onDismiss: { [weak self] in
+                self?.hideTextActionsPanel()
+            }
+        )
+        let hosting = NSHostingController(rootView: view)
+        textActionsHostingController = hosting
+
+        guard let panel = textActionsWindow else { return }
+        panel.title = L10n.textActionsTitle
+        panel.contentViewController = hosting
+        panel.setContentSize(NSSize(width: 520, height: 280))
+        centerWindowOnScreen(panel, on: activeScreen())
+        panel.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func performTextAction(_ action: TextAction, text: String) {
+        hideTextActionsPanel()
+        switch action {
+        case .translate:
+            presentTranslationPanel(text: text, axPermissionDenied: false)
+        case .askAI:
+            openAIChat(AIChatInitialInput(text: text))
+        #if MEOW_VOICE
+        case .speak:
+            speechSynthesisService.synthesize(text: text, settings: viewModel.settings.tts)
+        #endif
+        }
+    }
+
+    private func hideTextActionsPanel() {
+        textActionsWindow?.orderOut(nil)
+        textActionsWindow?.contentViewController = nil
+        textActionsHostingController = nil
+    }
 
     private func createAIChatWindow() {
         guard aiChatWindow == nil else { return }

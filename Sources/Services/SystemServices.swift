@@ -921,6 +921,15 @@ final class HotkeyService: @unchecked Sendable {
         registerHotkey(id: 2, keyCode: keyCode, modifiers: modifiers, pressedAction: action)
     }
 
+    /// Registers (or replaces) the selected-text actions hotkey (id = 17).
+    func registerTextActionsHotkey(
+        keyCode: UInt32,
+        modifiers: UInt32,
+        action: @escaping () -> Void
+    ) -> RegistrationResult {
+        registerHotkey(id: 17, keyCode: keyCode, modifiers: modifiers, pressedAction: action)
+    }
+
     /// Registers (or replaces) the hold-to-record speech hotkey (id = 3).
     func registerSpeechHotkey(
         keyCode: UInt32,
