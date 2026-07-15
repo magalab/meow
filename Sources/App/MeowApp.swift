@@ -225,6 +225,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var clipboardMonitoringEnabled = false
     private var calendarPopover: NSPopover?
     private var calendarPopoverController: NSHostingController<CalendarPopoverView>?
+    private var calendarRefreshToken = UUID()
+    private var workspaceWakeObserver: NSObjectProtocol?
     private var uploadShutdownForTermination = false
     private var uploadNotificationAuthorizationRequested = false
 
@@ -333,6 +335,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let initial = settingsStore.load()
         dockIconService.start(style: initial.dockIconStyle)
         apply(settings: initial)
+        observeSystemWake()
         setupOutsideClickDismissMonitor()
     }
 
@@ -407,6 +410,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         healthReminderService.stop()
         clipboardStore.stopMonitoring()
         dockIconService.stop()
+        if let workspaceWakeObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(workspaceWakeObserver)
+            self.workspaceWakeObserver = nil
+        }
         if let globalMouseMonitor {
             NSEvent.removeMonitor(globalMouseMonitor)
             self.globalMouseMonitor = nil
@@ -442,6 +449,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             speechRecognitionService.refreshPermissionState()
         }
         #endif
+    }
+
+    private func observeSystemWake() {
+        workspaceWakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.refreshDateUIAfterWake()
+            }
+        }
+    }
+
+    private func refreshDateUIAfterWake() {
+        dockIconService.refresh()
+        statusItemService.refreshDateIcon()
+
+        guard let hosting = calendarPopoverController,
+              calendarPopover?.isShown == true
+        else { return }
+
+        calendarRefreshToken = UUID()
+        hosting.rootView = makeCalendarPopoverView(for: calendarPopover)
     }
 
     private func createLauncherWindow() {
@@ -2810,19 +2841,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let initialSize = NSSize(width: 320, height: 314)
         popover.contentSize = initialSize
 
-        let view = CalendarPopoverView(
-            theme: viewModel.settings.theme,
-            healthReminderService: healthReminderService,
-            onHealthCommand: { [weak self] command in
-                self?.handleHealthCommand(command)
-            },
-            onOpenHealthPreferences: { [weak self] in
-                self?.showPreferences(section: .health)
-            },
-            onContentSizeChanged: { [weak popover] size in
-                popover?.contentSize = size
-            }
-        )
+        let view = makeCalendarPopoverView(for: popover)
         let hosting = NSHostingController(rootView: view)
         popover.contentViewController = hosting
 
@@ -2831,6 +2850,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         calendarPopover = popover
         calendarPopoverController = hosting
+    }
+
+    private func makeCalendarPopoverView(for popover: NSPopover? = nil) -> CalendarPopoverView {
+        CalendarPopoverView(
+            theme: viewModel.settings.theme,
+            healthReminderService: healthReminderService,
+            onHealthCommand: { [weak self] command in
+                self?.handleHealthCommand(command)
+            },
+            onOpenHealthPreferences: { [weak self] in
+                self?.showPreferences(section: .health)
+            },
+            onContentSizeChanged: { [weak self, weak popover] size in
+                (popover ?? self?.calendarPopover)?.contentSize = size
+            },
+            refreshToken: calendarRefreshToken
+        )
     }
 
     private func activeScreen() -> NSScreen? {

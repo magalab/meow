@@ -9,6 +9,7 @@ struct CalendarPopoverView: View {
     let onHealthCommand: (HealthReminderCommand) -> Void
     let onOpenHealthPreferences: () -> Void
     let onContentSizeChanged: (NSSize) -> Void
+    let refreshToken: UUID
     @State private var currentYear: Int
     @State private var currentMonth: Int
     @State private var selectedDay: MonthDayInfo?
@@ -26,13 +27,15 @@ struct CalendarPopoverView: View {
         healthReminderService: HealthReminderService,
         onHealthCommand: @escaping (HealthReminderCommand) -> Void,
         onOpenHealthPreferences: @escaping () -> Void,
-        onContentSizeChanged: @escaping (NSSize) -> Void = { _ in }
+        onContentSizeChanged: @escaping (NSSize) -> Void = { _ in },
+        refreshToken: UUID = UUID()
     ) {
         self.theme = theme
         self.healthReminderService = healthReminderService
         self.onHealthCommand = onHealthCommand
         self.onOpenHealthPreferences = onOpenHealthPreferences
         self.onContentSizeChanged = onContentSizeChanged
+        self.refreshToken = refreshToken
         let now = Date()
         let cal = Calendar(identifier: .gregorian)
         _currentYear = State(initialValue: cal.component(.year, from: now))
@@ -102,6 +105,10 @@ struct CalendarPopoverView: View {
         }
         .onChange(of: currentMonth) { _, _ in
             onContentSizeChanged(contentSize)
+        }
+        .onChange(of: refreshToken) { _, _ in
+            selectedDay = nil
+            jumpToToday()
         }
         .id(lang.refreshToken)
     }

@@ -525,6 +525,15 @@ final class StatusItemService {
         updateIconStyleSubmenuState()
     }
 
+    /// Rebuilds the date icon and aligns its next scheduled update after a system wake.
+    func refreshDateIcon() {
+        guard let button = statusItem?.button else { return }
+        if !recordingActive {
+            button.image = dateImage()
+        }
+        scheduleDateRefresh(for: button)
+    }
+
     func updateRecordingState(_ state: RecordingState, elapsed: TimeInterval) {
         let active = state.isActive
         recordingActive = active
