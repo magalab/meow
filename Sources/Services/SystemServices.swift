@@ -267,6 +267,7 @@ final class StatusItemService {
     private var actionTargets: [BlockActionTarget] = []
     private var openItem: NSMenuItem?
     private var preferencesItem: NSMenuItem?
+    private var whiteboardItem: NSMenuItem?
     private var autoLaunchItem: NSMenuItem?
     private var dockIconItem: NSMenuItem?
     private var statusBarIconItem: NSMenuItem?
@@ -293,6 +294,7 @@ final class StatusItemService {
         toggleAutoLaunch: @escaping () -> Void,
         toggleDockIcon: @escaping () -> Void,
         toggleStatusBarIcon: @escaping () -> Void,
+        toggleWhiteboard: @escaping () -> Void,
         pauseRecording: @escaping () -> Void,
         stopRecording: @escaping () -> Void,
         openRecordingHistory: @escaping () -> Void,
@@ -329,6 +331,20 @@ final class StatusItemService {
         openItem.action = #selector(BlockActionTarget.invoke)
         menu.addItem(openItem)
         self.openItem = openItem
+
+        let whiteboardItem = NSMenuItem(
+            title: L10n.whiteboardMenuToggle,
+            action: nil,
+            keyEquivalent: ""
+        )
+        whiteboardItem.image = NSImage(systemSymbolName: "scribble.variable", accessibilityDescription: nil)
+        let whiteboardTarget = BlockActionTarget { toggleWhiteboard() }
+        actionTargets.append(whiteboardTarget)
+        whiteboardItem.target = whiteboardTarget
+        whiteboardItem.action = #selector(BlockActionTarget.invoke)
+        whiteboardItem.isHidden = !initialSettings.whiteboard.enabled
+        menu.addItem(whiteboardItem)
+        self.whiteboardItem = whiteboardItem
 
         menu.addItem(.separator())
 
@@ -497,12 +513,14 @@ final class StatusItemService {
         dockIconItem?.state = settings.showDockIcon ? .on : .off
         statusBarIconItem?.state = settings.showStatusItem ? .on : .off
         recordingHistoryItem?.isHidden = !settings.recording.enabled
+        whiteboardItem?.isHidden = !settings.whiteboard.enabled
         dropView?.isDropEnabled = settings.fileHosting.s3.isEnabled
     }
 
     func updateL10n() {
         openItem?.title = L10n.menuOpen
         preferencesItem?.title = L10n.menuPreferences
+        whiteboardItem?.title = L10n.whiteboardMenuToggle
         iconStyleSubmenuItem?.title = L10n.menuIconStyle
         autoLaunchItem?.title = L10n.menuAutoLaunch
         dockIconItem?.title = L10n.menuDock
@@ -1071,6 +1089,18 @@ final class HotkeyService: @unchecked Sendable {
 
     func unregisterUploadHotkey() {
         unregisterHotkey(id: 16)
+    }
+
+    func registerWhiteboardHotkey(
+        keyCode: UInt32,
+        modifiers: UInt32,
+        action: @escaping () -> Void
+    ) -> RegistrationResult {
+        registerHotkey(id: 18, keyCode: keyCode, modifiers: modifiers, pressedAction: action)
+    }
+
+    func unregisterWhiteboardHotkey() {
+        unregisterHotkey(id: 18)
     }
 
     func unregisterScreenshotHotkeys() {

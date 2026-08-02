@@ -13,12 +13,143 @@ func olderSettingsCompatibility() throws {
     #expect(settings.authenticatorICloudSyncEnabled == false)
     #expect(settings.screenshot == .default)
     #expect(settings.recording == .default)
+    #expect(settings.whiteboard == .default)
+    #expect(!settings.whiteboard.enabled)
     #expect(settings.tts == .default)
     #expect(!settings.screenshot.automaticallyIndexOCRText)
     #expect(settings.screenshot.postCaptureActionDuration == .tenSeconds)
     #expect(settings.ai.supportsVision)
     #expect(settings.ai.imageMaxDimension == 1600)
     #expect(settings.fileHosting == .default)
+}
+
+@Test("Partial whiteboard settings use safe opt-in defaults")
+func partialWhiteboardSettingsCompatibility() throws {
+    let data = Data(
+        """
+        {
+          "whiteboard": {
+            "enabled": true,
+            "backgroundStyle": "invalid-future-value"
+          }
+        }
+        """.utf8
+    )
+
+    let settings = try JSONDecoder().decode(AppSettings.self, from: data)
+
+    #expect(settings.whiteboard.enabled)
+    #expect(settings.whiteboard.surfaceStyle == .paper)
+    #expect(settings.whiteboard.guideStyle == .dots)
+    #expect(settings.whiteboard.outputBackgroundStyle == .transparent)
+    #expect(settings.whiteboard.idleVisibility == .hidden)
+    #expect(settings.whiteboard.includeInCaptures)
+    #expect(settings.whiteboard.hotkeyKeyCode == WhiteboardSettings.default.hotkeyKeyCode)
+}
+
+@Test("Legacy whiteboard background settings migrate to independent guides")
+func legacyWhiteboardBackgroundMigration() throws {
+    let data = Data(
+        """
+        {
+          "whiteboard": {
+            "enabled": true,
+            "backgroundStyle": "grid"
+          }
+        }
+        """.utf8
+    )
+
+    let settings = try JSONDecoder().decode(AppSettings.self, from: data)
+    let encoded = try JSONEncoder().encode(settings.whiteboard)
+    let object = try #require(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+
+    #expect(settings.whiteboard.surfaceStyle == .paper)
+    #expect(settings.whiteboard.guideStyle == .grid)
+    #expect(settings.whiteboard.outputBackgroundStyle == .transparent)
+    #expect(object["backgroundStyle"] == nil)
+    #expect(object["surfaceStyle"] as? String == "paper")
+    #expect(object["guideStyle"] as? String == "grid")
+}
+
+@Test("Legacy default whiteboard shortcut migrates to Option-Shift-W")
+func legacyWhiteboardShortcutMigration() throws {
+    let settings = try JSONDecoder().decode(
+        WhiteboardSettings.self,
+        from: Data(
+            """
+            {
+              "enabled": true,
+              "hotkeyKeyCode": 13,
+              "hotkeyModifiers": 2304
+            }
+            """.utf8
+        )
+    )
+
+    #expect(WhiteboardSettings.default.hotkeyKeyCode == 13)
+    #expect(WhiteboardSettings.default.hotkeyModifiers == 2560)
+    #expect(settings.hotkeyKeyCode == 13)
+    #expect(settings.hotkeyModifiers == 2560)
+}
+
+@Test("Whiteboard host localization is complete in English and Simplified Chinese")
+func whiteboardHostLocalizationIsComplete() throws {
+    let sourceRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("Sources/Resources", isDirectory: true)
+    let keys = [
+        "prefs.section.whiteboard",
+        "whiteboard.enabled.title",
+        "whiteboard.enabled.subtitle",
+        "whiteboard.hotkey.title",
+        "whiteboard.hotkey.subtitle",
+        "whiteboard.hotkey.error",
+        "whiteboard.idle.title",
+        "whiteboard.idle.subtitle",
+        "whiteboard.idle.hidden",
+        "whiteboard.idle.visible",
+        "whiteboard.surface.title",
+        "whiteboard.surface.subtitle",
+        "whiteboard.surface.transparent",
+        "whiteboard.surface.paper",
+        "whiteboard.guide.title",
+        "whiteboard.guide.subtitle",
+        "whiteboard.guide.none",
+        "whiteboard.guide.dots",
+        "whiteboard.guide.grid",
+        "whiteboard.output.background.title",
+        "whiteboard.output.background.subtitle",
+        "whiteboard.output.background.transparent",
+        "whiteboard.output.background.paper",
+        "whiteboard.capture.title",
+        "whiteboard.capture.subtitle",
+        "whiteboard.opacity.title",
+        "whiteboard.opacity.subtitle",
+        "whiteboard.scope.title",
+        "whiteboard.scope.subtitle",
+        "whiteboard.menu.toggle",
+        "whiteboard.send.image",
+        "whiteboard.error.title",
+        "whiteboard.no.recent.screenshot",
+        "cmd.whiteboard.open.title",
+        "cmd.whiteboard.open.subtitle",
+        "cmd.whiteboard.toggle.title",
+        "cmd.whiteboard.toggle.subtitle",
+        "cmd.whiteboard.latest.title",
+        "cmd.whiteboard.latest.subtitle",
+    ]
+
+    for language in ["en", "zh-Hans"] {
+        let url = sourceRoot
+            .appendingPathComponent("\(language).lproj", isDirectory: true)
+            .appendingPathComponent("Localizable.strings")
+        let contents = try String(contentsOf: url, encoding: .utf8)
+        for key in keys {
+            #expect(contents.contains("\"\(key)\" ="))
+        }
+    }
 }
 
 @Test("TTS settings decode missing fields and normalize invalid values")

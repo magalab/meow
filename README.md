@@ -13,6 +13,8 @@ A lightweight macOS launcher with gadgets, built with SwiftUI + AppKit.
   selection, full-resolution local history, and configurable copy/save output
 - Native screen recording for displays, regions, windows, applications, system audio,
   cameras, and connected mobile capture devices
+- Optional desktop whiteboard with shapes, arrows, freehand drawing, text, images,
+  local autosave, and PNG/SVG/Excalidraw interchange
 - S3-compatible file uploads with AWS S3, Cloudflare R2, MinIO, custom endpoints,
   upload shortcuts, clipboard commands, and menu bar drag-and-drop
 - Built-in commands (Preferences / Ask AI / Quit)
@@ -83,7 +85,7 @@ APP_BUNDLE_ID=tech.lury.meow bash scripts/build-dmg.sh
 2. Type to search apps or commands.
 3. Use `Up/Down` to select and press Enter to launch or run a command.
 4. Use the action menu on clipboard entries to paste, copy, delete, reveal files, or ask AI.
-5. Open Preferences to adjust language, theme, hotkeys, Dock, menu bar, clipboard, file hosting, authenticator, health reminders, keyboard overlay, and AI settings.
+5. Open Preferences to adjust language, theme, hotkeys, Dock, menu bar, clipboard, whiteboard, file hosting, authenticator, health reminders, keyboard overlay, and AI settings.
 
 ## Selected Text Actions
 
@@ -123,6 +125,26 @@ displays and `Esc` cancels an active capture. Screen Recording and Accessibility
 permissions are independent. macOS associates Screen Recording approval with the
 application identity; unsigned or frequently rebuilt ad-hoc apps may require approval
 again, while a consistently signed app retains a stable permission identity.
+
+## Desktop Whiteboard
+
+The desktop whiteboard is off by default. Enable it from Preferences -> Whiteboard,
+then use `Option+Shift+W`, the launcher commands, or the existing menu bar item to
+enter and leave editing mode.
+
+- Draw rectangles, ellipses, diamonds, arrows, lines, freehand strokes, and text
+- Select, move, resize, rotate, duplicate, copy, paste, erase, undo, and redo elements
+- Pan, zoom, fit the canvas, import images, and send clipboard or screenshot images to it
+- Import and export Excalidraw documents while preserving unsupported fields; export PNG and SVG
+- Choose whether idle content is hidden or remains visible and whether captures include board content
+- Choose a transparent or paper-white editing surface independently from dots/grid guides, and use a transparent or paper-white PNG/SVG export background
+- Keep the feature fully dormant while disabled: no board window, workspace read, or hotkey registration
+
+The board uses one active display at a time. Its local workspace and image resources are stored under:
+
+```text
+~/Library/Application Support/<Meow or Miao>/Whiteboards/
+```
 
 ## File Uploads
 

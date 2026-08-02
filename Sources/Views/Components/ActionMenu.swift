@@ -15,6 +15,7 @@ enum ActionMenuAction: String, Hashable {
     case translateImageText
     case scanQRCode
     case edit
+    case sendToWhiteboard
     case delete
     case execute
 }
@@ -22,6 +23,7 @@ enum ActionMenuAction: String, Hashable {
 struct ActionMenu: View {
     let selectedItem: SearchItem
     let showsSpeakAction: Bool
+    let showsWhiteboardAction: Bool
     let highlightedAction: ActionMenuAction?
     let onAction: (ActionMenuAction) -> Void
 
@@ -37,6 +39,14 @@ struct ActionMenu: View {
                 menuRow(action: .paste, title: L10n.actionMenuPaste, systemImage: "doc.on.clipboard", shortcuts: ["↩"])
                 menuRow(action: .copy, title: L10n.actionMenuCopy, systemImage: "doc.on.clipboard.fill", shortcuts: ["⌘", "C"])
                 if case .image = entry.content {
+                    if showsWhiteboardAction {
+                        menuRow(
+                            action: .sendToWhiteboard,
+                            title: L10n.whiteboardSendImage,
+                            systemImage: "scribble.variable",
+                            shortcuts: []
+                        )
+                    }
                     menuRow(action: .openImage, title: L10n.actionMenuOpen, systemImage: "arrow.up.right.square", shortcuts: [])
                     menuRow(action: .saveImageAs, title: L10n.actionMenuSaveAs, systemImage: "square.and.arrow.down", shortcuts: [])
                     menuRow(action: .edit, title: L10n.actionMenuEditImage, systemImage: "pencil.and.outline", shortcuts: [])

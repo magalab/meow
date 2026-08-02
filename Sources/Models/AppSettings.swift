@@ -178,6 +178,7 @@ struct AppSettings: Codable {
     var fileHosting: FileHostSettings
     var screenshot: ScreenshotSettings
     var recording: RecordingSettings
+    var whiteboard: WhiteboardSettings
     var speech: SpeechSettings
     var tts: TtsSettings
     var healthReminder: HealthReminderSettings
@@ -216,6 +217,7 @@ struct AppSettings: Codable {
         fileHosting: FileHostSettings = .default,
         screenshot: ScreenshotSettings = .default,
         recording: RecordingSettings = .default,
+        whiteboard: WhiteboardSettings = .default,
         speech: SpeechSettings = .default,
         tts: TtsSettings = .default,
         healthReminder: HealthReminderSettings = .default,
@@ -253,6 +255,7 @@ struct AppSettings: Codable {
         self.fileHosting = fileHosting
         self.screenshot = screenshot
         self.recording = recording
+        self.whiteboard = whiteboard
         self.speech = speech
         self.tts = tts
         self.healthReminder = healthReminder
@@ -312,6 +315,7 @@ extension AppSettings {
         case fileHosting
         case screenshot
         case recording
+        case whiteboard
         case speech
         case tts
         case healthReminder
@@ -364,6 +368,10 @@ extension AppSettings {
             RecordingSettings.self,
             forKey: .recording
         ) ?? Self.default.recording
+        whiteboard = try container.decodeIfPresent(
+            WhiteboardSettings.self,
+            forKey: .whiteboard
+        ) ?? Self.default.whiteboard
         speech = try container.decodeIfPresent(SpeechSettings.self, forKey: .speech) ?? Self.default.speech
         tts = try container.decodeIfPresent(TtsSettings.self, forKey: .tts) ?? Self.default.tts
         healthReminder = try container.decodeIfPresent(

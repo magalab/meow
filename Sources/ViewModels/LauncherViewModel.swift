@@ -1,6 +1,12 @@
 import AppKit
 import Foundation
 
+enum WhiteboardCommand {
+    case show
+    case toggleEditing
+    case importLatestScreenshot
+}
+
 @MainActor
 final class LauncherViewModel: ObservableObject {
     private let maxSearchResults = 80
@@ -14,6 +20,7 @@ final class LauncherViewModel: ObservableObject {
     }
 
     @Published private(set) var results: [SearchItem] = []
+    @Published private(set) var whiteboardHotkeyRegistrationError: String?
     @Published var settings: AppSettings {
         didSet {
             settingsStore.save(settings)
@@ -30,6 +37,7 @@ final class LauncherViewModel: ObservableObject {
     var onHealthCommand: ((HealthReminderCommand) -> Void)?
     var onScreenshotCommand: ((ScreenshotCommand) -> Void)?
     var onRecordingCommand: ((RecordingCommand) -> Void)?
+    var onWhiteboardCommand: ((WhiteboardCommand) -> Void)?
     var onSpeakText: ((String) -> Void)?
     var onSpeakSelectedText: (() -> Void)?
     var onPinClipboardImage: ((ImageClipboardContent) -> Void)?
@@ -39,6 +47,7 @@ final class LauncherViewModel: ObservableObject {
     var onEditClipboardImage: ((ImageClipboardContent) -> Void)?
     var onOpenClipboardImage: ((ImageClipboardContent) -> Void)?
     var onSaveClipboardImage: ((ImageClipboardContent) -> Void)?
+    var onSendClipboardImageToWhiteboard: ((ImageClipboardContent) -> Void)?
     var onUploadClipboard: (() -> Void)?
 
     private let settingsStore: SettingsStore
@@ -103,6 +112,31 @@ final class LauncherViewModel: ObservableObject {
                 keywords: ["quit", "exit", "退出"]
             ),
         ]
+        if settings.whiteboard.enabled {
+            entries.insert(
+                contentsOf: [
+                    CommandEntry(
+                        id: "meow.whiteboard.toggle",
+                        title: L10n.cmdWhiteboardToggleTitle,
+                        subtitle: L10n.cmdWhiteboardToggleSubtitle,
+                        keywords: ["whiteboard", "draw", "canvas", "edit", "白板", "画布", "绘图", "编辑"]
+                    ),
+                    CommandEntry(
+                        id: "meow.whiteboard.show",
+                        title: L10n.cmdWhiteboardOpenTitle,
+                        subtitle: L10n.cmdWhiteboardOpenSubtitle,
+                        keywords: ["whiteboard", "show", "desktop", "白板", "显示", "桌面"]
+                    ),
+                    CommandEntry(
+                        id: "meow.whiteboard.latest",
+                        title: L10n.cmdWhiteboardLatestTitle,
+                        subtitle: L10n.cmdWhiteboardLatestSubtitle,
+                        keywords: ["whiteboard", "screenshot", "image", "白板", "截图", "图片"]
+                    ),
+                ],
+                at: min(2, entries.count)
+            )
+        }
         if settings.authenticatorEnabled {
             entries.insert(
                 CommandEntry(
@@ -379,6 +413,14 @@ final class LauncherViewModel: ObservableObject {
         onSaveClipboardImage?(image)
     }
 
+    func sendClipboardImageToWhiteboard(_ item: SearchItem) {
+        guard settings.whiteboard.enabled,
+              case let .clipboard(entry) = item,
+              case let .image(image) = entry.content
+        else { return }
+        onSendClipboardImageToWhiteboard?(image)
+    }
+
     func speakClipboardText(_ item: SearchItem) {
         guard BuildEdition.includesVoiceFeatures, settings.tts.enabled,
               case let .clipboard(entry) = item,
@@ -416,6 +458,10 @@ final class LauncherViewModel: ObservableObject {
         updated.hotkeyKeyCode = keyCode
         updated.hotkeyModifiers = modifiers
         settings = updated
+    }
+
+    func setWhiteboardHotkeyRegistrationError(_ message: String?) {
+        whiteboardHotkeyRegistrationError = message
     }
 
     func updateTranslateHotkey(keyCode: UInt32, modifiers: UInt32) {
@@ -469,6 +515,12 @@ final class LauncherViewModel: ObservableObject {
             onHealthCommand?(.startBreak)
         case "meow.health.skip":
             onHealthCommand?(.skipBreak)
+        case "meow.whiteboard.show":
+            onWhiteboardCommand?(.show)
+        case "meow.whiteboard.toggle":
+            onWhiteboardCommand?(.toggleEditing)
+        case "meow.whiteboard.latest":
+            onWhiteboardCommand?(.importLatestScreenshot)
         case "meow.screenshot.region":
             onScreenshotCommand?(.captureRegion)
         case "meow.screenshot.edit":

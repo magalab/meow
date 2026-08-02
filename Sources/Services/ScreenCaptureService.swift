@@ -23,7 +23,9 @@ enum ScreenCaptureError: LocalizedError {
 
 @MainActor
 final class ScreenCaptureService {
-    func prepareSession() async throws -> CaptureSession {
+    func prepareSession(
+        includingApplicationWindowIDs: Set<CGWindowID> = []
+    ) async throws -> CaptureSession {
         guard CGPreflightScreenCaptureAccess() || CGRequestScreenCaptureAccess() else {
             throw ScreenCaptureError.permissionDenied
         }
@@ -38,6 +40,9 @@ final class ScreenCaptureService {
         let ownApplication = content.applications.first {
             $0.bundleIdentifier == Bundle.main.bundleIdentifier
         }
+        let includedOwnWindows = content.windows.filter {
+            includingApplicationWindowIDs.contains($0.windowID)
+        }
         var frozenDisplays: [FrozenDisplay] = []
 
         for display in content.displays {
@@ -46,7 +51,7 @@ final class ScreenCaptureService {
             let filter = SCContentFilter(
                 display: display,
                 excludingApplications: ownApplication.map { [$0] } ?? [],
-                exceptingWindows: []
+                exceptingWindows: includedOwnWindows
             )
             let configuration = Self.configuration(
                 width: CGFloat(display.width),
@@ -75,6 +80,7 @@ final class ScreenCaptureService {
             guard window.isOnScreen, window.windowLayer == 0 else { return false }
             guard window.frame.width >= 40, window.frame.height >= 40 else { return false }
             return window.owningApplication?.bundleIdentifier != Bundle.main.bundleIdentifier
+                || includingApplicationWindowIDs.contains(window.windowID)
         }
 
         return CaptureSession(

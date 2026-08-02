@@ -4,6 +4,7 @@ import AVFoundation
 @preconcurrency import ScreenCaptureKit
 import SwiftUI
 import UniformTypeIdentifiers
+import WhiteboardFeature
 
 enum MeowWindowIdentifiers {
     static let aiChat = NSUserInterfaceItemIdentifier("meow.ai.chat.window")
@@ -72,6 +73,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let autoLaunchService = AutoLaunchService()
     private let hotkeyService = HotkeyService()
     private let keystrokeVisualizerService = KeystrokeVisualizerService()
+    private let whiteboardFeatureController = WhiteboardFeatureController()
     private var authenticatorServiceLoaded = false
     private lazy var authenticatorService: AuthenticatorService = {
         authenticatorServiceLoaded = true
@@ -220,7 +222,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var lastRegisteredRecordingFrameHotkey: (keyCode: UInt32, modifiers: UInt32)?
     private var lastRegisteredRecordingMagnifierHotkey: (keyCode: UInt32, modifiers: UInt32)?
     private var lastRegisteredUploadHotkey: (keyCode: UInt32, modifiers: UInt32)?
+    private var lastRegisteredWhiteboardHotkey: (keyCode: UInt32, modifiers: UInt32)?
     private var recordingAllowsVisualOverlays = false
+    private var whiteboardPreparedForRecording = false
     private var captureTask: Task<Void, Never>?
     private var clipboardMonitoringEnabled = false
     private var calendarPopover: NSPopover?
@@ -255,6 +259,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         viewModel.onRecordingCommand = { [weak self] command in
             self?.handleRecordingCommand(command)
+        }
+        viewModel.onWhiteboardCommand = { [weak self] command in
+            self?.handleWhiteboardCommand(command)
         }
         viewModel.onUploadClipboard = { [weak self] in
             self?.hideLauncher()
@@ -292,8 +299,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         viewModel.onSaveClipboardImage = { [weak self] image in
             self?.saveClipboardImageAs(image)
         }
+        viewModel.onSendClipboardImageToWhiteboard = { [weak self] image in
+            self?.sendImageToWhiteboard(image)
+        }
         viewModel.onSettingsChanged = { [weak self] settings in
             self?.apply(settings: settings)
+        }
+        whiteboardFeatureController.onError = { [weak self] error in
+            NSLog("[Meow Whiteboard] %@", error.localizedDescription)
+            self?.presentWhiteboardError(error.localizedDescription)
         }
         keystrokeVisualizerService.onOverlayPlacementChanged = { [weak self] position, point in
             guard let self else { return }
@@ -362,6 +376,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func configureRecordingService(_ service: RecordingService) {
         service.onCompleted = { [weak self] artifact in
+            self?.restoreWhiteboardAfterRecording()
             self?.hideRecordingControl()
             self?.cameraOverlayController.stop()
             self?.screenMagnifierController.stop()
@@ -372,6 +387,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         service.onError = { [weak self] error in
+            self?.restoreWhiteboardAfterRecording()
             self?.hideRecordingControl()
             self?.cameraOverlayController.stop()
             self?.screenMagnifierController.stop()
@@ -380,10 +396,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         service.onStateChanged = { [weak self] state, elapsed in
             self?.statusItemService.updateRecordingState(state, elapsed: elapsed)
+            if case .idle = state {
+                self?.restoreWhiteboardAfterRecording()
+            } else if case .failed = state {
+                self?.restoreWhiteboardAfterRecording()
+            }
         }
     }
 
     func applicationWillTerminate(_: Notification) {
+        whiteboardFeatureController.shutdown()
         hotkeyService.unregister()
         fileUploadService.cancel()
         captureTask?.cancel()
@@ -538,6 +560,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             toggleStatusBarIcon: { [weak self] in
                 guard let self else { return }
                 self.viewModel.settings.showStatusItem.toggle()
+            },
+            toggleWhiteboard: { [weak self] in
+                self?.whiteboardFeatureController.toggleEditing()
             },
             pauseRecording: { [weak self] in
                 self?.runOnMain { $0.recordingService.pauseOrResume() }
@@ -772,6 +797,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         applyScreenshotHotkeys(settings.screenshot)
         applyRecordingHotkeys(settings.recording)
         applyUploadHotkey(settings.fileHosting)
+        applyWhiteboard(settings.whiteboard)
 
         if settings.clipboardHistoryEnabled != clipboardMonitoringEnabled {
             if settings.clipboardHistoryEnabled {
@@ -836,6 +862,152 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             guard viewModel.settings.healthReminder.enabled else { return }
             healthReminderService.skipBreak()
         }
+    }
+
+    private func applyWhiteboard(_ settings: WhiteboardSettings) {
+        let normalized = settings.normalized()
+        whiteboardFeatureController.apply(
+            configuration: WhiteboardConfiguration(
+                isEnabled: normalized.enabled,
+                idleVisibility: normalized.idleVisibility,
+                includeInCaptures: normalized.includeInCaptures,
+                surfaceStyle: normalized.surfaceStyle,
+                guideStyle: normalized.guideStyle,
+                outputBackgroundStyle: normalized.outputBackgroundStyle,
+                editOpacity: normalized.editOpacity,
+                storageDirectory: whiteboardStorageDirectory,
+                languageCode: LanguageManager.shared.currentLanguageCode,
+                applicationName: BuildEdition.productName
+            )
+        )
+
+        guard normalized.enabled else {
+            if whiteboardPreparedForRecording {
+                recordingService.setIncludedApplicationWindowIDs([])
+                whiteboardPreparedForRecording = false
+            }
+            hotkeyService.unregisterWhiteboardHotkey()
+            lastRegisteredWhiteboardHotkey = nil
+            viewModel.setWhiteboardHotkeyRegistrationError(nil)
+            return
+        }
+
+        let result = hotkeyService.registerWhiteboardHotkey(
+            keyCode: normalized.hotkeyKeyCode,
+            modifiers: normalized.hotkeyModifiers
+        ) { [weak self] in
+            self?.whiteboardFeatureController.toggleEditing()
+        }
+        handleHotkeyRegistrationResult(
+            result,
+            name: "whiteboard",
+            keyCode: normalized.hotkeyKeyCode,
+            modifiers: normalized.hotkeyModifiers,
+            previous: lastRegisteredWhiteboardHotkey
+        ) { [weak self] keyCode, modifiers in
+            guard let self else { return }
+            self.viewModel.settings.whiteboard.hotkeyKeyCode = keyCode
+            self.viewModel.settings.whiteboard.hotkeyModifiers = modifiers
+        } onSuccess: { [weak self] in
+            self?.viewModel.setWhiteboardHotkeyRegistrationError(nil)
+            self?.lastRegisteredWhiteboardHotkey = (
+                normalized.hotkeyKeyCode,
+                normalized.hotkeyModifiers
+            )
+        }
+        if case let .failed(status) = result {
+            viewModel.setWhiteboardHotkeyRegistrationError(
+                String(format: L10n.whiteboardHotkeyError, status)
+            )
+        }
+    }
+
+    private var whiteboardStorageDirectory: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent(BuildEdition.productName, isDirectory: true)
+            .appendingPathComponent("Whiteboards", isDirectory: true)
+    }
+
+    private func handleWhiteboardCommand(_ command: WhiteboardCommand) {
+        guard viewModel.settings.whiteboard.enabled else { return }
+        hideLauncher()
+        switch command {
+        case .show:
+            whiteboardFeatureController.showBoard()
+        case .toggleEditing:
+            whiteboardFeatureController.toggleEditing()
+        case .importLatestScreenshot:
+            guard let artifact = captureStore.artifacts.first else {
+                presentWhiteboardError(L10n.whiteboardNoRecentScreenshot)
+                return
+            }
+            sendImageFileToWhiteboard(
+                at: artifact.imageURL,
+                sourceName: artifact.imageURL.lastPathComponent
+            )
+        }
+    }
+
+    private func sendImageToWhiteboard(_ image: ImageClipboardContent) {
+        guard viewModel.settings.whiteboard.enabled else { return }
+        hideLauncher()
+        let path = image.originalPath ?? image.thumbnailPath
+        sendImageFileToWhiteboard(at: URL(fileURLWithPath: path), sourceName: image.sourceName)
+    }
+
+    private func sendImageFileToWhiteboard(at url: URL, sourceName: String?) {
+        guard viewModel.settings.whiteboard.enabled,
+              let image = NSImage(contentsOf: url),
+              let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil)
+        else {
+            presentWhiteboardError(L10n.screenshotErrorCaptureFailed)
+            return
+        }
+        whiteboardFeatureController.importImage(cgImage, sourceName: sourceName)
+    }
+
+    private func prepareWhiteboardForCapture() -> Set<CGWindowID> {
+        guard viewModel.settings.whiteboard.enabled else { return [] }
+        let includeContent = viewModel.settings.whiteboard.includeInCaptures
+        whiteboardFeatureController.prepareForScreenCapture(
+            includeContent ? .includeContent : .excludeContent
+        )
+        guard includeContent, let windowID = whiteboardFeatureController.captureWindowNumber else {
+            return []
+        }
+        return [windowID]
+    }
+
+    private func prepareWhiteboardForRecording() -> Set<CGWindowID> {
+        guard !whiteboardPreparedForRecording else {
+            if let windowID = whiteboardFeatureController.captureWindowNumber,
+               viewModel.settings.whiteboard.includeInCaptures
+            {
+                return [windowID]
+            }
+            return []
+        }
+        let windowIDs = prepareWhiteboardForCapture()
+        whiteboardPreparedForRecording = viewModel.settings.whiteboard.enabled
+        recordingService.setIncludedApplicationWindowIDs(windowIDs)
+        return windowIDs
+    }
+
+    private func restoreWhiteboardAfterRecording() {
+        guard whiteboardPreparedForRecording else { return }
+        recordingService.setIncludedApplicationWindowIDs([])
+        whiteboardFeatureController.restoreAfterScreenCapture()
+        whiteboardPreparedForRecording = false
+    }
+
+    private func presentWhiteboardError(_ message: String) {
+        guard viewModel?.settings.whiteboard.enabled == true else { return }
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = L10n.whiteboardErrorTitle
+        alert.informativeText = message
+        alert.addButton(withTitle: L10n.actionOK)
+        alert.runModal()
     }
 
     private func handleScreenshotCommand(_ command: ScreenshotCommand) {
@@ -1199,8 +1371,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             guard let self else { return }
             defer { self.recordingTask = nil }
             do {
-                let session = try await screenCaptureService.prepareSession()
+                let whiteboardWindowIDs = mode.includesApplicationOverlays
+                    ? prepareWhiteboardForRecording()
+                    : []
+                let session = try await screenCaptureService.prepareSession(
+                    includingApplicationWindowIDs: whiteboardWindowIDs
+                )
                 guard let selection = await captureOverlayController.present(session: session, mode: mode) else {
+                    restoreWhiteboardAfterRecording()
                     return
                 }
                 let source: RecordingSource
@@ -1217,8 +1395,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 await recordingService.start(source: source)
                 if recordingService.state.isActive {
                     showRecordingControlIfNeeded()
+                } else {
+                    restoreWhiteboardAfterRecording()
                 }
             } catch {
+                restoreWhiteboardAfterRecording()
                 presentRecordingError(error)
             }
         }
@@ -1239,15 +1420,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 let applications = applicationCandidates(from: session)
                 guard let application = chooseApplication(from: applications),
                       let display = displayAtPointer(in: session)
-                else { return }
+                else {
+                    restoreWhiteboardAfterRecording()
+                    return
+                }
                 let source = RecordingSource.application(application, display: display)
                 recordingAllowsVisualOverlays = false
                 try await prepareCameraOverlayIfNeeded(for: source)
                 await recordingService.start(source: source)
                 if recordingService.state.isActive {
                     showRecordingControlIfNeeded()
+                } else {
+                    restoreWhiteboardAfterRecording()
                 }
             } catch {
+                restoreWhiteboardAfterRecording()
                 presentRecordingError(error)
             }
         }
@@ -1269,6 +1456,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             await recordingService.start(source: .contentFilter(filter))
             if recordingService.state.isActive {
                 showRecordingControlIfNeeded()
+            } else {
+                restoreWhiteboardAfterRecording()
             }
         }
     }
@@ -1292,8 +1481,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 await recordingService.start(source: .systemAudio(display))
                 if recordingService.state.isActive {
                     showRecordingControlIfNeeded()
+                } else {
+                    restoreWhiteboardAfterRecording()
                 }
             } catch {
+                restoreWhiteboardAfterRecording()
                 presentRecordingError(error)
             }
         }
@@ -1624,10 +1816,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         captureTask = Task { @MainActor [weak self] in
             guard let self else { return }
-            defer { self.captureTask = nil }
+            var whiteboardPrepared = false
+            defer {
+                if whiteboardPrepared {
+                    self.whiteboardFeatureController.restoreAfterScreenCapture()
+                }
+                self.captureTask = nil
+            }
 
             do {
-                let session = try await screenCaptureService.prepareSession()
+                let includedWhiteboardWindowIDs = mode.includesApplicationOverlays
+                    ? prepareWhiteboardForCapture()
+                    : []
+                whiteboardPrepared = mode.includesApplicationOverlays
+                    && viewModel.settings.whiteboard.enabled
+                let session = try await screenCaptureService.prepareSession(
+                    includingApplicationWindowIDs: includedWhiteboardWindowIDs
+                )
                 guard !Task.isCancelled else { return }
                 guard let selection = await captureOverlayController.present(session: session, mode: mode) else {
                     return
@@ -1639,6 +1844,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     session: session,
                     includeWindowShadow: viewModel.settings.screenshot.includeWindowShadow
                 )
+                whiteboardFeatureController.restoreAfterScreenCapture()
+                whiteboardPrepared = false
                 let outputImage: CGImage
                 let outputKind: CaptureArtifactKind
                 if editAfterCapture {
@@ -1815,6 +2022,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     imagePath: artifact.imageURL.path
                 )
             },
+            onSendToWhiteboard: viewModel.settings.whiteboard.enabled ? { [weak self] artifact in
+                self?.sendImageFileToWhiteboard(
+                    at: artifact.imageURL,
+                    sourceName: artifact.imageURL.lastPathComponent
+                )
+            } : nil,
             onDelete: { [weak self] artifact in
                 guard let self else { return }
                 clipboardStore.removeCaptureEntries(ids: Set([artifact.id]))
@@ -2502,7 +2715,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         postCaptureActionsController.show(
             artifact: artifact,
             duration: settings.postCaptureActionDuration,
-            includesUpload: viewModel.settings.fileHosting.s3.isEnabled
+            includesUpload: viewModel.settings.fileHosting.s3.isEnabled,
+            includesWhiteboard: viewModel.settings.whiteboard.enabled
         ) { [weak self] action, artifact in
             self?.handlePostCaptureAction(action, artifact: artifact)
         }
@@ -2542,6 +2756,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             viewModel.openAIChat(
                 prompt: L10n.aiImagePrompt,
                 imagePath: artifact.imageURL.path
+            )
+        case .whiteboard:
+            sendImageFileToWhiteboard(
+                at: artifact.imageURL,
+                sourceName: artifact.imageURL.lastPathComponent
             )
         case .upload:
             upload(fileURL: artifact.imageURL)
@@ -2722,6 +2941,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                         onTranslate: { _ in },
                         onScanQRCode: { _ in },
                         onAskAI: { _ in },
+                        onSendToWhiteboard: nil,
                         onDelete: { _ in },
                         onClear: {}
                     )

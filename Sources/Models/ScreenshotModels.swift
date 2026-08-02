@@ -258,6 +258,13 @@ enum ScreenshotCaptureMode: String, Codable, CaseIterable, Identifiable, Equatab
 
     var id: String { rawValue }
 
+    var includesApplicationOverlays: Bool {
+        switch self {
+        case .region, .display: true
+        case .window: false
+        }
+    }
+
     var displayName: String {
         switch self {
         case .region: return L10n.screenshotKindRegion

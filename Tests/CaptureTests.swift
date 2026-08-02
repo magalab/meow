@@ -7,6 +7,13 @@ import Testing
 @testable import Meow
 #endif
 
+@Test("Only region and display capture modes can include application overlays")
+func screenshotOverlayRouting() {
+    #expect(ScreenshotCaptureMode.region.includesApplicationOverlays)
+    #expect(ScreenshotCaptureMode.display.includesApplicationOverlays)
+    #expect(!ScreenshotCaptureMode.window.includesApplicationOverlays)
+}
+
 @Test("Screenshot file name template expands date tokens and sanitizes separators")
 @MainActor
 func screenshotFileNameTemplateExpansion() {
