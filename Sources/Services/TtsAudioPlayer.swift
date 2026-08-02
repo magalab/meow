@@ -91,7 +91,7 @@ final class TtsAudioPlayer {
     }
 }
 
-private final class PlaybackCompletionBridge {
+private final class PlaybackCompletionBridge: @unchecked Sendable {
     private let handler: @Sendable () -> Void
 
     init(handler: @escaping @Sendable () -> Void) {
