@@ -20,6 +20,7 @@ let voiceSources = [
 ]
 
 var executableDependencies: [Target.Dependency] = [
+    .target(name: "WhiteboardFeature"),
     .product(name: "SotoS3", package: "soto"),
 ]
 if isVoiceEdition {
@@ -31,6 +32,11 @@ let testSwiftSettings: [SwiftSetting] = isVoiceEdition ? [.define("MEOW_VOICE")]
 let targets: [Target] = [
     .binaryTarget(name: "SherpaOnnxC", path: "Vendor/SherpaOnnx.xcframework"),
     .binaryTarget(name: "ONNXRuntime", path: "Vendor/ONNXRuntime.xcframework"),
+    .target(
+        name: "WhiteboardFeature",
+        path: "Modules/WhiteboardFeature/Sources",
+        resources: [.process("Resources")]
+    ),
     .executableTarget(
         name: executableName,
         dependencies: executableDependencies,
@@ -45,6 +51,11 @@ let targets: [Target] = [
         dependencies: [.target(name: executableName)],
         path: "Tests",
         swiftSettings: testSwiftSettings
+    ),
+    .testTarget(
+        name: "WhiteboardFeatureTests",
+        dependencies: ["WhiteboardFeature"],
+        path: "Modules/WhiteboardFeature/Tests"
     ),
 ]
 

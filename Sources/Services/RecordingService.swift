@@ -56,6 +56,7 @@ final class RecordingService: NSObject, ObservableObject {
     private var countdownTask: Task<Void, Never>?
     private var elapsedTimer: Timer?
     private var sleepAssertionID: IOPMAssertionID = 0
+    private var includedApplicationWindowIDs: Set<CGWindowID> = []
 
     init(store: RecordingStore) {
         self.store = store
@@ -71,6 +72,10 @@ final class RecordingService: NSObject, ObservableObject {
             retentionDays: settings.recording.retentionDays,
             maxStorageMB: settings.recording.maxStorageMB
         )
+    }
+
+    func setIncludedApplicationWindowIDs(_ windowIDs: Set<CGWindowID>) {
+        includedApplicationWindowIDs = windowIDs
     }
 
     func prepare(source: RecordingSource) throws {
@@ -390,6 +395,9 @@ final class RecordingService: NSObject, ObservableObject {
                 "com.apple.systemuiserver",
             ]
             let excludedWindows = content.windows.filter { window in
+                if includedApplicationWindowIDs.contains(window.windowID) {
+                    return false
+                }
                 let bundleID = window.owningApplication?.bundleIdentifier.lowercased() ?? ""
                 if overlayTitles.contains(window.title ?? "") {
                     return false

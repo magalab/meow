@@ -3,6 +3,7 @@ import SwiftUI
 
 enum PreferenceSection: String, CaseIterable, Identifiable {
     case general
+    case whiteboard
     case screenshot
     case recording
     case history
@@ -21,6 +22,7 @@ enum PreferenceSection: String, CaseIterable, Identifiable {
     var localizedTitle: String {
         switch self {
         case .general: return L10n.prefsSectionGeneral
+        case .whiteboard: return L10n.prefsSectionWhiteboard
         case .screenshot: return L10n.prefsSectionScreenshot
         case .recording: return L10n.prefsSectionRecording
         case .history: return L10n.prefsSectionHistory
@@ -37,6 +39,7 @@ enum PreferenceSection: String, CaseIterable, Identifiable {
     var icon: String {
         switch self {
         case .general: return "gearshape"
+        case .whiteboard: return "scribble.variable"
         case .screenshot: return "camera.viewfinder"
         case .recording: return "record.circle"
         case .history: return "clock.arrow.circlepath"
@@ -179,6 +182,18 @@ struct PreferencesView: View {
                     VStack(spacing: 10) {
                         if navigation.selectedSection == .general {
                             generalPreferencesSection
+                        }
+
+                        if navigation.selectedSection == .whiteboard {
+                            WhiteboardPreferencesView(
+                                theme: viewModel.settings.theme,
+                                hotkeyRegistrationError: viewModel.whiteboardHotkeyRegistrationError,
+                                settings: Binding(
+                                    get: { viewModel.settings.whiteboard },
+                                    set: { viewModel.settings.whiteboard = $0 }
+                                )
+                            )
+                            .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
                         }
 
                         if navigation.selectedSection == .authenticator {

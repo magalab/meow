@@ -9,6 +9,7 @@ enum PostCaptureAction: CaseIterable, Identifiable {
     case recognizeText
     case translate
     case askAI
+    case whiteboard
     case upload
 
     var id: String {
@@ -20,6 +21,7 @@ enum PostCaptureAction: CaseIterable, Identifiable {
         case .recognizeText: return "recognizeText"
         case .translate: return "translate"
         case .askAI: return "askAI"
+        case .whiteboard: return "whiteboard"
         case .upload: return "upload"
         }
     }
@@ -33,6 +35,7 @@ enum PostCaptureAction: CaseIterable, Identifiable {
         case .recognizeText: return L10n.actionMenuRecognizeText
         case .translate: return L10n.actionMenuTranslateImage
         case .askAI: return L10n.actionMenuAskAI
+        case .whiteboard: return L10n.whiteboardSendImage
         case .upload: return L10n.uploadAction
         }
     }
@@ -46,6 +49,7 @@ enum PostCaptureAction: CaseIterable, Identifiable {
         case .recognizeText: return "text.viewfinder"
         case .translate: return "translate"
         case .askAI: return "sparkles"
+        case .whiteboard: return "scribble.variable"
         case .upload: return "arrow.up.circle"
         }
     }
@@ -63,11 +67,15 @@ final class PostCaptureActionsController {
         artifact: CaptureArtifact,
         duration: PostCaptureActionDuration,
         includesUpload: Bool,
+        includesWhiteboard: Bool,
         actionHandler: @escaping (PostCaptureAction, CaptureArtifact) -> Void
     ) {
         close()
         dismissRemaining = duration.seconds
-        let actions = PostCaptureAction.allCases.filter { includesUpload || $0 != .upload }
+        let actions = PostCaptureAction.allCases.filter { action in
+            (includesUpload || action != .upload)
+                && (includesWhiteboard || action != .whiteboard)
+        }
 
         let view = PostCaptureActionsView(
             artifact: artifact,

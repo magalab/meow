@@ -333,6 +333,7 @@ struct LauncherView: View {
                 ActionMenu(
                     selectedItem: selected,
                     showsSpeakAction: BuildEdition.includesVoiceFeatures && viewModel.settings.tts.enabled,
+                    showsWhiteboardAction: viewModel.settings.whiteboard.enabled,
                     highlightedAction: actions.isEmpty ? nil : actions[actionMenuSelectionIndex.clamped(to: 0 ... (actions.count - 1))],
                     onAction: { action in
                         executeActionMenu(action, selected: selected)
@@ -450,6 +451,9 @@ struct LauncherView: View {
         case let .clipboard(entry):
             var actions: [ActionMenuAction] = [.paste, .copy]
             if case .image = entry.content {
+                if viewModel.settings.whiteboard.enabled {
+                    actions.append(.sendToWhiteboard)
+                }
                 actions += [
                     .openImage, .saveImageAs, .edit, .pin,
                     .recognizeText, .translateImageText, .scanQRCode,
@@ -490,7 +494,7 @@ struct LauncherView: View {
              (.clipboard, .openImage), (.clipboard, .saveImageAs),
              (.clipboard, .pin), (.clipboard, .recognizeText),
              (.clipboard, .translateImageText), (.clipboard, .scanQRCode),
-             (.clipboard, .edit),
+             (.clipboard, .edit), (.clipboard, .sendToWhiteboard),
              (.clipboard, .delete):
             return true
         case (.command, .execute):
@@ -528,6 +532,8 @@ struct LauncherView: View {
             viewModel.scanClipboardImageQRCode(selected)
         case .edit:
             viewModel.editClipboardImage(selected)
+        case .sendToWhiteboard:
+            viewModel.sendClipboardImageToWhiteboard(selected)
         case .delete:
             viewModel.deleteClipboardItem(selected)
         }

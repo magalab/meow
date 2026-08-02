@@ -119,6 +119,14 @@ else
     ls -la "$BUILD_RELEASE_DIR" | grep -E "bundle|lproj" || echo "No bundles found"
 fi
 
+WHITEBOARD_RESOURCE_BUNDLE="$BUILD_RELEASE_DIR/Meow_WhiteboardFeature.bundle"
+if [ ! -d "$WHITEBOARD_RESOURCE_BUNDLE" ]; then
+    echo "Error: Whiteboard resource bundle not found at $WHITEBOARD_RESOURCE_BUNDLE"
+    exit 1
+fi
+echo "Copying whiteboard resource bundle from $WHITEBOARD_RESOURCE_BUNDLE..."
+cp -R "$WHITEBOARD_RESOURCE_BUNDLE" "$APP_DIR/Contents/Resources/"
+
 cat > "$APP_DIR/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

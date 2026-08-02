@@ -27,6 +27,7 @@ struct CaptureHistoryView: View {
     let onTranslate: (CaptureArtifact) -> Void
     let onScanQRCode: (CaptureArtifact) -> Void
     let onAskAI: (CaptureArtifact) -> Void
+    let onSendToWhiteboard: ((CaptureArtifact) -> Void)?
     let onDelete: (CaptureArtifact) -> Void
     let onClear: () -> Void
 
@@ -175,6 +176,11 @@ struct CaptureHistoryView: View {
                 iconButton("pin", help: L10n.actionMenuPinImage) {
                     onPin(artifact)
                 }
+                if let onSendToWhiteboard {
+                    iconButton("scribble.variable", help: L10n.whiteboardSendImage) {
+                        onSendToWhiteboard(artifact)
+                    }
+                }
                 Menu {
                     Button(L10n.actionMenuRecognizeText) {
                         onRecognizeText(artifact)
@@ -257,6 +263,11 @@ struct CaptureHistoryView: View {
             }
             iconButton("pin", help: L10n.actionMenuPinImage) {
                 onPin(artifact)
+            }
+            if let onSendToWhiteboard {
+                iconButton("scribble.variable", help: L10n.whiteboardSendImage) {
+                    onSendToWhiteboard(artifact)
+                }
             }
             Menu {
                 Button(L10n.actionMenuRecognizeText) {
