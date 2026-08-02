@@ -280,6 +280,36 @@ struct WhiteboardFormatTests {
         #expect(try rgbaPixel(in: image)[3] == 0)
     }
 
+    @Test("PNG export rejects extreme bounds without trapping")
+    func pngExportRejectsExtremeBounds() {
+        var document = WhiteboardDocument.empty()
+        document.elements = [WhiteboardElement(
+            kind: .rectangle,
+            origin: WhiteboardPoint(x: 0, y: 0),
+            size: WhiteboardSize(width: 1e100, height: 100)
+        )]
+
+        #expect(throws: WhiteboardExportError.self) {
+            try WhiteboardExporter.png(document: document) { _ in nil }
+        }
+    }
+
+    @Test("Excalidraw export clamps extreme timestamps without trapping")
+    func excalidrawExportClampsExtremeTimestamps() throws {
+        var document = WhiteboardDocument.empty(now: Date(timeIntervalSince1970: 1e100))
+        document.elements = [WhiteboardElement(
+            kind: .rectangle,
+            origin: WhiteboardPoint(x: 0, y: 0),
+            size: WhiteboardSize(width: 10, height: 10),
+            updatedAt: Date(timeIntervalSince1970: 1e100)
+        )]
+
+        let data = try WhiteboardExcalidrawCodec.encode(document) { _ in nil }
+        let root = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let elements = try #require(root["elements"] as? [[String: Any]])
+        #expect(elements[0]["updated"] as? Int == Int.max)
+    }
+
     @Test("Paper export background is applied to PNG and SVG")
     func paperExportBackground() throws {
         let element = WhiteboardElement(

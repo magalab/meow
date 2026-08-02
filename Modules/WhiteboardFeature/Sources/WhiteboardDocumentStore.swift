@@ -13,23 +13,23 @@ enum WhiteboardDocumentStoreError: LocalizedError, Equatable {
         switch self {
         case let .unsupportedSchema(version):
             return String(
-                format: String(localized: "whiteboard.error.schema.unsupported", bundle: .module),
+                format: WhiteboardResourceBundle.text("whiteboard.error.schema.unsupported"),
                 version
             )
         case let .loadFailedRecovered(originalDescription, recoveryURL):
             return String(
-                format: String(localized: "whiteboard.error.workspace.recovered", bundle: .module),
+                format: WhiteboardResourceBundle.text("whiteboard.error.workspace.recovered"),
                 originalDescription,
                 recoveryURL.path
             )
         case let .recoveryFailed(originalDescription, backupDescription):
             return String(
-                format: String(localized: "whiteboard.error.workspace.recovery.failed", bundle: .module),
+                format: WhiteboardResourceBundle.text("whiteboard.error.workspace.recovery.failed"),
                 originalDescription,
                 backupDescription
             )
         case .imageTooLarge:
-            return String(localized: "whiteboard.error.image.too.large", bundle: .module)
+            return WhiteboardResourceBundle.text("whiteboard.error.image.too.large")
         }
     }
 }
