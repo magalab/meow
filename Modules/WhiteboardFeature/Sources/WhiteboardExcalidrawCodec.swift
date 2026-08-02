@@ -10,16 +10,16 @@ enum WhiteboardExcalidrawError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .invalidRoot:
-            return String(localized: "whiteboard.error.excalidraw.root", bundle: .module)
+            return WhiteboardResourceBundle.text("whiteboard.error.excalidraw.root")
         case .invalidElements:
-            return String(localized: "whiteboard.error.excalidraw.elements", bundle: .module)
+            return WhiteboardResourceBundle.text("whiteboard.error.excalidraw.elements")
         case let .duplicateElementID(id):
             return String(
-                format: String(localized: "whiteboard.error.excalidraw.duplicate.id", bundle: .module),
+                format: WhiteboardResourceBundle.text("whiteboard.error.excalidraw.duplicate.id"),
                 id
             )
         case .embeddedImagesTooLarge:
-            return String(localized: "whiteboard.error.excalidraw.images.too.large", bundle: .module)
+            return WhiteboardResourceBundle.text("whiteboard.error.excalidraw.images.too.large")
         }
     }
 }
@@ -205,8 +205,8 @@ enum WhiteboardExcalidrawCodec {
             file["id"] = id
             file["dataURL"] = "data:image/png;base64,\(data.base64EncodedString())"
             file["created"] = file["created"]
-                ?? Int(document.modifiedAt.timeIntervalSince1970 * 1_000)
-            file["lastRetrieved"] = Int(document.modifiedAt.timeIntervalSince1970 * 1_000)
+                ?? millisecondsSince1970(document.modifiedAt)
+            file["lastRetrieved"] = millisecondsSince1970(document.modifiedAt)
             files[id] = file
         }
         if !files.isEmpty {
@@ -252,7 +252,7 @@ enum WhiteboardExcalidrawCodec {
         } else {
             raw["boundElements"] = NSNull()
         }
-        raw["updated"] = Int(element.updatedAt.timeIntervalSince1970 * 1_000)
+        raw["updated"] = millisecondsSince1970(element.updatedAt)
         raw["link"] = raw["link"] ?? NSNull()
         raw["locked"] = false
 
@@ -436,5 +436,13 @@ enum WhiteboardExcalidrawCodec {
             hash &*= 16_777_619
         }
         return Int(hash & 0x7FFF_FFFF)
+    }
+
+    private static func millisecondsSince1970(_ date: Date) -> Int {
+        let milliseconds = date.timeIntervalSince1970 * 1_000
+        guard milliseconds.isFinite else { return 0 }
+        if milliseconds >= Double(Int.max) { return Int.max }
+        if milliseconds <= Double(Int.min) { return Int.min }
+        return Int(milliseconds)
     }
 }
