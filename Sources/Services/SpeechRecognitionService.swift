@@ -358,14 +358,13 @@ private final class SpeechCaptureContext: @unchecked Sendable {
             return false
         }
 
-        var suppliedInput = false
+        let inputProvider = SingleUseAudioBufferProvider(buffer: inputBuffer)
         var conversionError: NSError?
         let status = converter.convert(to: outputBuffer, error: &conversionError) { _, outputStatus in
-            if suppliedInput {
+            guard let inputBuffer = inputProvider.take() else {
                 outputStatus.pointee = .noDataNow
                 return nil
             }
-            suppliedInput = true
             outputStatus.pointee = .haveData
             return inputBuffer
         }
@@ -389,6 +388,22 @@ private final class SpeechCaptureContext: @unchecked Sendable {
 
     func snapshot() -> [Float] {
         lock.withLock { samples }
+    }
+}
+
+private final class SingleUseAudioBufferProvider: @unchecked Sendable {
+    private let lock = NSLock()
+    private var buffer: AVAudioPCMBuffer?
+
+    init(buffer: AVAudioPCMBuffer) {
+        self.buffer = buffer
+    }
+
+    func take() -> AVAudioPCMBuffer? {
+        lock.withLock {
+            defer { buffer = nil }
+            return buffer
+        }
     }
 }
 

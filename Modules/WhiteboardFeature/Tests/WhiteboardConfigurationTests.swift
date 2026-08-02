@@ -61,6 +61,38 @@ struct WhiteboardConfigurationTests {
         #expect(!FileManager.default.fileExists(atPath: directory.path))
     }
 
+    @Test("Whiteboard resources resolve from a packaged app Resources directory")
+    func packagedAppResourceBundleResolution() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("Meow-WhiteboardBundleTests-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let appURL = root.appendingPathComponent("Meow.app", isDirectory: true)
+        let contentsURL = appURL.appendingPathComponent("Contents", isDirectory: true)
+        let moduleBundleURL = contentsURL
+            .appendingPathComponent("Resources/Meow_WhiteboardFeature.bundle", isDirectory: true)
+        try FileManager.default.createDirectory(at: moduleBundleURL, withIntermediateDirectories: true)
+
+        try writePropertyList(
+            [
+                "CFBundleIdentifier": "tech.lury.meow.tests.host",
+                "CFBundlePackageType": "APPL",
+            ],
+            to: contentsURL.appendingPathComponent("Info.plist")
+        )
+        try writePropertyList(
+            [
+                "CFBundleIdentifier": "tech.lury.meow.tests.whiteboard-resources",
+                "CFBundlePackageType": "BNDL",
+            ],
+            to: moduleBundleURL.appendingPathComponent("Info.plist")
+        )
+
+        let appBundle = try #require(Bundle(url: appURL))
+        let resolvedBundle = try #require(WhiteboardResourceBundle.find(in: appBundle))
+        #expect(resolvedBundle.bundleURL.standardizedFileURL == moduleBundleURL.standardizedFileURL)
+    }
+
     @Test("Whiteboard localization keys exist in English and Simplified Chinese")
     func localizationResourcesAreComplete() throws {
         let moduleRoot = URL(fileURLWithPath: #filePath)
@@ -126,5 +158,14 @@ struct WhiteboardConfigurationTests {
                 #expect(contents.contains("\"\(key)\" ="))
             }
         }
+    }
+
+    private func writePropertyList(_ value: Any, to url: URL) throws {
+        let data = try PropertyListSerialization.data(
+            fromPropertyList: value,
+            format: .xml,
+            options: 0
+        )
+        try data.write(to: url)
     }
 }

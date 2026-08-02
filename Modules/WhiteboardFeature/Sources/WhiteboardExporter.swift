@@ -10,11 +10,11 @@ enum WhiteboardExportError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .unableToCreateContext:
-            return String(localized: "whiteboard.error.export.context", bundle: .module)
+            return WhiteboardResourceBundle.text("whiteboard.error.export.context")
         case .unableToEncodeImage:
-            return String(localized: "whiteboard.error.export.encoding", bundle: .module)
+            return WhiteboardResourceBundle.text("whiteboard.error.export.encoding")
         case .outputTooLarge:
-            return String(localized: "whiteboard.error.export.too.large", bundle: .module)
+            return WhiteboardResourceBundle.text("whiteboard.error.export.too.large")
         }
     }
 }
@@ -27,14 +27,23 @@ enum WhiteboardExporter {
         image: (UUID?) -> CGImage?
     ) throws -> Data {
         let contentBounds = bounds(for: document).insetBy(dx: -40, dy: -40)
-        let width = max(1, Int(ceil(contentBounds.width * scale)))
-        let height = max(1, Int(ceil(contentBounds.height * scale)))
-        guard width <= 32_768,
-              height <= 32_768,
-              Double(width) * Double(height) <= 250_000_000
+        guard scale.isFinite, scale > 0 else {
+            throw WhiteboardExportError.outputTooLarge
+        }
+        let scaledWidth = ceil(contentBounds.width * scale)
+        let scaledHeight = ceil(contentBounds.height * scale)
+        guard scaledWidth.isFinite,
+              scaledHeight.isFinite,
+              scaledWidth > 0,
+              scaledHeight > 0,
+              scaledWidth <= 32_768,
+              scaledHeight <= 32_768,
+              scaledWidth * scaledHeight <= 250_000_000
         else {
             throw WhiteboardExportError.outputTooLarge
         }
+        let width = Int(scaledWidth)
+        let height = Int(scaledHeight)
         guard let context = CGContext(
             data: nil,
             width: width,
@@ -170,7 +179,7 @@ enum WhiteboardExporter {
     }
 
     private static func number(_ value: Double) -> String {
-        String(format: "%.4f", value)
+        String(format: "%.4f", locale: Locale(identifier: "en_US_POSIX"), value)
     }
 
     private static func escape(_ value: String) -> String {
