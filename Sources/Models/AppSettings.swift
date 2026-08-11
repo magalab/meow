@@ -1,5 +1,34 @@
 import Foundation
 
+enum ClipboardRetention: Int, Codable, CaseIterable, Identifiable, Sendable {
+    case day = 1
+    case week = 7
+    case month = 30
+    case threeMonths = 90
+    case sixMonths = 180
+    case year = 365
+    case forever = -1
+
+    var id: Int { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .day: return L10n.clipboardRetentionDay
+        case .week: return L10n.clipboardRetentionWeek
+        case .month: return L10n.clipboardRetentionMonth
+        case .threeMonths: return L10n.clipboardRetentionThreeMonths
+        case .sixMonths: return L10n.clipboardRetentionSixMonths
+        case .year: return L10n.clipboardRetentionYear
+        case .forever: return L10n.clipboardRetentionForever
+        }
+    }
+
+    var cutoffDate: Date? {
+        guard self != .forever else { return nil }
+        return Date().addingTimeInterval(-TimeInterval(rawValue) * 86_400)
+    }
+}
+
 enum DateIconStyle: String, Codable, CaseIterable, Identifiable {
     case outlinedDay
     case roundedOutlineDay
@@ -154,6 +183,9 @@ struct AppSettings: Codable {
     var autoLaunch: Bool
     var clipboardHistoryEnabled: Bool
     var clipboardShowImagePreviews: Bool
+    var clipboardRetention: ClipboardRetention
+    var clipboardDisabledAppBundleIDs: [String]
+    var clipboardImageStorageLimitMB: Int
     var showStatusItem: Bool
     var showDockIcon: Bool
     var hotkeyKeyCode: UInt32
@@ -199,6 +231,9 @@ struct AppSettings: Codable {
         autoLaunch: Bool,
         clipboardHistoryEnabled: Bool,
         clipboardShowImagePreviews: Bool,
+        clipboardRetention: ClipboardRetention = .threeMonths,
+        clipboardDisabledAppBundleIDs: [String] = ["com.apple.keychainaccess", "com.apple.Passwords"],
+        clipboardImageStorageLimitMB: Int = 512,
         showStatusItem: Bool,
         showDockIcon: Bool,
         hotkeyKeyCode: UInt32,
@@ -237,6 +272,9 @@ struct AppSettings: Codable {
         self.autoLaunch = autoLaunch
         self.clipboardHistoryEnabled = clipboardHistoryEnabled
         self.clipboardShowImagePreviews = clipboardShowImagePreviews
+        self.clipboardRetention = clipboardRetention
+        self.clipboardDisabledAppBundleIDs = clipboardDisabledAppBundleIDs
+        self.clipboardImageStorageLimitMB = max(128, clipboardImageStorageLimitMB)
         self.showStatusItem = showStatusItem
         self.showDockIcon = showDockIcon
         self.hotkeyKeyCode = hotkeyKeyCode
@@ -297,6 +335,9 @@ extension AppSettings {
         case autoLaunch
         case clipboardHistoryEnabled
         case clipboardShowImagePreviews
+        case clipboardRetention
+        case clipboardDisabledAppBundleIDs
+        case clipboardImageStorageLimitMB
         case showStatusItem
         case showDockIcon
         case hotkeyKeyCode
@@ -338,6 +379,19 @@ extension AppSettings {
         autoLaunch = try container.decodeIfPresent(Bool.self, forKey: .autoLaunch) ?? Self.default.autoLaunch
         clipboardHistoryEnabled = try container.decodeIfPresent(Bool.self, forKey: .clipboardHistoryEnabled) ?? Self.default.clipboardHistoryEnabled
         clipboardShowImagePreviews = try container.decodeIfPresent(Bool.self, forKey: .clipboardShowImagePreviews) ?? Self.default.clipboardShowImagePreviews
+        clipboardRetention = try container.decodeIfPresent(
+            ClipboardRetention.self,
+            forKey: .clipboardRetention
+        ) ?? Self.default.clipboardRetention
+        clipboardDisabledAppBundleIDs = try container.decodeIfPresent(
+            [String].self,
+            forKey: .clipboardDisabledAppBundleIDs
+        ) ?? Self.default.clipboardDisabledAppBundleIDs
+        clipboardImageStorageLimitMB = max(
+            128,
+            try container.decodeIfPresent(Int.self, forKey: .clipboardImageStorageLimitMB)
+                ?? Self.default.clipboardImageStorageLimitMB
+        )
         showStatusItem = try container.decodeIfPresent(Bool.self, forKey: .showStatusItem) ?? Self.default.showStatusItem
         showDockIcon = try container.decodeIfPresent(Bool.self, forKey: .showDockIcon) ?? Self.default.showDockIcon
         hotkeyKeyCode = try container.decodeIfPresent(UInt32.self, forKey: .hotkeyKeyCode) ?? Self.default.hotkeyKeyCode

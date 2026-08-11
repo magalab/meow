@@ -1,9 +1,40 @@
+import CryptoKit
 import Foundation
 
-struct ClipboardEntry: Identifiable, Hashable {
+struct ClipboardEntry: Identifiable, Hashable, Sendable {
     let id: String
     let content: ClipboardContent
     let copiedAt: Date
+    let sourceBundleID: String?
+    let pinnedAt: Date?
+
+    init(
+        id: String,
+        content: ClipboardContent,
+        copiedAt: Date,
+        sourceBundleID: String? = nil,
+        pinnedAt: Date? = nil
+    ) {
+        self.id = id
+        self.content = content
+        self.copiedAt = copiedAt
+        self.sourceBundleID = sourceBundleID
+        self.pinnedAt = pinnedAt
+    }
+
+    var isPinned: Bool {
+        pinnedAt != nil
+    }
+
+    func with(copiedAt: Date? = nil, pinnedAt: Date?) -> ClipboardEntry {
+        ClipboardEntry(
+            id: id,
+            content: content,
+            copiedAt: copiedAt ?? self.copiedAt,
+            sourceBundleID: sourceBundleID,
+            pinnedAt: pinnedAt
+        )
+    }
 
     var preview: String {
         content.preview
@@ -14,7 +45,7 @@ struct ClipboardEntry: Identifiable, Hashable {
     }
 }
 
-enum ClipboardContent: Hashable {
+enum ClipboardContent: Hashable, Sendable {
     case text(String)
     case image(ImageClipboardContent)
     case file(FileClipboardContent)
@@ -89,9 +120,48 @@ enum ClipboardContent: Hashable {
             return "Audio: \(audio.name)"
         }
     }
+
+    var searchText: String {
+        switch self {
+        case let .text(string):
+            return string
+        case let .image(image):
+            return image.sourceName
+        case let .file(file):
+            return "\(file.name) \(file.url.path)"
+        case let .url(url):
+            return url.absoluteString
+        case let .audio(audio):
+            return audio.name
+        }
+    }
+
+    var persistenceHash: String {
+        let value: String
+        switch self {
+        case let .text(string):
+            value = "text\u{0}\(string)"
+        case let .image(image):
+            if let contentHash = image.contentHash {
+                return contentHash
+            }
+            value = "image\u{0}\(image.sourceName)\u{0}\(image.width)x\(image.height)\u{0}\(image.originalPath ?? image.thumbnailPath)"
+        case let .file(file):
+            value = "file\u{0}\(file.url.standardizedFileURL.path)"
+        case let .url(url):
+            value = "url\u{0}\(url.absoluteString)"
+        case let .audio(audio):
+            value = "audio\u{0}\(audio.cachePath)"
+        }
+        return Self.sha256(value.data(using: .utf8) ?? Data())
+    }
+
+    static func sha256(_ data: Data) -> String {
+        SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+    }
 }
 
-struct ImageClipboardContent: Hashable {
+struct ImageClipboardContent: Hashable, Sendable {
     let thumbnailPath: String // Path to thumbnail on disk
     let originalPath: String? // Path to original image on disk (nil if too large)
     let sourceName: String // Original file name or "Screenshot" for captures
@@ -99,6 +169,7 @@ struct ImageClipboardContent: Hashable {
     let height: Int
     let previewText: String
     let ownsCachedFiles: Bool
+    let contentHash: String?
 
     init(
         thumbnailPath: String,
@@ -106,7 +177,8 @@ struct ImageClipboardContent: Hashable {
         sourceName: String,
         width: Int,
         height: Int,
-        ownsCachedFiles: Bool = true
+        ownsCachedFiles: Bool = true,
+        contentHash: String? = nil
     ) {
         self.thumbnailPath = thumbnailPath
         self.originalPath = originalPath
@@ -115,18 +187,32 @@ struct ImageClipboardContent: Hashable {
         self.height = height
         previewText = sourceName
         self.ownsCachedFiles = ownsCachedFiles
+        self.contentHash = contentHash
     }
 }
 
-struct FileClipboardContent: Hashable {
+struct FileClipboardContent: Hashable, Sendable {
     let url: URL
     let name: String
 }
 
-struct AudioClipboardContent: Hashable {
+struct AudioClipboardContent: Hashable, Sendable {
     let cachePath: String
     let name: String
     let duration: TimeInterval?
+    let ownsCachedFile: Bool
+
+    init(
+        cachePath: String,
+        name: String,
+        duration: TimeInterval?,
+        ownsCachedFile: Bool = true
+    ) {
+        self.cachePath = cachePath
+        self.name = name
+        self.duration = duration
+        self.ownsCachedFile = ownsCachedFile
+    }
 }
 
 enum SearchItem: Identifiable, Hashable {

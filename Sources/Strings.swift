@@ -221,6 +221,10 @@ enum L10n {
         loc("launcher.section.clipboard")
     }
 
+    static var launcherSectionPinnedClipboard: String {
+        loc("launcher.section.clipboard.pinned")
+    }
+
     static var clipboardDelete: String {
         loc("clipboard.delete")
     }
@@ -236,6 +240,9 @@ enum L10n {
     static var clipboardClearAllMessage: String {
         loc("clipboard.clear.all.message")
     }
+
+    static var clipboardPin: String { loc("clipboard.pin") }
+    static var clipboardUnpin: String { loc("clipboard.unpin") }
 
     static var clipboardTypeText: String {
         loc("clipboard.type.text")
@@ -317,6 +324,8 @@ enum L10n {
         loc("action.ok")
     }
 
+    static var actionChoose: String { loc("action.choose") }
+
     // MARK: - Preferences
 
     static var prefsTitle: String {
@@ -375,6 +384,8 @@ enum L10n {
         loc("prefs.section.ai")
     }
 
+    static var prefsSectionClipboard: String { loc("prefs.section.clipboard") }
+
     static var prefsSectionAbout: String {
         loc("prefs.section.about")
     }
@@ -400,6 +411,27 @@ enum L10n {
     static var prefsClipboardImagePreviewSubtitle: String {
         loc("prefs.clipboard.image.preview.subtitle")
     }
+    static var prefsClipboardRetentionTitle: String { loc("prefs.clipboard.retention.title") }
+    static var prefsClipboardRetentionSubtitle: String { loc("prefs.clipboard.retention.subtitle") }
+    static var clipboardRetentionDay: String { loc("clipboard.retention.day") }
+    static var clipboardRetentionWeek: String { loc("clipboard.retention.week") }
+    static var clipboardRetentionMonth: String { loc("clipboard.retention.month") }
+    static var clipboardRetentionThreeMonths: String { loc("clipboard.retention.three.months") }
+    static var clipboardRetentionSixMonths: String { loc("clipboard.retention.six.months") }
+    static var clipboardRetentionYear: String { loc("clipboard.retention.year") }
+    static var clipboardRetentionForever: String { loc("clipboard.retention.forever") }
+    static var prefsClipboardStorageLimitTitle: String { loc("prefs.clipboard.storage.limit.title") }
+    static var prefsClipboardStorageLimitSubtitle: String { loc("prefs.clipboard.storage.limit.subtitle") }
+    static var prefsClipboardStorageTitle: String { loc("prefs.clipboard.storage.title") }
+    static var prefsClipboardStorageSubtitle: String { loc("prefs.clipboard.storage.subtitle") }
+    static var prefsClipboardOpenFolder: String { loc("prefs.clipboard.open.folder") }
+    static var prefsClipboardExcludedAppsTitle: String { loc("prefs.clipboard.excluded.apps.title") }
+    static var prefsClipboardExcludedAppsSubtitle: String { loc("prefs.clipboard.excluded.apps.subtitle") }
+    static var prefsClipboardExcludedAppsAdd: String { loc("prefs.clipboard.excluded.apps.add") }
+    static var prefsClipboardExcludedAppsRemove: String { loc("prefs.clipboard.excluded.apps.remove") }
+    static var prefsClipboardExcludedAppsPickerTitle: String { loc("prefs.clipboard.excluded.apps.picker.title") }
+    static var prefsClipboardExcludedAppErrorTitle: String { loc("prefs.clipboard.excluded.apps.error.title") }
+    static var prefsClipboardExcludedAppDuplicate: String { loc("prefs.clipboard.excluded.apps.duplicate") }
 
     static var prefsHotkeyTitle: String {
         loc("prefs.hotkey.title")

@@ -3,6 +3,7 @@ import SwiftUI
 
 enum PreferenceSection: String, CaseIterable, Identifiable {
     case general
+    case clipboard
     case whiteboard
     case screenshot
     case recording
@@ -22,6 +23,7 @@ enum PreferenceSection: String, CaseIterable, Identifiable {
     var localizedTitle: String {
         switch self {
         case .general: return L10n.prefsSectionGeneral
+        case .clipboard: return L10n.prefsSectionClipboard
         case .whiteboard: return L10n.prefsSectionWhiteboard
         case .screenshot: return L10n.prefsSectionScreenshot
         case .recording: return L10n.prefsSectionRecording
@@ -39,6 +41,7 @@ enum PreferenceSection: String, CaseIterable, Identifiable {
     var icon: String {
         switch self {
         case .general: return "gearshape"
+        case .clipboard: return "clipboard"
         case .whiteboard: return "scribble.variable"
         case .screenshot: return "camera.viewfinder"
         case .recording: return "record.circle"
@@ -103,6 +106,7 @@ struct RecordingHistoryContext {
 
 struct PreferencesView: View {
     @ObservedObject var viewModel: LauncherViewModel
+    @ObservedObject var clipboardStore: ClipboardStore
     @ObservedObject var navigation: PreferencesNavigationState
     @ObservedObject var aiChatHistoryStore: AIChatHistoryStore
     @ObservedObject var keystrokeVisualizerService: KeystrokeVisualizerService
@@ -182,6 +186,18 @@ struct PreferencesView: View {
                     VStack(spacing: 10) {
                         if navigation.selectedSection == .general {
                             generalPreferencesSection
+                        }
+
+                        if navigation.selectedSection == .clipboard {
+                            ClipboardPreferencesView(
+                                settings: Binding(
+                                    get: { viewModel.settings },
+                                    set: { viewModel.settings = $0 }
+                                ),
+                                store: clipboardStore,
+                                theme: viewModel.settings.theme
+                            )
+                            .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
                         }
 
                         if navigation.selectedSection == .whiteboard {
@@ -398,24 +414,6 @@ struct PreferencesView: View {
                 theme: viewModel.settings.theme,
                 isOn: animatedBinding(for: \.autoLaunch)
             )
-
-            PreferenceToggleRow(
-                title: L10n.prefsClipboardTitle,
-                subtitle: L10n.prefsClipboardSubtitle,
-                symbol: "clipboard",
-                theme: viewModel.settings.theme,
-                isOn: animatedBinding(for: \.clipboardHistoryEnabled)
-            )
-
-            if viewModel.settings.clipboardHistoryEnabled {
-                PreferenceToggleRow(
-                    title: L10n.prefsClipboardImagePreviewTitle,
-                    subtitle: L10n.prefsClipboardImagePreviewSubtitle,
-                    symbol: "photo.on.rectangle",
-                    theme: viewModel.settings.theme,
-                    isOn: animatedBinding(for: \.clipboardShowImagePreviews)
-                )
-            }
 
             PreferenceLanguageRow(
                 theme: viewModel.settings.theme,

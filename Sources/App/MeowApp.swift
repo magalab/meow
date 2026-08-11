@@ -799,6 +799,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         applyUploadHotkey(settings.fileHosting)
         applyWhiteboard(settings.whiteboard)
 
+        clipboardStore.configure(
+            retention: settings.clipboardRetention,
+            imageStorageLimitMB: settings.clipboardImageStorageLimitMB,
+            disabledAppBundleIDs: settings.clipboardDisabledAppBundleIDs
+        )
+
         if settings.clipboardHistoryEnabled != clipboardMonitoringEnabled {
             if settings.clipboardHistoryEnabled {
                 clipboardStore.startMonitoring { [weak self] in
@@ -2960,6 +2966,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             #if MEOW_VOICE
             let prefs = PreferencesView(
                 viewModel: viewModel,
+                clipboardStore: clipboardStore,
                 navigation: preferencesNavigation,
                 aiChatHistoryStore: aiChatHistoryStore,
                 keystrokeVisualizerService: keystrokeVisualizerService,
@@ -2977,6 +2984,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             #else
             let prefs = PreferencesView(
                 viewModel: viewModel,
+                clipboardStore: clipboardStore,
                 navigation: preferencesNavigation,
                 aiChatHistoryStore: aiChatHistoryStore,
                 keystrokeVisualizerService: keystrokeVisualizerService,
@@ -3013,10 +3021,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let window = preferencesWindow else { return }
         hideLauncher()
         window.title = L10n.windowPrefsTitle
+        NSApp.activate(ignoringOtherApps: true)
 
         if window.isVisible {
             window.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: false)
             return
         }
 
@@ -3042,7 +3050,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        NSApp.activate(ignoringOtherApps: false)
     }
 
     func openPreferencesFromCommand() {

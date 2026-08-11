@@ -60,6 +60,7 @@ final class LauncherViewModel: ObservableObject {
     private var apps: [AppEntry] = []
     private var lastDiscoveryAt: Date?
     private var isResettingForHide = false
+    private var clipboardSearchTask: Task<Void, Never>?
 
     private var commands: [CommandEntry] {
         var entries = [
@@ -358,6 +359,12 @@ final class LauncherViewModel: ObservableObject {
         clipboardStore.clearAll()
     }
 
+    func toggleClipboardPinned(_ item: SearchItem) {
+        guard settings.clipboardHistoryEnabled else { return }
+        guard case let .clipboard(entry) = item else { return }
+        clipboardStore.togglePinned(entry)
+    }
+
     func copyClipboardItem(_ item: SearchItem) {
         guard settings.clipboardHistoryEnabled else { return }
         guard case let .clipboard(entry) = item else { return }
@@ -571,6 +578,7 @@ final class LauncherViewModel: ObservableObject {
     }
 
     private func refreshResults() {
+        clipboardSearchTask?.cancel()
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if q.isEmpty {
             var idle: [SearchItem] = apps.prefix(maxIdleResults).map(SearchItem.app)
@@ -582,6 +590,28 @@ final class LauncherViewModel: ObservableObject {
             return
         }
 
+        let immediateClipboard = settings.clipboardHistoryEnabled
+            ? clipboardStore.getEntries().filter {
+                $0.content.searchText.localizedCaseInsensitiveContains(q)
+            }
+            : []
+        results = rankedSearchResults(query: q, clipboardEntries: immediateClipboard)
+
+        guard settings.clipboardHistoryEnabled else { return }
+        clipboardSearchTask = Task { [weak self] in
+            guard let self else { return }
+            let persisted = await clipboardStore.search(q, limit: maxSearchResults)
+            guard !Task.isCancelled,
+                  query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == q
+            else { return }
+            results = rankedSearchResults(query: q, clipboardEntries: persisted)
+        }
+    }
+
+    private func rankedSearchResults(
+        query q: String,
+        clipboardEntries: [ClipboardEntry]
+    ) -> [SearchItem] {
         let matchedCommands = commands.compactMap { command -> (SearchItem, Int)? in
             let hay = ([command.title, command.subtitle] + command.keywords).joined(separator: " ").lowercased()
             guard hay.contains(q) else { return nil }
@@ -596,17 +626,11 @@ final class LauncherViewModel: ObservableObject {
             return (.app(app), base + history)
         }
 
-        let matchedClipboard: [(SearchItem, Int)]
-        if settings.clipboardHistoryEnabled {
-            matchedClipboard = clipboardStore.getEntries().compactMap { entry -> (SearchItem, Int)? in
-                guard entry.preview.lowercased().contains(q) else { return nil }
-                return (.clipboard(entry), 5)
-            }
-        } else {
-            matchedClipboard = []
+        let matchedClipboard = clipboardEntries.map { entry -> (SearchItem, Int) in
+            (.clipboard(entry), entry.isPinned ? 200 : 5)
         }
 
-        results = (matchedCommands + matchedApps + matchedClipboard)
+        return (matchedCommands + matchedApps + matchedClipboard)
             .sorted { lhs, rhs in
                 if lhs.1 != rhs.1 { return lhs.1 > rhs.1 }
                 return lhs.0.primaryText.localizedCaseInsensitiveCompare(rhs.0.primaryText) == .orderedAscending

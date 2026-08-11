@@ -46,7 +46,7 @@ struct SearchItemIcon: View {
                 }
             }
         }
-        .frame(width: 32, height: 32)
+        .frame(width: 28, height: 28)
         .background(palette.iconChipBackground, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
@@ -125,11 +125,22 @@ private struct LazyClipboardImageView: View {
 
 struct ClipboardContextMenu: ViewModifier {
     let item: SearchItem
+    let onTogglePinned: () -> Void
     let onDelete: () -> Void
 
     func body(content: Content) -> some View {
         if case .clipboard = item {
             content.contextMenu {
+                Button {
+                    onTogglePinned()
+                } label: {
+                    if case let .clipboard(entry) = item {
+                        Label(
+                            entry.isPinned ? L10n.clipboardUnpin : L10n.clipboardPin,
+                            systemImage: entry.isPinned ? "pin.slash" : "pin"
+                        )
+                    }
+                }
                 Button(L10n.clipboardDelete) {
                     onDelete()
                 }
