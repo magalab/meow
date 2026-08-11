@@ -8,6 +8,8 @@ enum ActionMenuAction: String, Hashable {
     case copyPath
     case paste
     case copy
+    case pinHistory
+    case unpinHistory
     case speak
     case askAI
     case pin
@@ -38,6 +40,12 @@ struct ActionMenu: View {
             case let .clipboard(entry):
                 menuRow(action: .paste, title: L10n.actionMenuPaste, systemImage: "doc.on.clipboard", shortcuts: ["↩"])
                 menuRow(action: .copy, title: L10n.actionMenuCopy, systemImage: "doc.on.clipboard.fill", shortcuts: ["⌘", "C"])
+                menuRow(
+                    action: entry.isPinned ? .unpinHistory : .pinHistory,
+                    title: entry.isPinned ? L10n.clipboardUnpin : L10n.clipboardPin,
+                    systemImage: entry.isPinned ? "pin.slash" : "pin",
+                    shortcuts: ["⌘", "P"]
+                )
                 if case .image = entry.content {
                     if showsWhiteboardAction {
                         menuRow(

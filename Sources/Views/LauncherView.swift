@@ -31,16 +31,27 @@ struct LauncherView: View {
             if case .clipboard = $0 { return true }
             return false
         }
+        let pinnedClipboard = clipboard.filter {
+            guard case let .clipboard(entry) = $0 else { return false }
+            return entry.isPinned
+        }
+        let regularClipboard = clipboard.filter {
+            guard case let .clipboard(entry) = $0 else { return false }
+            return !entry.isPinned
+        }
 
         var sections: [(title: String, items: [SearchItem])] = []
+        if !pinnedClipboard.isEmpty {
+            sections.append((L10n.launcherSectionPinnedClipboard, pinnedClipboard))
+        }
         if !commands.isEmpty {
             sections.append((L10n.launcherSectionCommands, commands))
         }
         if !apps.isEmpty {
             sections.append((L10n.launcherSectionApplications, apps))
         }
-        if !clipboard.isEmpty {
-            sections.append((L10n.launcherSectionClipboard, clipboard))
+        if !regularClipboard.isEmpty {
+            sections.append((L10n.launcherSectionClipboard, regularClipboard))
         }
         return sections
     }
@@ -150,7 +161,7 @@ struct LauncherView: View {
                                                 Spacer()
                                             }
                                             .padding(.horizontal, 12)
-                                            .padding(.vertical, 10)
+                                            .padding(.vertical, 7)
                                             .background(
                                                 selectedID == item.id
                                                     ? palette.selectionBackground
@@ -169,7 +180,13 @@ struct LauncherView: View {
                                         }
                                         .buttonStyle(.plain)
                                         .id(item.id)
-                                        .modifier(ClipboardContextMenu(item: item, onDelete: { viewModel.deleteClipboardItem(item) }))
+                                        .modifier(
+                                            ClipboardContextMenu(
+                                                item: item,
+                                                onTogglePinned: { viewModel.toggleClipboardPinned(item) },
+                                                onDelete: { viewModel.deleteClipboardItem(item) }
+                                            )
+                                        )
                                     }
                                 }
                             }
@@ -260,6 +277,14 @@ struct LauncherView: View {
                         if canPerformAction(.askAI, on: selectedItem), let selectedItem {
                             executeActionMenu(.askAI, selected: selectedItem)
                         }
+                        return nil
+                    }
+                    return event
+                case 35: // P
+                    if flags.contains(.command), let selectedItem,
+                       case .clipboard = selectedItem
+                    {
+                        viewModel.toggleClipboardPinned(selectedItem)
                         return nil
                     }
                     return event
@@ -449,7 +474,11 @@ struct LauncherView: View {
         case .app:
             return [.open, .showInFinder, .copyPath]
         case let .clipboard(entry):
-            var actions: [ActionMenuAction] = [.paste, .copy]
+            var actions: [ActionMenuAction] = [
+                .paste,
+                .copy,
+                entry.isPinned ? .unpinHistory : .pinHistory,
+            ]
             if case .image = entry.content {
                 if viewModel.settings.whiteboard.enabled {
                     actions.append(.sendToWhiteboard)
@@ -491,6 +520,7 @@ struct LauncherView: View {
         case (.app, .open), (.app, .showInFinder), (.app, .copyPath):
             return true
         case (.clipboard, .paste), (.clipboard, .copy), (.clipboard, .speak), (.clipboard, .askAI),
+             (.clipboard, .pinHistory), (.clipboard, .unpinHistory),
              (.clipboard, .openImage), (.clipboard, .saveImageAs),
              (.clipboard, .pin), (.clipboard, .recognizeText),
              (.clipboard, .translateImageText), (.clipboard, .scanQRCode),
@@ -518,6 +548,8 @@ struct LauncherView: View {
             copySelectedPath()
         case .copy:
             copyClipboardContent()
+        case .pinHistory, .unpinHistory:
+            viewModel.toggleClipboardPinned(selected)
         case .speak:
             viewModel.speakClipboardText(selected)
         case .askAI:

@@ -6,7 +6,10 @@
 "launcher.section.commands" = "Commands";
 "launcher.section.applications" = "Applications";
 "launcher.section.clipboard" = "Clipboard History";
+"launcher.section.clipboard.pinned" = "Pinned Clipboard";
 "clipboard.delete" = "Delete";
+"clipboard.pin" = "Pin Entry";
+"clipboard.unpin" = "Unpin Entry";
 "clipboard.clear.all" = "Clear All";
 "clipboard.clear.all.title" = "Clear clipboard history?";
 "clipboard.clear.all.message" = "This will delete all clipboard history stored by Meow. This action cannot be undone.";
@@ -29,6 +32,7 @@
 "action.menu.more" = "More Actions";
 "action.menu.execute" = "Execute";
 "action.cancel" = "Cancel";
+"action.choose" = "Choose";
 
 /* Language */
 "lang.system" = "Follow System";
@@ -39,6 +43,7 @@
 "prefs.title" = "Meow Preferences";
 "prefs.subtitle" = "System behavior and launcher visibility";
 "prefs.section.general" = "General";
+"prefs.section.clipboard" = "Clipboard";
 "prefs.general.page.basics" = "Basics";
 "prefs.general.page.dock" = "Dock & Menu Bar";
 "prefs.general.page.appearance" = "Appearance";
@@ -58,6 +63,27 @@
 "prefs.clipboard.subtitle" = "Enable clipboard monitoring and clipboard search results";
 "prefs.clipboard.image.preview.title" = "Image Thumbnails";
 "prefs.clipboard.image.preview.subtitle" = "Show image thumbnails in clipboard search results";
+"prefs.clipboard.retention.title" = "Keep History For";
+"prefs.clipboard.retention.subtitle" = "Older unpinned entries are deleted automatically";
+"clipboard.retention.day" = "1 Day";
+"clipboard.retention.week" = "1 Week";
+"clipboard.retention.month" = "1 Month";
+"clipboard.retention.three.months" = "3 Months";
+"clipboard.retention.six.months" = "6 Months";
+"clipboard.retention.year" = "1 Year";
+"clipboard.retention.forever" = "Forever";
+"prefs.clipboard.storage.limit.title" = "Image Storage Limit";
+"prefs.clipboard.storage.limit.subtitle" = "Oldest unpinned images are removed when this limit is reached";
+"prefs.clipboard.storage.title" = "History Storage";
+"prefs.clipboard.storage.subtitle" = "%@ currently used by clipboard history";
+"prefs.clipboard.open.folder" = "Open Folder";
+"prefs.clipboard.excluded.apps.title" = "Excluded Applications";
+"prefs.clipboard.excluded.apps.subtitle" = "Clipboard changes detected while these apps are active are not recorded";
+"prefs.clipboard.excluded.apps.add" = "Add Application…";
+"prefs.clipboard.excluded.apps.remove" = "Remove excluded application";
+"prefs.clipboard.excluded.apps.picker.title" = "Choose an application to exclude";
+"prefs.clipboard.excluded.apps.error.title" = "Application Not Added";
+"prefs.clipboard.excluded.apps.duplicate" = "That application is already excluded.";
 
 "prefs.hotkey.title" = "Launcher Hotkey";
 "prefs.hotkey.subtitle" = "Click record, then press the shortcut";

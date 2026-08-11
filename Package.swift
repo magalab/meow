@@ -21,6 +21,7 @@ let voiceSources = [
 
 var executableDependencies: [Target.Dependency] = [
     .target(name: "WhiteboardFeature"),
+    .product(name: "GRDB", package: "GRDB.swift"),
     .product(name: "SotoS3", package: "soto"),
 ]
 if isVoiceEdition {
@@ -28,6 +29,7 @@ if isVoiceEdition {
 }
 
 let testSwiftSettings: [SwiftSetting] = isVoiceEdition ? [.define("MEOW_VOICE")] : []
+let executableLinkerSettings: [LinkerSetting] = isVoiceEdition ? [.linkedLibrary("c++")] : []
 
 let targets: [Target] = [
     .binaryTarget(name: "SherpaOnnxC", path: "Vendor/SherpaOnnx.xcframework"),
@@ -44,7 +46,7 @@ let targets: [Target] = [
         exclude: isVoiceEdition ? [] : voiceSources,
         resources: [.process("Resources")],
         swiftSettings: isVoiceEdition ? [.define("MEOW_VOICE")] : [],
-        linkerSettings: isVoiceEdition ? [.linkedLibrary("c++")] : []
+        linkerSettings: executableLinkerSettings
     ),
     .testTarget(
         name: "MeowTests",
@@ -65,6 +67,7 @@ let package = Package(
     platforms: [.macOS(.v15)],
     products: [.executable(name: executableName, targets: [executableName])],
     dependencies: [
+        .package(url: "https://github.com/groue/GRDB.swift.git", from: "7.8.0"),
         .package(url: "https://github.com/soto-project/soto.git", from: "7.0.0"),
     ],
     targets: targets

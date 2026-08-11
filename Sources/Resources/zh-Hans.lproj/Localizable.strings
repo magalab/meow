@@ -6,7 +6,10 @@
 "launcher.section.commands" = "命令";
 "launcher.section.applications" = "应用";
 "launcher.section.clipboard" = "剪贴板历史";
+"launcher.section.clipboard.pinned" = "固定的剪贴板";
 "clipboard.delete" = "删除";
+"clipboard.pin" = "固定条目";
+"clipboard.unpin" = "取消固定";
 "clipboard.clear.all" = "清除全部";
 "clipboard.clear.all.title" = "清除剪贴板历史？";
 "clipboard.clear.all.message" = "这会删除 Meow 保存的所有剪贴板历史，此操作不可撤销。";
@@ -29,6 +32,7 @@
 "action.menu.more" = "更多操作";
 "action.menu.execute" = "执行";
 "action.cancel" = "取消";
+"action.choose" = "选择";
 
 /* 语言 */
 "lang.system" = "跟随系统";
@@ -39,6 +43,7 @@
 "prefs.title" = "Meow 偏好设置";
 "prefs.subtitle" = "系统行为与启动器显示";
 "prefs.section.general" = "通用";
+"prefs.section.clipboard" = "剪贴板";
 "prefs.general.page.basics" = "基础";
 "prefs.general.page.dock" = "Dock 与菜单栏";
 "prefs.general.page.appearance" = "外观";
@@ -58,6 +63,27 @@
 "prefs.clipboard.subtitle" = "启用剪贴板监控并在搜索结果中显示剪贴板内容";
 "prefs.clipboard.image.preview.title" = "图片缩略图";
 "prefs.clipboard.image.preview.subtitle" = "在剪贴板搜索结果中显示图片缩略图";
+"prefs.clipboard.retention.title" = "历史保留时间";
+"prefs.clipboard.retention.subtitle" = "超过时限且未固定的条目会被自动删除";
+"clipboard.retention.day" = "1 天";
+"clipboard.retention.week" = "1 周";
+"clipboard.retention.month" = "1 个月";
+"clipboard.retention.three.months" = "3 个月";
+"clipboard.retention.six.months" = "6 个月";
+"clipboard.retention.year" = "1 年";
+"clipboard.retention.forever" = "永久";
+"prefs.clipboard.storage.limit.title" = "图片存储上限";
+"prefs.clipboard.storage.limit.subtitle" = "达到上限后自动删除最早且未固定的图片";
+"prefs.clipboard.storage.title" = "历史存储";
+"prefs.clipboard.storage.subtitle" = "剪贴板历史当前占用 %@";
+"prefs.clipboard.open.folder" = "打开目录";
+"prefs.clipboard.excluded.apps.title" = "排除的应用";
+"prefs.clipboard.excluded.apps.subtitle" = "检测到这些应用处于前台时，不会记录剪贴板变化";
+"prefs.clipboard.excluded.apps.add" = "添加应用…";
+"prefs.clipboard.excluded.apps.remove" = "移除排除的应用";
+"prefs.clipboard.excluded.apps.picker.title" = "选择要排除的应用";
+"prefs.clipboard.excluded.apps.error.title" = "未添加应用";
+"prefs.clipboard.excluded.apps.duplicate" = "该应用已经在排除列表中。";
 
 "prefs.hotkey.title" = "启动快捷键";
 "prefs.hotkey.subtitle" = "点击录制，然后按下快捷键";
