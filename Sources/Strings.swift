@@ -1195,6 +1195,8 @@ enum L10n {
 
     static var cmdScreenshotRegionTitle: String { loc("cmd.screenshot.region.title") }
     static var cmdScreenshotRegionSubtitle: String { loc("cmd.screenshot.region.subtitle") }
+    static var cmdScreenshotScrollingTitle: String { loc("cmd.screenshot.scrolling.title") }
+    static var cmdScreenshotScrollingSubtitle: String { loc("cmd.screenshot.scrolling.subtitle") }
     static var cmdScreenshotWindowTitle: String { loc("cmd.screenshot.window.title") }
     static var cmdScreenshotWindowSubtitle: String { loc("cmd.screenshot.window.subtitle") }
     static var cmdScreenshotDisplayTitle: String { loc("cmd.screenshot.display.title") }
@@ -1238,6 +1240,7 @@ enum L10n {
     static var screenshotQRImportOTPConfirm: String { loc("screenshot.qr.import.otp.confirm") }
     static var screenshotQRImportOTPFailed: String { loc("screenshot.qr.import.otp.failed") }
     static var prefsScreenshotPageCapture: String { loc("prefs.screenshot.page.capture") }
+    static var prefsScreenshotPageScrolling: String { loc("prefs.screenshot.page.scrolling") }
     static var prefsScreenshotPageOutput: String { loc("prefs.screenshot.page.output") }
     static var prefsScreenshotPageShortcuts: String { loc("prefs.screenshot.page.shortcuts") }
     static var prefsScreenshotPageOCR: String { loc("prefs.screenshot.page.ocr") }
@@ -1248,6 +1251,8 @@ enum L10n {
     static var prefsScreenshotDefaultModeSubtitle: String { loc("prefs.screenshot.default.mode.subtitle") }
     static var prefsScreenshotRegionHotkeyTitle: String { loc("prefs.screenshot.region.hotkey.title") }
     static var prefsScreenshotRegionHotkeySubtitle: String { loc("prefs.screenshot.region.hotkey.subtitle") }
+    static var prefsScreenshotScrollingHotkeyTitle: String { loc("prefs.screenshot.scrolling.hotkey.title") }
+    static var prefsScreenshotScrollingHotkeySubtitle: String { loc("prefs.screenshot.scrolling.hotkey.subtitle") }
     static var prefsScreenshotEditHotkeyTitle: String { loc("prefs.screenshot.edit.hotkey.title") }
     static var prefsScreenshotEditHotkeySubtitle: String { loc("prefs.screenshot.edit.hotkey.subtitle") }
     static var prefsScreenshotWindowHotkeyTitle: String { loc("prefs.screenshot.window.hotkey.title") }
@@ -1305,9 +1310,46 @@ enum L10n {
     static var historyLayoutGrid: String { loc("history.layout.grid") }
     static var historyLayoutList: String { loc("history.layout.list") }
     static var screenshotKindRegion: String { loc("screenshot.kind.region") }
+    static var screenshotKindScrolling: String { loc("screenshot.kind.scrolling") }
     static var screenshotKindWindow: String { loc("screenshot.kind.window") }
     static var screenshotKindDisplay: String { loc("screenshot.kind.display") }
     static var screenshotKindEdited: String { loc("screenshot.kind.edited") }
+    static var scrollingCaptureTitle: String { loc("scrolling.capture.title") }
+    static var scrollingCapturePreparing: String { loc("scrolling.capture.preparing") }
+    static var scrollingCapturePaused: String { loc("scrolling.capture.paused") }
+    static var scrollingCaptureScrollHint: String { loc("scrolling.capture.scroll.hint") }
+    static var scrollingCaptureProgress: String { loc("scrolling.capture.progress") }
+    static var scrollingCapturePause: String { loc("scrolling.capture.pause") }
+    static var scrollingCaptureResume: String { loc("scrolling.capture.resume") }
+    static var scrollingCaptureAuto: String { loc("scrolling.capture.auto") }
+    static var scrollingCaptureManual: String { loc("scrolling.capture.manual") }
+    static var scrollingCaptureFinish: String { loc("scrolling.capture.finish") }
+    static var scrollingCaptureErrorLiveFrame: String { loc("scrolling.capture.error.live.frame") }
+    static var scrollingCaptureErrorNoOverlap: String { loc("scrolling.capture.error.no.overlap") }
+    static var scrollingCaptureErrorFinalComposition: String { loc("scrolling.capture.error.final.composition") }
+    static var scrollingCaptureReducedImageTitle: String { loc("scrolling.capture.reduced.image.title") }
+    static var scrollingCaptureReducedImageMessage: String { loc("scrolling.capture.reduced.image.message") }
+    static var scrollingCaptureReachedMaximumHeight: String { loc("scrolling.capture.maximum.height") }
+    static var scrollingCaptureReachedMaximumPixels: String { loc("scrolling.capture.maximum.pixels") }
+    static var scrollingCaptureAccessibilityTitle: String { loc("scrolling.capture.accessibility.title") }
+    static var scrollingCaptureAccessibilityMessage: String { loc("scrolling.capture.accessibility.message") }
+    static var scrollingCaptureEditLimitTitle: String { loc("scrolling.capture.edit.limit.title") }
+    static var scrollingCaptureEditLimitMessage: String { loc("scrolling.capture.edit.limit.message") }
+    static var scrollingCaptureSpeedSlow: String { loc("scrolling.capture.speed.slow") }
+    static var scrollingCaptureSpeedMedium: String { loc("scrolling.capture.speed.medium") }
+    static var scrollingCaptureSpeedFast: String { loc("scrolling.capture.speed.fast") }
+    static var prefsScrollingCaptureMaximumHeightTitle: String { loc("prefs.scrolling.capture.maximum.height.title") }
+    static var prefsScrollingCaptureMaximumHeightSubtitle: String { loc("prefs.scrolling.capture.maximum.height.subtitle") }
+    static var prefsScrollingCaptureMaximumPixelsTitle: String { loc("prefs.scrolling.capture.maximum.pixels.title") }
+    static var prefsScrollingCaptureMaximumPixelsSubtitle: String { loc("prefs.scrolling.capture.maximum.pixels.subtitle") }
+    static var prefsScrollingCapturePixelsValue: String { loc("prefs.scrolling.capture.pixels.value") }
+    static var prefsScrollingCaptureMegapixelsValue: String { loc("prefs.scrolling.capture.megapixels.value") }
+    static var prefsScrollingCaptureFrozenHeaderTitle: String { loc("prefs.scrolling.capture.frozen.header.title") }
+    static var prefsScrollingCaptureFrozenHeaderSubtitle: String { loc("prefs.scrolling.capture.frozen.header.subtitle") }
+    static var prefsScrollingCaptureAutoTitle: String { loc("prefs.scrolling.capture.auto.title") }
+    static var prefsScrollingCaptureAutoSubtitle: String { loc("prefs.scrolling.capture.auto.subtitle") }
+    static var prefsScrollingCaptureSpeedTitle: String { loc("prefs.scrolling.capture.speed.title") }
+    static var prefsScrollingCaptureSpeedSubtitle: String { loc("prefs.scrolling.capture.speed.subtitle") }
 
     // MARK: - Recording
 

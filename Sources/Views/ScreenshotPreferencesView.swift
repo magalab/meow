@@ -3,6 +3,7 @@ import SwiftUI
 
 private enum ScreenshotPreferencePage: String, CaseIterable, Identifiable {
     case capture
+    case scrolling
     case output
     case shortcuts
     case ocr
@@ -15,6 +16,7 @@ private enum ScreenshotPreferencePage: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .capture: return L10n.prefsScreenshotPageCapture
+        case .scrolling: return L10n.prefsScreenshotPageScrolling
         case .output: return L10n.prefsScreenshotPageOutput
         case .shortcuts: return L10n.prefsScreenshotPageShortcuts
         case .ocr: return L10n.prefsScreenshotPageOCR
@@ -55,6 +57,8 @@ struct ScreenshotPreferencesView: View {
                 switch selectedPage {
                 case .capture:
                     capturePage
+                case .scrolling:
+                    scrollingPage
                 case .output:
                     outputPage
                 case .shortcuts:
@@ -129,6 +133,53 @@ struct ScreenshotPreferencesView: View {
         .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
     }
 
+    private var scrollingPage: some View {
+        VStack(spacing: 10) {
+            pickerRow(
+                title: L10n.prefsScrollingCaptureMaximumHeightTitle,
+                subtitle: L10n.prefsScrollingCaptureMaximumHeightSubtitle,
+                symbol: "arrow.up.and.down",
+                selection: $settings.scrollingCapture.maximumHeightPixels,
+                options: [15_000, 30_000, 50_000, 100_000]
+            ) { String(format: L10n.prefsScrollingCapturePixelsValue, $0) }
+
+            pickerRow(
+                title: L10n.prefsScrollingCaptureMaximumPixelsTitle,
+                subtitle: L10n.prefsScrollingCaptureMaximumPixelsSubtitle,
+                symbol: "memorychip",
+                selection: $settings.scrollingCapture.maximumTotalPixels,
+                options: [40_000_000, 80_000_000, 120_000_000]
+            ) { String(format: L10n.prefsScrollingCaptureMegapixelsValue, $0 / 1_000_000) }
+
+            PreferenceToggleRow(
+                title: L10n.prefsScrollingCaptureFrozenHeaderTitle,
+                subtitle: L10n.prefsScrollingCaptureFrozenHeaderSubtitle,
+                symbol: "rectangle.topthird.inset.filled",
+                theme: theme,
+                isOn: $settings.scrollingCapture.automaticallyDetectFrozenHeader
+            )
+
+            PreferenceToggleRow(
+                title: L10n.prefsScrollingCaptureAutoTitle,
+                subtitle: L10n.prefsScrollingCaptureAutoSubtitle,
+                symbol: "scroll",
+                theme: theme,
+                isOn: $settings.scrollingCapture.autoScrollEnabled
+            )
+
+            if settings.scrollingCapture.autoScrollEnabled {
+                pickerRow(
+                    title: L10n.prefsScrollingCaptureSpeedTitle,
+                    subtitle: L10n.prefsScrollingCaptureSpeedSubtitle,
+                    symbol: "speedometer",
+                    selection: $settings.scrollingCapture.autoScrollSpeed,
+                    options: ScrollingCaptureSpeed.allCases
+                ) { $0.displayName }
+            }
+        }
+        .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+    }
+
     private var shortcutsPage: some View {
         VStack(spacing: 10) {
             PreferenceHotkeyRecorderRow(
@@ -153,6 +204,18 @@ struct ScreenshotPreferencesView: View {
             ) { keyCode, modifiers in
                 settings.editHotkeyKeyCode = keyCode
                 settings.editHotkeyModifiers = modifiers
+            }
+
+            PreferenceHotkeyRecorderRow(
+                title: L10n.prefsScreenshotScrollingHotkeyTitle,
+                subtitle: L10n.prefsScreenshotScrollingHotkeySubtitle,
+                symbol: "scroll",
+                theme: theme,
+                keyCode: settings.scrollingHotkeyKeyCode,
+                modifiers: settings.scrollingHotkeyModifiers
+            ) { keyCode, modifiers in
+                settings.scrollingHotkeyKeyCode = keyCode
+                settings.scrollingHotkeyModifiers = modifiers
             }
 
             PreferenceHotkeyRecorderRow(

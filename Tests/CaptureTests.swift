@@ -48,6 +48,280 @@ func screenshotRegionPixelConversion() {
     #expect(rect == CGRect(x: 20, y: 860, width: 200, height: 100))
 }
 
+@Test("Scrolling capture settings decode missing fields with safe defaults")
+func scrollingCaptureSettingsCompatibility() throws {
+    let decoded = try JSONDecoder().decode(ScrollingCaptureSettings.self, from: Data("{}".utf8))
+    #expect(decoded == .default)
+
+    let screenshot = try JSONDecoder().decode(ScreenshotSettings.self, from: Data("{}".utf8))
+    #expect(screenshot.scrollingCapture == .default)
+    #expect(screenshot.scrollingHotkeyKeyCode == 23)
+    #expect(screenshot.scrollingHotkeyModifiers == 2560)
+}
+
+@Test("Scrolling capture settings clamp unsafe persisted values")
+func scrollingCaptureSettingsClampUnsafeValues() throws {
+    let data = Data(
+        """
+        {
+          "maximumHeightPixels": -1,
+          "maximumTotalPixels": 0,
+          "manualCaptureInterval": -4,
+          "settlementDelay": 99
+        }
+        """.utf8
+    )
+    let decoded = try JSONDecoder().decode(ScrollingCaptureSettings.self, from: data)
+    #expect(decoded.maximumHeightPixels == 1_000)
+    #expect(decoded.maximumTotalPixels == 1_000_000)
+    #expect(decoded.manualCaptureInterval == 0.05)
+    #expect(decoded.settlementDelay == 2)
+}
+
+@Test("Scrolling capture recognizes identical settled frames")
+func scrollingCaptureSettledFrames() {
+    let image = makeScrollingSourceImage(width: 180, height: 220)
+    #expect(ScrollingCaptureMatcher.framesAreStable(image, image))
+}
+
+@Test("Scrolling capture rejects featureless content")
+func scrollingCaptureRejectsFeaturelessContent() {
+    let first = makeTestImage(width: 180, height: 220)
+    let second = makeTestImage(width: 180, height: 220)
+    #expect(ScrollingCaptureMatcher.match(previous: first, current: second) == nil)
+}
+
+@Test("Scrolling capture matches a known downward content offset")
+func scrollingCaptureKnownOffset() throws {
+    let source = makeScrollingSourceImage(width: 220, height: 360)
+    let viewportHeight = 180
+    let expectedOffset = 48
+    let previous = try #require(source.cropping(to: CGRect(
+        x: 0,
+        y: 0,
+        width: source.width,
+        height: viewportHeight
+    )))
+    let current = try #require(source.cropping(to: CGRect(
+        x: 0,
+        y: expectedOffset,
+        width: source.width,
+        height: viewportHeight
+    )))
+
+    let match = try #require(ScrollingCaptureMatcher.match(previous: previous, current: current))
+    #expect(abs(match.verticalOffset - expectedOffset) <= 2)
+    #expect(match.confidence > 0.5)
+}
+
+@Test("Scrolling capture processor preserves every row at a matched seam")
+func scrollingCaptureProcessorPreservesMatchedRows() async throws {
+    let source = makeScrollingSourceImage(width: 220, height: 360)
+    let viewportHeight = 180
+    let offset = 48
+    let previous = try #require(source.cropping(to: CGRect(
+        x: 0,
+        y: 0,
+        width: source.width,
+        height: viewportHeight
+    )))
+    let current = try #require(source.cropping(to: CGRect(
+        x: 0,
+        y: offset,
+        width: source.width,
+        height: viewportHeight
+    )))
+    let expected = try #require(source.cropping(to: CGRect(
+        x: 0,
+        y: 0,
+        width: source.width,
+        height: viewportHeight + offset
+    )))
+    let processor = ScrollingCaptureProcessor(firstFrame: previous, settings: .default)
+
+    let outcome = await processor.process(current, isAutoScrolling: false)
+    guard case .appended = outcome else {
+        Issue.record("Expected the known-offset frame to be appended")
+        return
+    }
+    let finalImage = try #require(await processor.makeFinalImage())
+    #expect(!finalImage.isReduced)
+    #expect(finalImage.image.height == viewportHeight + offset)
+    #expect(normalizedImageBytes(finalImage.image) == normalizedImageBytes(expected))
+}
+
+@Test("Scrolling capture detects a fixed top header")
+func scrollingCaptureFrozenHeaderDetection() throws {
+    let source = makeScrollingSourceImage(width: 220, height: 360)
+    let previous = try #require(makeScrollingViewport(
+        source: source,
+        offset: 0,
+        height: 180,
+        frozenHeaderHeight: 24
+    ))
+    let current = try #require(makeScrollingViewport(
+        source: source,
+        offset: 48,
+        height: 180,
+        frozenHeaderHeight: 24
+    ))
+
+    let detected = ScrollingCaptureMatcher.frozenHeaderHeight(
+        previous: previous,
+        current: current
+    )
+    #expect((20...28).contains(detected))
+    let match = try #require(ScrollingCaptureMatcher.match(
+        previous: previous,
+        current: current,
+        frozenHeaderHeight: detected
+    ))
+    #expect(abs(match.verticalOffset - 48) <= 2)
+}
+
+@Test("Scrolling capture stitcher appends only new rows")
+func scrollingCaptureStitcherDimensions() throws {
+    let source = makeScrollingSourceImage(width: 160, height: 300)
+    let first = try #require(source.cropping(to: CGRect(x: 0, y: 0, width: 160, height: 120)))
+    let next = try #require(source.cropping(to: CGRect(x: 0, y: 40, width: 160, height: 120)))
+    let stitcher = ScrollingCaptureStitcher(
+        firstFrame: first,
+        maximumHeight: 1_000,
+        maximumPixels: 1_000_000,
+        batchSize: 2
+    )
+
+    #expect(stitcher.appendBottomRows(from: next, count: 40) == .appended)
+    let output = try #require(stitcher.makeImage())
+    #expect(output.width == 160)
+    #expect(output.height == 160)
+}
+
+@Test("Scrolling capture stitcher preserves exact vertical content order")
+func scrollingCaptureStitcherContentOrder() throws {
+    let source = makeScrollingSourceImage(width: 160, height: 300)
+    let first = try #require(source.cropping(to: CGRect(x: 0, y: 0, width: 160, height: 120)))
+    let next = try #require(source.cropping(to: CGRect(x: 0, y: 40, width: 160, height: 120)))
+    let expected = try #require(source.cropping(to: CGRect(x: 0, y: 0, width: 160, height: 160)))
+    let stitcher = ScrollingCaptureStitcher(
+        firstFrame: first,
+        maximumHeight: 1_000,
+        maximumPixels: 1_000_000
+    )
+
+    #expect(stitcher.appendBottomRows(from: next, count: 40) == .appended)
+    let output = try #require(stitcher.makeImage())
+    #expect(normalizedImageBytes(output) == normalizedImageBytes(expected))
+}
+
+@Test("Automatic scrolling completes after repeated stable frames")
+func scrollingCaptureAutomaticBottomDetection() async {
+    let frame = makeScrollingSourceImage(width: 160, height: 120)
+    let processor = ScrollingCaptureProcessor(firstFrame: frame, settings: .default)
+
+    _ = await processor.process(frame, isAutoScrolling: true)
+    _ = await processor.process(frame, isAutoScrolling: true)
+    let result = await processor.process(frame, isAutoScrolling: true)
+    guard case let .reachedLimit(reason, _) = result else {
+        Issue.record("Expected stable automatic capture to finish")
+        return
+    }
+    #expect(reason == .completed)
+}
+
+@Test("Scrolling capture stitcher enforces height and pixel limits")
+func scrollingCaptureStitcherLimits() throws {
+    let frame = makeScrollingSourceImage(width: 100, height: 100)
+    let heightLimited = ScrollingCaptureStitcher(
+        firstFrame: frame,
+        maximumHeight: 120,
+        maximumPixels: 1_000_000
+    )
+    #expect(heightLimited.appendBottomRows(from: frame, count: 30) == .maximumHeight)
+
+    let pixelLimited = ScrollingCaptureStitcher(
+        firstFrame: frame,
+        maximumHeight: 1_000,
+        maximumPixels: 12_000
+    )
+    #expect(pixelLimited.appendBottomRows(from: frame, count: 30) == .maximumPixels)
+}
+
+@Test("Scrolling capture can compose a complete reduced-resolution fallback")
+func scrollingCaptureReducedResolutionComposition() throws {
+    let source = makeScrollingSourceImage(width: 100, height: 240)
+    let first = try #require(source.cropping(to: CGRect(x: 0, y: 0, width: 100, height: 120)))
+    let second = try #require(source.cropping(to: CGRect(x: 0, y: 120, width: 100, height: 120)))
+    let stitcher = ScrollingCaptureStitcher(
+        firstFrame: first,
+        maximumHeight: 1_000,
+        maximumPixels: 1_000_000
+    )
+    #expect(stitcher.appendBottomRows(from: second, count: 120) == .appended)
+
+    let reduced = try #require(stitcher.makeReducedImage(maximumPixels: 6_000))
+    #expect(reduced.width * reduced.height <= 6_100)
+    #expect(abs(Double(reduced.width) / Double(reduced.height) - 100.0 / 240.0) < 0.02)
+}
+
+@Test("Scrolling capture proactively reduces an oversized final image")
+func scrollingCaptureProactivelyReducesFinalImage() async throws {
+    let frame = makeScrollingSourceImage(width: 100, height: 100)
+    let processor = ScrollingCaptureProcessor(firstFrame: frame, settings: .default)
+
+    let finalImage = try #require(await processor.makeFinalImage(maximumPixels: 5_000))
+    #expect(finalImage.isReduced)
+    #expect(finalImage.image.width * finalImage.image.height <= 5_100)
+}
+
+@Test("Manual scrolling is accepted only while the pointer is inside the capture region")
+func scrollingCaptureManualScrollRegionFilter() {
+    let screenFrame = CGRect(x: -1_920, y: 200, width: 1_920, height: 1_080)
+    let captureRect = CGRect(x: 100, y: 80, width: 600, height: 700)
+
+    #expect(ScrollingCaptureController.shouldHandleManualScroll(
+        at: CGPoint(x: -1_500, y: 500),
+        captureRectInDisplayPoints: captureRect,
+        screenFrame: screenFrame
+    ))
+    #expect(!ScrollingCaptureController.shouldHandleManualScroll(
+        at: CGPoint(x: 420, y: 500),
+        captureRectInDisplayPoints: captureRect,
+        screenFrame: screenFrame
+    ))
+}
+
+@Test("Scrolling capture composes a thirty-thousand-pixel image")
+func scrollingCaptureThirtyThousandPixelComposition() throws {
+    let frame = makeScrollingSourceImage(width: 64, height: 1_000)
+    let stitcher = ScrollingCaptureStitcher(
+        firstFrame: frame,
+        maximumHeight: 30_000,
+        maximumPixels: 2_000_000
+    )
+    for _ in 0..<29 {
+        #expect(stitcher.appendBottomRows(from: frame, count: 1_000) == .appended)
+    }
+    let output = try #require(stitcher.makeImage())
+    #expect(output.width == 64)
+    #expect(output.height == 30_000)
+}
+
+@Test("Large capture artifacts disable automatic OCR and full-resolution editing")
+func scrollingCaptureResourceIntensiveActionLimits() {
+    let small = captureArtifact(width: 2_000, height: 4_000)
+    #expect(small.supportsAutomaticOCR)
+    #expect(small.supportsFullResolutionEditing)
+
+    let medium = captureArtifact(width: 4_000, height: 6_000)
+    #expect(!medium.supportsAutomaticOCR)
+    #expect(medium.supportsFullResolutionEditing)
+
+    let large = captureArtifact(width: 4_000, height: 12_000)
+    #expect(!large.supportsAutomaticOCR)
+    #expect(!large.supportsFullResolutionEditing)
+}
+
 @Test("Screen magnifier uses display-local point coordinates")
 @MainActor
 func screenMagnifierSourceRectCentersOnPointer() {
@@ -254,7 +528,104 @@ private func makeCheckerboardImage(width: Int, height: Int) -> CGImage {
     return context.makeImage()!
 }
 
+private func makeScrollingSourceImage(width: Int, height: Int) -> CGImage {
+    let context = CGContext(
+        data: nil,
+        width: width,
+        height: height,
+        bitsPerComponent: 8,
+        bytesPerRow: 0,
+        space: CGColorSpaceCreateDeviceRGB(),
+        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+    )!
+    context.setFillColor(NSColor.white.cgColor)
+    context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+    for y in stride(from: 0, to: height, by: 12) {
+        let hue = CGFloat((y / 12) % 11) / 11
+        context.setFillColor(NSColor(calibratedHue: hue, saturation: 0.75, brightness: 0.8, alpha: 1).cgColor)
+        context.fill(CGRect(
+            x: (y * 7) % max(1, width / 3),
+            y: y,
+            width: max(20, width * 2 / 3),
+            height: 5 + (y / 12) % 5
+        ))
+    }
+    return context.makeImage()!
+}
+
+private func makeScrollingViewport(
+    source: CGImage,
+    offset: Int,
+    height: Int,
+    frozenHeaderHeight: Int
+) -> CGImage? {
+    guard let content = source.cropping(to: CGRect(
+        x: 0,
+        y: offset,
+        width: source.width,
+        height: height
+    )),
+        let context = CGContext(
+            data: nil,
+            width: source.width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        )
+    else { return nil }
+
+    context.draw(content, in: CGRect(x: 0, y: 0, width: source.width, height: height))
+    context.setFillColor(NSColor.black.cgColor)
+    context.fill(CGRect(
+        x: 0,
+        y: height - frozenHeaderHeight,
+        width: source.width,
+        height: frozenHeaderHeight
+    ))
+    for x in stride(from: 0, to: source.width, by: 17) {
+        context.setFillColor(NSColor.systemYellow.cgColor)
+        context.fill(CGRect(
+            x: x,
+            y: height - frozenHeaderHeight + 5,
+            width: 8,
+            height: 9
+        ))
+    }
+    return context.makeImage()
+}
+
 private func imageBytes(_ image: CGImage) -> Data {
     guard let data = image.dataProvider?.data else { return Data() }
     return data as Data
+}
+
+private func normalizedImageBytes(_ image: CGImage) -> Data {
+    var bytes = [UInt8](repeating: 0, count: image.width * image.height * 4)
+    bytes.withUnsafeMutableBytes { storage in
+        let context = CGContext(
+            data: storage.baseAddress,
+            width: image.width,
+            height: image.height,
+            bitsPerComponent: 8,
+            bytesPerRow: image.width * 4,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        )!
+        context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+    }
+    return Data(bytes)
+}
+
+private func captureArtifact(width: Int, height: Int) -> CaptureArtifact {
+    CaptureArtifact(
+        id: UUID(),
+        kind: .scrolling,
+        createdAt: .distantPast,
+        imageURL: URL(fileURLWithPath: "/tmp/capture.png"),
+        thumbnailURL: URL(fileURLWithPath: "/tmp/capture-thumb.png"),
+        width: width,
+        height: height
+    )
 }

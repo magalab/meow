@@ -1,6 +1,7 @@
 import AppKit
 @preconcurrency import ApplicationServices
 import AVFoundation
+import ImageIO
 @preconcurrency import ScreenCaptureKit
 import SwiftUI
 import UniformTypeIdentifiers
@@ -90,6 +91,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let clipboardStore = ClipboardStore()
     private lazy var screenCaptureService = ScreenCaptureService()
     private let captureOverlayController = CaptureOverlayController()
+    private var scrollingCaptureController: ScrollingCaptureController?
+    private let scrollingCaptureHUDController = ScrollingCaptureHUDController()
     private lazy var recordingContentPickerController = RecordingContentPickerController()
     private var captureStoreLoaded = false
     private lazy var captureStore: CaptureStore = {
@@ -211,6 +214,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var lastRegisteredTranslateHotkey: (keyCode: UInt32, modifiers: UInt32)?
     private var lastRegisteredTextActionsHotkey: (keyCode: UInt32, modifiers: UInt32)?
     private var lastRegisteredScreenshotRegionHotkey: (keyCode: UInt32, modifiers: UInt32)?
+    private var lastRegisteredScreenshotScrollingHotkey: (keyCode: UInt32, modifiers: UInt32)?
     private var lastRegisteredScreenshotEditHotkey: (keyCode: UInt32, modifiers: UInt32)?
     private var lastRegisteredScreenshotWindowHotkey: (keyCode: UInt32, modifiers: UInt32)?
     private var lastRegisteredScreenshotDisplayHotkey: (keyCode: UInt32, modifiers: UInt32)?
@@ -416,6 +420,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         cameraOverlayController.stop()
         screenMagnifierController.stop()
         captureOverlayController.cancel()
+        scrollingCaptureController?.cancel()
+        scrollingCaptureHUDController.close()
         captureEditorController.cancel()
         postCaptureActionsController.close()
         pinnedImageController.closeAll()
@@ -1020,6 +1026,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         switch command {
         case .captureRegion:
             triggerScreenshot(mode: .region)
+        case .captureScrolling:
+            triggerScrollingCapture()
         case .captureAndEdit:
             triggerScreenshot(
                 mode: viewModel.settings.screenshot.defaultCaptureMode,
@@ -1038,6 +1046,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard settings.enabled else {
             hotkeyService.unregisterScreenshotHotkeys()
             lastRegisteredScreenshotRegionHotkey = nil
+            lastRegisteredScreenshotScrollingHotkey = nil
             lastRegisteredScreenshotEditHotkey = nil
             lastRegisteredScreenshotWindowHotkey = nil
             lastRegisteredScreenshotDisplayHotkey = nil
@@ -1064,6 +1073,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.lastRegisteredScreenshotRegionHotkey = (
                 settings.regionHotkeyKeyCode,
                 settings.regionHotkeyModifiers
+            )
+        }
+
+        let scrollingResult = hotkeyService.registerScreenshotScrollingHotkey(
+            keyCode: settings.scrollingHotkeyKeyCode,
+            modifiers: settings.scrollingHotkeyModifiers
+        ) { [weak self] in
+            self?.triggerScrollingCapture()
+        }
+        handleHotkeyRegistrationResult(
+            scrollingResult,
+            name: "screenshot scrolling",
+            keyCode: settings.scrollingHotkeyKeyCode,
+            modifiers: settings.scrollingHotkeyModifiers,
+            previous: lastRegisteredScreenshotScrollingHotkey
+        ) { [weak self] keyCode, modifiers in
+            self?.viewModel.settings.screenshot.scrollingHotkeyKeyCode = keyCode
+            self?.viewModel.settings.screenshot.scrollingHotkeyModifiers = modifiers
+        } onSuccess: { [weak self] in
+            self?.lastRegisteredScreenshotScrollingHotkey = (
+                settings.scrollingHotkeyKeyCode,
+                settings.scrollingHotkeyModifiers
             )
         }
 
@@ -1880,6 +1911,124 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    private func triggerScrollingCapture() {
+        guard captureTask == nil else { return }
+        hideLauncher()
+        hideTranslationPanel()
+
+        captureTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            defer {
+                scrollingCaptureHUDController.close()
+                scrollingCaptureController = nil
+                captureTask = nil
+            }
+
+            do {
+                let session = try await screenCaptureService.prepareSession()
+                guard !Task.isCancelled else { return }
+                guard let selection = await captureOverlayController.present(
+                    session: session,
+                    mode: .region
+                ) else { return }
+                guard !Task.isCancelled else { return }
+                guard case let .region(display, rect, scale) = selection,
+                      let frozenDisplay = session.displays.first(where: {
+                          $0.display.displayID == display.displayID
+                      })
+                else {
+                    throw ScreenCaptureError.invalidSelection
+                }
+
+                let controller = ScrollingCaptureController(
+                    captureService: screenCaptureService,
+                    display: display,
+                    screen: frozenDisplay.screen,
+                    rectInDisplayPoints: rect,
+                    scale: scale,
+                    settings: viewModel.settings.screenshot.scrollingCapture
+                )
+                scrollingCaptureController = controller
+                controller.onProgress = { [weak self] progress in
+                    self?.scrollingCaptureHUDController.update(progress: progress)
+                }
+                controller.onPreview = { [weak self] preview in
+                    self?.scrollingCaptureHUDController.update(preview: preview)
+                }
+                controller.onIssue = { [weak self] message in
+                    self?.scrollingCaptureHUDController.showIssue(message)
+                }
+                controller.onAccessibilityPermissionRequired = { [weak self] in
+                    self?.presentScrollingCaptureAccessibilityPrompt()
+                }
+
+                scrollingCaptureHUDController.show(
+                    relativeTo: rect,
+                    on: frozenDisplay.screen,
+                    onPauseResume: { [weak controller] in
+                        controller?.togglePause()
+                    },
+                    onToggleAutoScroll: { [weak self, weak controller] in
+                        guard let self, let controller else { return }
+                        if controller.toggleAutoScroll() == .permissionRequired {
+                            presentScrollingCaptureAccessibilityPrompt()
+                        }
+                    },
+                    onFinish: { [weak controller] in
+                        controller?.finish()
+                    },
+                    onCancel: { [weak controller] in
+                        controller?.cancel()
+                    }
+                )
+
+                let result = await controller.run()
+                guard !Task.isCancelled else { return }
+                switch result {
+                case .cancelled:
+                    return
+                case let .failed(error):
+                    throw error
+                case let .completed(finalImage):
+                    let artifact = try processCapturedImage(finalImage.image, kind: .scrolling)
+                    if finalImage.isReduced {
+                        presentScrollingCaptureReducedImageWarning()
+                    }
+                    showPostCaptureActionsIfNeeded(for: artifact)
+                }
+            } catch {
+                presentScreenshotError(error)
+            }
+        }
+    }
+
+    private func presentScrollingCaptureAccessibilityPrompt() {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = L10n.scrollingCaptureAccessibilityTitle
+        alert.informativeText = L10n.scrollingCaptureAccessibilityMessage
+        alert.addButton(withTitle: L10n.screenshotOpenSettings)
+        alert.addButton(withTitle: L10n.actionCancel)
+        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
+        AXIsProcessTrustedWithOptions(options)
+        if alert.runModal() == .alertFirstButtonReturn,
+           let url = URL(
+               string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
+           )
+        {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
+    private func presentScrollingCaptureReducedImageWarning() {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = L10n.scrollingCaptureReducedImageTitle
+        alert.informativeText = L10n.scrollingCaptureReducedImageMessage
+        alert.addButton(withTitle: L10n.actionOK)
+        alert.runModal()
+    }
+
     private func processCapturedImage(
         _ image: CGImage,
         kind: CaptureArtifactKind
@@ -1923,7 +2072,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSSound(named: NSSound.Name("Grab"))?.play()
         }
         viewModel.refresh()
-        if settings.automaticallyIndexOCRText {
+        if settings.automaticallyIndexOCRText, artifact.supportsAutomaticOCR {
             indexCaptureText(artifact)
         }
         return artifact
@@ -2699,6 +2848,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func editImage(at url: URL) {
         hideLauncher()
+        guard imageAtURLSupportsFullResolutionEditing(url) else {
+            let alert = NSAlert()
+            alert.alertStyle = .warning
+            alert.messageText = L10n.scrollingCaptureEditLimitTitle
+            alert.informativeText = L10n.scrollingCaptureEditLimitMessage
+            alert.addButton(withTitle: L10n.actionOK)
+            alert.runModal()
+            return
+        }
         Task { @MainActor [weak self] in
             guard let self,
                   let image = NSImage(contentsOf: url),
@@ -2713,6 +2871,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 presentScreenshotError(error)
             }
         }
+    }
+
+    private func imageAtURLSupportsFullResolutionEditing(_ url: URL) -> Bool {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+              let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+              let width = properties[kCGImagePropertyPixelWidth] as? NSNumber,
+              let height = properties[kCGImagePropertyPixelHeight] as? NSNumber
+        else { return true }
+        let result = width.int64Value.multipliedReportingOverflow(by: height.int64Value)
+        let pixelCount = result.overflow ? Int64.max : result.partialValue
+        return pixelCount <= CaptureArtifact.fullResolutionEditingPixelLimit
     }
 
     private func showPostCaptureActionsIfNeeded(for artifact: CaptureArtifact) {

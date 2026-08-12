@@ -335,6 +335,7 @@ struct CaptureHistoryView: View {
     private func kindName(_ kind: CaptureArtifactKind) -> String {
         switch kind {
         case .region: return L10n.screenshotKindRegion
+        case .scrolling: return L10n.screenshotKindScrolling
         case .window: return L10n.screenshotKindWindow
         case .display: return L10n.screenshotKindDisplay
         case .edited: return L10n.screenshotKindEdited

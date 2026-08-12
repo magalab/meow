@@ -78,6 +78,8 @@ struct ScreenshotSettings: Codable, Equatable, Sendable {
     var defaultCaptureMode: ScreenshotCaptureMode
     var regionHotkeyKeyCode: UInt32
     var regionHotkeyModifiers: UInt32
+    var scrollingHotkeyKeyCode: UInt32
+    var scrollingHotkeyModifiers: UInt32
     var editHotkeyKeyCode: UInt32
     var editHotkeyModifiers: UInt32
     var windowHotkeyKeyCode: UInt32
@@ -98,12 +100,15 @@ struct ScreenshotSettings: Codable, Equatable, Sendable {
     var maxStorageMB: Int
     var automaticallyIndexOCRText: Bool
     var ocrLanguages: [ScreenshotOCRLanguage]
+    var scrollingCapture: ScrollingCaptureSettings
 
     static let `default` = ScreenshotSettings(
         enabled: true,
         defaultCaptureMode: .region,
         regionHotkeyKeyCode: 19,
         regionHotkeyModifiers: 2560,
+        scrollingHotkeyKeyCode: 23,
+        scrollingHotkeyModifiers: 2560,
         editHotkeyKeyCode: 18,
         editHotkeyModifiers: 2560,
         windowHotkeyKeyCode: 20,
@@ -123,7 +128,8 @@ struct ScreenshotSettings: Codable, Equatable, Sendable {
         retentionDays: 0,
         maxStorageMB: 0,
         automaticallyIndexOCRText: false,
-        ocrLanguages: [.simplifiedChinese, .english]
+        ocrLanguages: [.simplifiedChinese, .english],
+        scrollingCapture: .default
     )
 }
 
@@ -133,6 +139,8 @@ extension ScreenshotSettings {
         case defaultCaptureMode
         case regionHotkeyKeyCode
         case regionHotkeyModifiers
+        case scrollingHotkeyKeyCode
+        case scrollingHotkeyModifiers
         case editHotkeyKeyCode
         case editHotkeyModifiers
         case windowHotkeyKeyCode
@@ -153,6 +161,7 @@ extension ScreenshotSettings {
         case maxStorageMB
         case automaticallyIndexOCRText
         case ocrLanguages
+        case scrollingCapture
     }
 
     init(from decoder: Decoder) throws {
@@ -170,6 +179,14 @@ extension ScreenshotSettings {
             UInt32.self,
             forKey: .regionHotkeyModifiers
         ) ?? Self.default.regionHotkeyModifiers
+        scrollingHotkeyKeyCode = try container.decodeIfPresent(
+            UInt32.self,
+            forKey: .scrollingHotkeyKeyCode
+        ) ?? Self.default.scrollingHotkeyKeyCode
+        scrollingHotkeyModifiers = try container.decodeIfPresent(
+            UInt32.self,
+            forKey: .scrollingHotkeyModifiers
+        ) ?? Self.default.scrollingHotkeyModifiers
         editHotkeyKeyCode = try container.decodeIfPresent(
             UInt32.self,
             forKey: .editHotkeyKeyCode
@@ -248,6 +265,10 @@ extension ScreenshotSettings {
             forKey: .ocrLanguages
         ) ?? Self.default.ocrLanguages
         ocrLanguages = decodedLanguages.isEmpty ? Self.default.ocrLanguages : decodedLanguages
+        scrollingCapture = try container.decodeIfPresent(
+            ScrollingCaptureSettings.self,
+            forKey: .scrollingCapture
+        ) ?? Self.default.scrollingCapture
     }
 }
 
@@ -276,6 +297,7 @@ enum ScreenshotCaptureMode: String, Codable, CaseIterable, Identifiable, Equatab
 
 enum ScreenshotCommand: Equatable {
     case captureRegion
+    case captureScrolling
     case captureAndEdit
     case captureWindow
     case captureDisplay
@@ -303,12 +325,16 @@ struct CaptureSession {
 
 enum CaptureArtifactKind: String, Codable {
     case region
+    case scrolling
     case window
     case display
     case edited
 }
 
 struct CaptureArtifact: Identifiable, Codable, Equatable {
+    static let automaticOCRPixelLimit: Int64 = 20_000_000
+    static let fullResolutionEditingPixelLimit: Int64 = 40_000_000
+
     let id: UUID
     let kind: CaptureArtifactKind
     let createdAt: Date
@@ -317,6 +343,20 @@ struct CaptureArtifact: Identifiable, Codable, Equatable {
     let width: Int
     let height: Int
     var ocrText: String?
+
+    var pixelCount: Int64 {
+        guard width > 0, height > 0 else { return 0 }
+        let result = Int64(width).multipliedReportingOverflow(by: Int64(height))
+        return result.overflow ? .max : result.partialValue
+    }
+
+    var supportsAutomaticOCR: Bool {
+        pixelCount <= Self.automaticOCRPixelLimit
+    }
+
+    var supportsFullResolutionEditing: Bool {
+        pixelCount <= Self.fullResolutionEditingPixelLimit
+    }
 
     init(
         id: UUID,
