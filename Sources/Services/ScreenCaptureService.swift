@@ -9,6 +9,7 @@ enum ScreenCaptureError: LocalizedError {
     case displayUnavailable
     case captureFailed
     case invalidSelection
+    case liveFrameUnavailable
 
     var errorDescription: String? {
         switch self {
@@ -17,6 +18,7 @@ enum ScreenCaptureError: LocalizedError {
         case .displayUnavailable: return L10n.screenshotErrorDisplayUnavailable
         case .captureFailed: return L10n.screenshotErrorCaptureFailed
         case .invalidSelection: return L10n.screenshotErrorInvalidSelection
+        case .liveFrameUnavailable: return L10n.scrollingCaptureErrorLiveFrame
         }
     }
 }
@@ -135,6 +137,65 @@ final class ScreenCaptureService {
                 return (frozen.image, .display)
             }
             return (frozen.image, .display)
+        }
+    }
+
+    func captureLiveRegion(
+        display: SCDisplay,
+        rectInDisplayPoints: CGRect,
+        scale: CGFloat
+    ) async throws -> CGImage {
+        guard rectInDisplayPoints.width >= 2, rectInDisplayPoints.height >= 2 else {
+            throw ScreenCaptureError.invalidSelection
+        }
+        let content = try await SCShareableContent.excludingDesktopWindows(
+            false,
+            onScreenWindowsOnly: true
+        )
+        guard let currentDisplay = content.displays.first(where: {
+            $0.displayID == display.displayID
+        }) else {
+            throw ScreenCaptureError.displayUnavailable
+        }
+        let ownApplication = content.applications.first {
+            $0.bundleIdentifier == Bundle.main.bundleIdentifier
+        }
+        let filter = SCContentFilter(
+            display: currentDisplay,
+            excludingApplications: ownApplication.map { [$0] } ?? [],
+            exceptingWindows: []
+        )
+        let sourceRect = CGRect(
+            x: rectInDisplayPoints.minX,
+            y: CGFloat(currentDisplay.height) - rectInDisplayPoints.maxY,
+            width: rectInDisplayPoints.width,
+            height: rectInDisplayPoints.height
+        ).integral
+        guard sourceRect.minX >= 0,
+              sourceRect.minY >= 0,
+              sourceRect.maxX <= CGFloat(currentDisplay.width),
+              sourceRect.maxY <= CGFloat(currentDisplay.height)
+        else {
+            throw ScreenCaptureError.invalidSelection
+        }
+
+        let configuration = SCStreamConfiguration()
+        configuration.sourceRect = sourceRect
+        configuration.width = max(1, Int((sourceRect.width * scale).rounded()))
+        configuration.height = max(1, Int((sourceRect.height * scale).rounded()))
+        configuration.scalesToFit = true
+        configuration.showsCursor = false
+        configuration.captureResolution = .best
+
+        do {
+            return try await SCScreenshotManager.captureImage(
+                contentFilter: filter,
+                configuration: configuration
+            )
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            throw ScreenCaptureError.liveFrameUnavailable
         }
     }
 

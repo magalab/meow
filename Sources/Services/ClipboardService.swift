@@ -320,6 +320,10 @@ final class ClipboardStore: ObservableObject {
     }
 
     func writeCaptureToPasteboard(_ artifact: CaptureArtifact) {
+        if artifact.kind == .scrolling {
+            writeScrollingCaptureToPasteboard(artifact)
+            return
+        }
         guard let image = NSImage(contentsOf: artifact.imageURL),
               let tiffData = image.tiffRepresentation
         else { return }
@@ -327,6 +331,16 @@ final class ClipboardStore: ObservableObject {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setData(tiffData, forType: .tiff)
+        pasteboard.writeObjects([artifact.imageURL as NSURL])
+        markInternalWrite(on: pasteboard)
+    }
+
+    private func writeScrollingCaptureToPasteboard(_ artifact: CaptureArtifact) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        if let pngData = try? Data(contentsOf: artifact.imageURL, options: .mappedIfSafe) {
+            pasteboard.setData(pngData, forType: .png)
+        }
         pasteboard.writeObjects([artifact.imageURL as NSURL])
         markInternalWrite(on: pasteboard)
     }

@@ -171,6 +171,13 @@ final class LauncherViewModel: ObservableObject {
                         keywords: ["screenshot", "capture", "region", "area", "截图", "截屏", "区域截图"]
                     ),
                     CommandEntry(
+                        id: "meow.screenshot.scrolling",
+                        title: L10n.cmdScreenshotScrollingTitle,
+                        subtitle: L10n.cmdScreenshotScrollingSubtitle,
+                        keywords: ["screenshot", "capture", "scroll", "long", "page",
+                                   "截图", "滚动截图", "长截图", "截长图"]
+                    ),
+                    CommandEntry(
                         id: "meow.screenshot.window",
                         title: L10n.cmdScreenshotWindowTitle,
                         subtitle: L10n.cmdScreenshotWindowSubtitle,
@@ -530,6 +537,8 @@ final class LauncherViewModel: ObservableObject {
             onWhiteboardCommand?(.importLatestScreenshot)
         case "meow.screenshot.region":
             onScreenshotCommand?(.captureRegion)
+        case "meow.screenshot.scrolling":
+            onScreenshotCommand?(.captureScrolling)
         case "meow.screenshot.edit":
             onScreenshotCommand?(.captureAndEdit)
         case "meow.screenshot.window":
