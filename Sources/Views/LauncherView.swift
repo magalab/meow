@@ -146,22 +146,26 @@ struct LauncherView: View {
                                                     showClipboardImagePreviews: viewModel.settings.clipboardShowImagePreviews
                                                 )
 
-                                                VStack(alignment: .leading, spacing: 2) {
+                                                HStack(alignment: .firstTextBaseline, spacing: 8) {
                                                     let isSelected = selectedID == item.id
                                                     Text(item.primaryText)
                                                         .font(.system(size: 17, weight: .semibold, design: .rounded))
                                                         .foregroundStyle(Color.primary)
                                                         .lineLimit(1)
+                                                        .truncationMode(.tail)
+                                                        .layoutPriority(1)
 
                                                     Text(item.secondaryText)
                                                         .font(.system(size: 13, weight: .medium, design: .rounded))
                                                         .foregroundStyle(isSelected ? Color.primary.opacity(0.82) : Color.secondary)
+                                                        .lineLimit(1)
+                                                        .truncationMode(.tail)
                                                 }
 
                                                 Spacer()
                                             }
                                             .padding(.horizontal, 12)
-                                            .padding(.vertical, 7)
+                                            .padding(.vertical, 5)
                                             .background(
                                                 selectedID == item.id
                                                     ? palette.selectionBackground
