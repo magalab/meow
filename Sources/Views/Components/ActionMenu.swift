@@ -23,13 +23,51 @@ enum ActionMenuAction: String, Hashable {
 }
 
 struct ActionMenu: View {
+    private static let maxVisibleHeight: CGFloat = 430
+
     let selectedItem: SearchItem
     let showsSpeakAction: Bool
     let showsWhiteboardAction: Bool
     let highlightedAction: ActionMenuAction?
     let onAction: (ActionMenuAction) -> Void
 
+    private var shouldScroll: Bool {
+        guard case let .clipboard(entry) = selectedItem else { return false }
+        if case .image = entry.content { return true }
+        return false
+    }
+
     var body: some View {
+        Group {
+            if shouldScroll {
+                ScrollViewReader { proxy in
+                    ScrollView(.vertical) {
+                        menuContent
+                    }
+                    .scrollIndicators(.visible)
+                    .frame(maxHeight: Self.maxVisibleHeight)
+                    .onChange(of: highlightedAction) { _, action in
+                        guard let action else { return }
+                        withAnimation(.snappy(duration: 0.12)) {
+                            proxy.scrollTo(action, anchor: .center)
+                        }
+                    }
+                }
+            } else {
+                menuContent
+            }
+        }
+        .padding(10)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.2), radius: 12, y: 6)
+    }
+
+    @ViewBuilder
+    private var menuContent: some View {
         VStack(alignment: .leading, spacing: 6) {
             switch selectedItem {
             case .app:
@@ -73,13 +111,6 @@ struct ActionMenu: View {
                 menuRow(action: .execute, title: L10n.actionMenuExecute, systemImage: "terminal", shortcuts: ["↩"])
             }
         }
-        .padding(10)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.2), radius: 12, y: 6)
     }
 
     private func menuRow(
@@ -113,6 +144,7 @@ struct ActionMenu: View {
         }
         .buttonStyle(.plain)
         .foregroundStyle(isDanger ? Color.red : Color.primary)
+        .id(action)
     }
 }
 

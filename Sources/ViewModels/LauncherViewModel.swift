@@ -10,7 +10,8 @@ enum WhiteboardCommand {
 @MainActor
 final class LauncherViewModel: ObservableObject {
     private let maxSearchResults = 80
-    private let maxIdleResults = 20
+    private let maxIdleApplications = 6
+    private let maxIdleClipboardResults = 8
 
     @Published var query: String = "" {
         didSet {
@@ -590,9 +591,21 @@ final class LauncherViewModel: ObservableObject {
         clipboardSearchTask?.cancel()
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if q.isEmpty {
-            var idle: [SearchItem] = apps.prefix(maxIdleResults).map(SearchItem.app)
+            let idleApplications = apps
+                .sorted { lhs, rhs in
+                    let lhsScore = launchHistoryStore.score(for: lhs.id)
+                    let rhsScore = launchHistoryStore.score(for: rhs.id)
+                    if lhsScore != rhsScore { return lhsScore > rhsScore }
+                    return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+                }
+                .prefix(maxIdleApplications)
+
+            var idle: [SearchItem] = idleApplications.map(SearchItem.app)
             if settings.clipboardHistoryEnabled {
-                let recentClipboard = clipboardStore.getEntries().prefix(8).map(SearchItem.clipboard)
+                let recentClipboard = clipboardStore
+                    .getEntries()
+                    .prefix(maxIdleClipboardResults)
+                    .map(SearchItem.clipboard)
                 idle += recentClipboard
             }
             results = idle
