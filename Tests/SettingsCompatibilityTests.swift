@@ -21,6 +21,27 @@ func olderSettingsCompatibility() throws {
     #expect(settings.ai.supportsVision)
     #expect(settings.ai.imageMaxDimension == 1600)
     #expect(settings.fileHosting == .default)
+    #expect(settings.systemMonitor == .default)
+}
+
+@Test("System monitor settings clamp unsafe persisted values")
+func systemMonitorSettingsCompatibility() throws {
+    let data = Data(
+        """
+        {
+          "systemMonitor": {
+            "enabled": true,
+            "updateInterval": 0.1,
+            "enabledModules": []
+          }
+        }
+        """.utf8
+    )
+
+    let settings = try JSONDecoder().decode(AppSettings.self, from: data)
+    #expect(settings.systemMonitor.enabled)
+    #expect(settings.systemMonitor.updateInterval == 1)
+    #expect(!settings.systemMonitor.enabledModules.isEmpty)
 }
 
 @Test("Partial whiteboard settings use safe opt-in defaults")

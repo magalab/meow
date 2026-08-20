@@ -9,6 +9,7 @@ enum PreferenceSection: String, CaseIterable, Identifiable {
     case recording
     case history
     case authenticator
+    case systemMonitor
     case keyboard
     case speech
     case health
@@ -29,6 +30,7 @@ enum PreferenceSection: String, CaseIterable, Identifiable {
         case .recording: return L10n.prefsSectionRecording
         case .history: return L10n.prefsSectionHistory
         case .authenticator: return L10n.prefsSectionAuthenticator
+        case .systemMonitor: return L10n.prefsSectionSystemMonitor
         case .keyboard: return L10n.prefsSectionKeyboard
         case .speech: return L10n.prefsSectionSpeech
         case .health: return L10n.prefsSectionHealth
@@ -47,6 +49,7 @@ enum PreferenceSection: String, CaseIterable, Identifiable {
         case .recording: return "record.circle"
         case .history: return "clock.arrow.circlepath"
         case .authenticator: return AuthenticatorVisuals.symbol
+        case .systemMonitor: return "gauge.with.dots.needle.67percent"
         case .keyboard: return "keyboard"
         case .speech: return "waveform"
         case .health: return "figure.mind.and.body"
@@ -220,6 +223,17 @@ struct PreferencesView: View {
                                 iCloudSyncEnabled: Binding(
                                     get: { viewModel.settings.authenticatorICloudSyncEnabled },
                                     set: { viewModel.settings.authenticatorICloudSyncEnabled = $0 }
+                                )
+                            )
+                            .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+                        }
+
+                        if navigation.selectedSection == .systemMonitor {
+                            SystemMonitorPreferencesView(
+                                theme: viewModel.settings.theme,
+                                settings: Binding(
+                                    get: { viewModel.settings.systemMonitor },
+                                    set: { viewModel.settings.systemMonitor = $0 }
                                 )
                             )
                             .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))

@@ -16,6 +16,13 @@
 │   │   └── SpeechModels.swift       # Speech settings, runtime state, history entries
 │   ├── Services/
 │   │   ├── SystemServices.swift     # DockService, StatusItemService, AppDiscoveryService, AutoLaunchService, HotkeyService
+│   │   ├── SystemMonitor/           # Optional system metrics collection and history
+│   │   │   ├── Collectors/           # CPU, memory, GPU, network, disk, power, thermal collectors
+│   │   │   ├── SystemMetricsActor.swift # Sampling lifecycle and IPv4 address refresh
+│   │   │   ├── SystemMonitorEngine.swift # Main-actor snapshot/history bridge
+│   │   │   ├── SystemMonitorHistory.swift # Bounded recent samples
+│   │   │   └── SystemMonitorModels.swift # Modules, snapshots, configuration models
+│   │   ├── SystemMonitorService.swift # Optional menu bar item and popover lifecycle
 │   │   ├── SettingsStore.swift      # UserDefaults-based persistence
 │   │   ├── ClipboardService.swift   # ClipboardStore, ClipboardImageCache
 │   │   ├── TranslationService.swift # AX text capture + fallback copy
@@ -36,6 +43,8 @@
 │   │   └── LauncherViewModel.swift  # Search, ranking, app dispatch, clipboard management
 │   ├── Views/
 │   │   ├── LauncherView.swift       # Main search panel
+│   │   ├── SystemMonitorPopoverView.swift # Compact metric popover
+│   │   ├── SystemMonitorPreferencesView.swift # System monitor settings
 │   │   ├── TranslationView.swift    # Floating translation panel
 │   │   ├── AIChatView.swift         # AI chat with history sidebar
 │   │   ├── AuthenticatorPanelView.swift # Search and copy TOTP accounts
@@ -58,7 +67,7 @@
 │       ├── zh-Hans.lproj/           # Chinese strings
 │       └── solar_terms.json         # Solar term dates
 ├── Tests/
-│   └── AuthenticatorTests.swift     # TOTP, parsing, JSON, settings, and sync merge tests
+│   └── SystemMonitorTests.swift      # System monitor configuration, history, and localization tests
 ├── Package.swift                    # Swift Package manifest (Swift 6, macOS 15+)
 ├── scripts/
 │   ├── build-dmg.sh                 # Create distributable DMG
@@ -101,6 +110,8 @@
   - `AuthenticatorPanelView`: Search, inspect, and copy current TOTP codes
   - `AuthenticatorPreferencesView`: Account import/export, deletion, and sync controls
   - `PreferencesView`: Tabbed settings window, including a dedicated Authenticator tab
+  - `SystemMonitorPreferencesView`: Optional system monitor settings and metric visibility
+  - `SystemMonitorPopoverView`: Compact metric cards, IPv4 address cards, copy feedback, and recent summaries
   - `HealthBreakOverlayView`: Floating break reminder with countdown, progress, and break actions
   - `KeystrokeOverlayView`: Draggable global keystroke overlay rendered in a non-activating panel
   - `Components/`: Reusable pieces — `ActionMenu`, `CalendarView`, `ItemComponents`, `PreferenceRows`
@@ -120,6 +131,9 @@
 - **AIChatHistoryStore.swift**: `@MainActor ObservableObject`, file-based persistence
 - **AuthenticatorService.swift**: TOTP generation, Keychain-backed account storage, clipboard-history exclusion, and JSON import/export
 - **AuthenticatorSyncService.swift**: Optional synchronizable Keychain storage, merge behavior, and deletion tombstones
+- **SystemMonitorService.swift**: Optional independent menu bar item, popover sizing, and settings lifecycle
+- **SystemMetricsActor.swift**: Swift 6 actor-isolated sampling, metric collectors, IPv4 addresses, and public IPv4 retry backoff
+- **SystemMonitorHistory.swift**: Bounded in-memory recent samples for compact summaries
 - **HealthReminderService.swift**: Work/break timer, daily UserDefaults records, break overlay, light activity detection via system idle time
 - **KeystrokeVisualizerService.swift**: Accessibility-gated global key event tap, overlay window, drag persistence
 - **SpeechRecognitionService.swift**: AVAudioEngine capture, 16 kHz mono conversion, sherpa-onnx inference, history, and temporary pasteboard restoration
@@ -276,6 +290,8 @@ Run the Swift Testing suite plus the manual checklist and build verification com
 - [ ] AI chat history creates, renames, deletes conversations
 - [ ] Preferences window opens/closes and every tab is functional
 - [ ] Authenticator can be disabled/enabled and opened from the launcher without leaving the launcher visible
+- [ ] System monitor can be enabled/disabled independently and updates its own menu bar item
+- [ ] System monitor metric visibility, interval, history, compact popover, IPv4 addresses, copy feedback, and localization work
 - [ ] Manual Base32 and `otpauth://` imports work; unsupported algorithms are rejected
 - [ ] Imported secrets and copied TOTP codes do not remain in Meow clipboard history
 - [ ] JSON import/export shows the plaintext-secret warning and handles duplicates

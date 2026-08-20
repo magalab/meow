@@ -15,6 +15,8 @@ A lightweight macOS launcher with gadgets, built with SwiftUI + AppKit.
   cameras, and connected mobile capture devices
 - Optional desktop whiteboard with shapes, arrows, freehand drawing, text, images,
   local autosave, and PNG/SVG/Excalidraw interchange
+- Optional system monitor with a separate menu bar item, compact metric cards, IPv4
+  address display, and configurable sampling/history settings
 - S3-compatible file uploads with AWS S3, Cloudflare R2, MinIO, custom endpoints,
   upload shortcuts, clipboard commands, and menu bar drag-and-drop
 - Built-in commands (Preferences / Ask AI / Quit)
@@ -145,6 +147,21 @@ The board uses one active display at a time. Its local workspace and image resou
 ```text
 ~/Library/Application Support/<Meow or Miao>/Whiteboards/
 ```
+
+## System Monitor
+
+The system monitor is off by default. Enable it from Preferences -> System Monitor;
+it runs in its own menu bar item so it can be enabled independently from the main Meow
+status item.
+
+- Displays CPU, memory, GPU memory, network, disk, battery, and thermal metrics
+- Lets you choose the menu bar style, sampling interval, history duration, and visible metrics
+- Shows compact metric cards, recent CPU/memory summaries, and IPv4 LAN/public addresses
+- Provides one-click copy buttons for the displayed addresses with visual confirmation
+- Keeps the feature dormant while disabled and refreshes public IPv4 lookup failures with backoff
+
+The system monitor does not require a separate permission. Local and public address values are
+limited to IPv4; IPv6 addresses are intentionally not displayed.
 
 ## File Uploads
 
@@ -286,7 +303,8 @@ Meow shows the destination endpoint and compression settings before each upload.
 - `Sources/ViewModels/LauncherViewModel.swift`: search and ranking logic
 - `Sources/Views/`: launcher, AI chat, authenticator, preferences, translation, and UI components
 - `Sources/Theme.swift`: theme palette system
-- `Sources/Services/`: hotkey, status item, auto-launch, clipboard, file upload, translation, speech recognition, authenticator, AI chat, and persistence
+- `Sources/Services/`: hotkey, status item, auto-launch, clipboard, file upload, translation, system monitor, speech recognition, authenticator, AI chat, and persistence
+- `Sources/Services/SystemMonitor/`: metric collectors, sampling actor, history, and monitor models
 - `Sources/Models/`: app, clipboard, file hosting, authenticator, and settings models
 - `Sources/Resources/`: localization resources
 - `Tests/`: Swift Testing coverage
@@ -294,6 +312,7 @@ Meow shows the destination endpoint and compression settings before each upload.
 ## Notes
 
 - Run `swift test`, `swift build`, and `swift build -c release` before submitting changes.
+- For system monitor changes, manually check enable/disable, independent menu bar behavior, module visibility, compact popover layout, IPv4-only address display, copy feedback, and English/Chinese localization.
 - Authenticator changes require manual checks for Keychain storage, clipboard-history exclusion, JSON warnings, and local-only sync fallback.
 - For AI changes, manually check configured and unconfigured states, model fetch/manual entry, Enter send, Shift+Enter newline, chat history, and opening the history folder.
 - For health reminder changes, manually check timer start/pause/resume, break start/skip/done, daily goal progress, activity-paused countdown, and menu bar calendar controls.

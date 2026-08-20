@@ -29,7 +29,13 @@ if isVoiceEdition {
 }
 
 let testSwiftSettings: [SwiftSetting] = isVoiceEdition ? [.define("MEOW_VOICE")] : []
-let executableLinkerSettings: [LinkerSetting] = isVoiceEdition ? [.linkedLibrary("c++")] : []
+var executableLinkerSettings: [LinkerSetting] = [
+    .linkedFramework("IOKit"),
+    .linkedFramework("Metal")
+]
+if isVoiceEdition {
+    executableLinkerSettings.append(.linkedLibrary("c++"))
+}
 
 let targets: [Target] = [
     .binaryTarget(name: "SherpaOnnxC", path: "Vendor/SherpaOnnx.xcframework"),
@@ -50,7 +56,9 @@ let targets: [Target] = [
     ),
     .testTarget(
         name: "MeowTests",
-        dependencies: [.target(name: executableName)],
+        dependencies: [
+            .target(name: executableName)
+        ],
         path: "Tests",
         swiftSettings: testSwiftSettings
     ),
