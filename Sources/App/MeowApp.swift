@@ -87,6 +87,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         return service
     }()
+    private var systemMonitorServiceLoaded = false
+    private lazy var systemMonitorService: SystemMonitorService = {
+        systemMonitorServiceLoaded = true
+        let service = SystemMonitorService()
+        service.apply(settings: viewModel.settings.systemMonitor, theme: viewModel.settings.theme)
+        return service
+    }()
     private let healthReminderService = HealthReminderService()
     private let clipboardStore = ClipboardStore()
     private lazy var screenCaptureService = ScreenCaptureService()
@@ -435,6 +442,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         speechOverlayController.hide()
         #endif
         keystrokeVisualizerService.stop()
+        if systemMonitorServiceLoaded {
+            systemMonitorService.stop()
+        }
         healthReminderService.stop()
         clipboardStore.stopMonitoring()
         dockIconService.stop()
@@ -609,6 +619,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             LanguageManager.shared.apply(settings.language)
             statusItemService.updateL10n()
             dockIconService.refresh()
+            if systemMonitorServiceLoaded {
+                systemMonitorService.refreshLocalization()
+            }
             viewModel?.refresh()
             preferencesWindow?.title = L10n.windowPrefsTitle
             appliedLanguage = settings.language
@@ -651,6 +664,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 iCloudSyncEnabled: settings.authenticatorICloudSyncEnabled,
                 theme: settings.theme
             )
+        }
+        if settings.systemMonitor.enabled || systemMonitorServiceLoaded {
+            systemMonitorService.apply(settings: settings.systemMonitor, theme: settings.theme)
         }
         keystrokeVisualizerService.apply(settings: settings)
         healthReminderService.apply(settings: settings)

@@ -386,6 +386,62 @@ enum L10n {
 
     static var prefsSectionClipboard: String { loc("prefs.section.clipboard") }
 
+    static var prefsSectionSystemMonitor: String { loc("prefs.section.system.monitor") }
+
+    static var prefsSystemMonitorEnabledTitle: String { loc("prefs.system.monitor.enabled.title") }
+    static var prefsSystemMonitorEnabledSubtitle: String { loc("prefs.system.monitor.enabled.subtitle") }
+    static var prefsSystemMonitorStatusStyle: String { loc("prefs.system.monitor.status.style") }
+    static var prefsSystemMonitorStatusIcon: String { loc("prefs.system.monitor.status.icon") }
+    static var prefsSystemMonitorStatusCPU: String { loc("prefs.system.monitor.status.cpu") }
+    static var prefsSystemMonitorStatusMemory: String { loc("prefs.system.monitor.status.memory") }
+    static var prefsSystemMonitorStatusCPUAndMemory: String { loc("prefs.system.monitor.status.cpu.memory") }
+    static var prefsSystemMonitorInterval: String { loc("prefs.system.monitor.interval") }
+    static var prefsSystemMonitorHistory: String { loc("prefs.system.monitor.history") }
+    static var prefsSystemMonitorHistoryFiveMinutes: String {
+        loc("prefs.system.monitor.history.five.minutes")
+    }
+    static var prefsSystemMonitorHistoryTenMinutes: String {
+        loc("prefs.system.monitor.history.ten.minutes")
+    }
+    static var prefsSystemMonitorModules: String { loc("prefs.system.monitor.modules") }
+    static var prefsSystemMonitorCPU: String { loc("prefs.system.monitor.module.cpu") }
+    static var prefsSystemMonitorMemory: String { loc("prefs.system.monitor.module.memory") }
+    static var prefsSystemMonitorGPU: String { loc("prefs.system.monitor.module.gpu") }
+    static var prefsSystemMonitorNetwork: String { loc("prefs.system.monitor.module.network") }
+    static var prefsSystemMonitorDisk: String { loc("prefs.system.monitor.module.disk") }
+    static var prefsSystemMonitorPower: String { loc("prefs.system.monitor.module.power") }
+    static var prefsSystemMonitorThermal: String { loc("prefs.system.monitor.module.thermal") }
+
+    static var systemMonitorTitle: String { loc("system.monitor.title") }
+    static var systemMonitorRefresh: String { loc("system.monitor.refresh") }
+    static var systemMonitorWaiting: String { loc("system.monitor.waiting") }
+    static var systemMonitorUpdated: String { loc("system.monitor.updated") }
+    static var systemMonitorUnavailable: String { loc("system.monitor.unavailable") }
+    static var systemMonitorUsage: String { loc("system.monitor.usage") }
+    static var systemMonitorPressure: String { loc("system.monitor.pressure") }
+    static var systemMonitorNetwork: String { loc("system.monitor.network") }
+    static var systemMonitorDisk: String { loc("system.monitor.disk") }
+    static var systemMonitorDiskUsage: String { loc("system.monitor.disk.usage") }
+    static var systemMonitorGPU: String { loc("system.monitor.gpu") }
+    static var systemMonitorMemory: String { loc("system.monitor.memory") }
+    static var systemMonitorCPU: String { loc("system.monitor.cpu") }
+    static var systemMonitorPower: String { loc("system.monitor.power") }
+    static var systemMonitorThermal: String { loc("system.monitor.thermal") }
+    static var systemMonitorThermalNominal: String { loc("system.monitor.thermal.nominal") }
+    static var systemMonitorThermalFair: String { loc("system.monitor.thermal.fair") }
+    static var systemMonitorThermalSerious: String { loc("system.monitor.thermal.serious") }
+    static var systemMonitorThermalCritical: String { loc("system.monitor.thermal.critical") }
+    static var systemMonitorHistory: String { loc("system.monitor.history") }
+    static var systemMonitorNoBattery: String { loc("system.monitor.no.battery") }
+    static var systemMonitorCharging: String { loc("system.monitor.charging") }
+    static var systemMonitorDischarging: String { loc("system.monitor.discharging") }
+    static var systemMonitorAddress: String { loc("system.monitor.address") }
+    static var systemMonitorLocalIP: String { loc("system.monitor.local.ip") }
+    static var systemMonitorPublicIP: String { loc("system.monitor.public.ip") }
+    static var systemMonitorAveragePeak: String { loc("system.monitor.average.peak") }
+    static var systemMonitorCopyIP: String { loc("system.monitor.copy.ip") }
+    static var systemMonitorCopied: String { loc("system.monitor.copied") }
+
     static var prefsSectionAbout: String {
         loc("prefs.section.about")
     }
