@@ -89,6 +89,9 @@
 "prefs.hotkey.subtitle" = "点击录制，然后按下快捷键";
 "prefs.hotkey.recording" = "录制中…";
 "prefs.hotkey.recording.hint" = "请按下快捷键（Esc 取消）";
+"prefs.finder.hotkey.title" = "打开 Finder 快捷键";
+"prefs.finder.hotkey.subtitle" = "在任何应用中打开你的主目录";
+"prefs.finder.hotkey.error" = "无法注册此快捷键（错误 %d），请选择其他快捷键。";
 
 "prefs.translate.hotkey.title" = "翻译快捷键";
 "prefs.translate.hotkey.subtitle" = "选中文字后按下快捷键即可翻译";

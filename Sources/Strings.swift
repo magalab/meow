@@ -505,6 +505,18 @@ enum L10n {
         loc("prefs.hotkey.recording.hint")
     }
 
+    static var prefsFinderHotkeyTitle: String {
+        loc("prefs.finder.hotkey.title")
+    }
+
+    static var prefsFinderHotkeySubtitle: String {
+        loc("prefs.finder.hotkey.subtitle")
+    }
+
+    static var prefsFinderHotkeyError: String {
+        loc("prefs.finder.hotkey.error")
+    }
+
     // MARK: - Speech Recognition
 
     static var speechEnabledTitle: String { loc("speech.enabled.title") }

@@ -258,6 +258,10 @@ struct AppSettings: Codable {
     var showDockIcon: Bool
     var hotkeyKeyCode: UInt32
     var hotkeyModifiers: UInt32
+    /// Key code for the Finder hotkey (default: 14 = kVK_ANSI_E).
+    var finderHotkeyKeyCode: UInt32
+    /// Carbon modifier flags for the Finder hotkey (default: 2048 = optionKey = ⌥E).
+    var finderHotkeyModifiers: UInt32
     /// Key code for the translate-selection hotkey (default: 2 = kVK_ANSI_D).
     var translateHotkeyKeyCode: UInt32
     /// Carbon modifier flags for the translate-selection hotkey (default: 2048 = optionKey = ⌥D).
@@ -307,6 +311,8 @@ struct AppSettings: Codable {
         showDockIcon: Bool,
         hotkeyKeyCode: UInt32,
         hotkeyModifiers: UInt32,
+        finderHotkeyKeyCode: UInt32 = 14,
+        finderHotkeyModifiers: UInt32 = 2048,
         translateHotkeyKeyCode: UInt32,
         translateHotkeyModifiers: UInt32,
         textActionsHotkeyKeyCode: UInt32 = 7,
@@ -349,6 +355,8 @@ struct AppSettings: Codable {
         self.showDockIcon = showDockIcon
         self.hotkeyKeyCode = hotkeyKeyCode
         self.hotkeyModifiers = hotkeyModifiers
+        self.finderHotkeyKeyCode = finderHotkeyKeyCode
+        self.finderHotkeyModifiers = finderHotkeyModifiers
         self.translateHotkeyKeyCode = translateHotkeyKeyCode
         self.translateHotkeyModifiers = translateHotkeyModifiers
         self.textActionsHotkeyKeyCode = textActionsHotkeyKeyCode
@@ -390,6 +398,8 @@ struct AppSettings: Codable {
         showDockIcon: false,
         hotkeyKeyCode: 49,
         hotkeyModifiers: 2048,
+        finderHotkeyKeyCode: 14,
+        finderHotkeyModifiers: 2048,
         translateHotkeyKeyCode: 2,
         translateHotkeyModifiers: 2048,
         textActionsHotkeyKeyCode: 7,
@@ -413,6 +423,8 @@ extension AppSettings {
         case showDockIcon
         case hotkeyKeyCode
         case hotkeyModifiers
+        case finderHotkeyKeyCode
+        case finderHotkeyModifiers
         case translateHotkeyKeyCode
         case translateHotkeyModifiers
         case textActionsHotkeyKeyCode
@@ -468,6 +480,10 @@ extension AppSettings {
         showDockIcon = try container.decodeIfPresent(Bool.self, forKey: .showDockIcon) ?? Self.default.showDockIcon
         hotkeyKeyCode = try container.decodeIfPresent(UInt32.self, forKey: .hotkeyKeyCode) ?? Self.default.hotkeyKeyCode
         hotkeyModifiers = try container.decodeIfPresent(UInt32.self, forKey: .hotkeyModifiers) ?? Self.default.hotkeyModifiers
+        finderHotkeyKeyCode = try container.decodeIfPresent(UInt32.self, forKey: .finderHotkeyKeyCode)
+            ?? Self.default.finderHotkeyKeyCode
+        finderHotkeyModifiers = try container.decodeIfPresent(UInt32.self, forKey: .finderHotkeyModifiers)
+            ?? Self.default.finderHotkeyModifiers
         translateHotkeyKeyCode = try container.decodeIfPresent(UInt32.self, forKey: .translateHotkeyKeyCode) ?? Self.default.translateHotkeyKeyCode
         translateHotkeyModifiers = try container.decodeIfPresent(UInt32.self, forKey: .translateHotkeyModifiers) ?? Self.default.translateHotkeyModifiers
         textActionsHotkeyKeyCode = try container.decodeIfPresent(

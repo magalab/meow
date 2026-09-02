@@ -21,6 +21,7 @@ final class LauncherViewModel: ObservableObject {
     }
 
     @Published private(set) var results: [SearchItem] = []
+    @Published private(set) var finderHotkeyRegistrationError: String?
     @Published private(set) var whiteboardHotkeyRegistrationError: String?
     @Published var settings: AppSettings {
         didSet {
@@ -475,8 +476,19 @@ final class LauncherViewModel: ObservableObject {
         settings = updated
     }
 
+    func updateFinderHotkey(keyCode: UInt32, modifiers: UInt32) {
+        var updated = settings
+        updated.finderHotkeyKeyCode = keyCode
+        updated.finderHotkeyModifiers = modifiers
+        settings = updated
+    }
+
     func setWhiteboardHotkeyRegistrationError(_ message: String?) {
         whiteboardHotkeyRegistrationError = message
+    }
+
+    func setFinderHotkeyRegistrationError(_ message: String?) {
+        finderHotkeyRegistrationError = message
     }
 
     func updateTranslateHotkey(keyCode: UInt32, modifiers: UInt32) {
