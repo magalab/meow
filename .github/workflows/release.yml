@@ -134,7 +134,7 @@ jobs:
 
             url "https://github.com/${{ github.repository }}/releases/download/__TAG__/Meow_#{version}_arm64.dmg"
             name "Meow"
-            desc "Lightweight macOS launcher with gadgets"
+            desc "Lightweight launcher with gadgets"
             homepage "https://github.com/${{ github.repository }}"
 
             depends_on macos: :sequoia
