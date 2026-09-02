@@ -218,6 +218,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     #endif
     private var appliedLanguage: AppLanguage?
     private var lastRegisteredToggleHotkey: (keyCode: UInt32, modifiers: UInt32)?
+    private var lastRegisteredFinderHotkey: (keyCode: UInt32, modifiers: UInt32)?
     private var lastRegisteredTranslateHotkey: (keyCode: UInt32, modifiers: UInt32)?
     private var lastRegisteredTextActionsHotkey: (keyCode: UInt32, modifiers: UInt32)?
     private var lastRegisteredScreenshotRegionHotkey: (keyCode: UInt32, modifiers: UInt32)?
@@ -699,6 +700,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.lastRegisteredToggleHotkey = (settings.hotkeyKeyCode, settings.hotkeyModifiers)
         }
 
+        let finderHotkeyResult = hotkeyService.registerFinderHotkey(
+            keyCode: settings.finderHotkeyKeyCode,
+            modifiers: settings.finderHotkeyModifiers
+        ) { [weak self] in
+            self?.openFinder()
+        }
+        handleHotkeyRegistrationResult(
+            finderHotkeyResult,
+            name: "finder",
+            keyCode: settings.finderHotkeyKeyCode,
+            modifiers: settings.finderHotkeyModifiers,
+            previous: lastRegisteredFinderHotkey
+        ) { [weak self] keyCode, modifiers in
+            self?.viewModel.updateFinderHotkey(keyCode: keyCode, modifiers: modifiers)
+        } onSuccess: { [weak self] in
+            self?.viewModel.setFinderHotkeyRegistrationError(nil)
+            self?.lastRegisteredFinderHotkey = (
+                settings.finderHotkeyKeyCode,
+                settings.finderHotkeyModifiers
+            )
+        } onFailure: { [weak self] status in
+            self?.viewModel.setFinderHotkeyRegistrationError(
+                String(format: L10n.prefsFinderHotkeyError, status)
+            )
+        }
+
         let translateHotkeyResult = hotkeyService.registerTranslateHotkey(
             keyCode: settings.translateHotkeyKeyCode,
             modifiers: settings.translateHotkeyModifiers
@@ -847,6 +874,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// Handles a hotkey registration result and restores the previous value when replacement fails.
+    /// The failure callback runs before `restore`, because restoring a setting synchronously reapplies
+    /// the settings and may invoke this handler again; that nested success can clear the failure state.
     private func handleHotkeyRegistrationResult(
         _ result: HotkeyService.RegistrationResult,
         name: String,
@@ -854,13 +884,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         modifiers: UInt32,
         previous: (keyCode: UInt32, modifiers: UInt32)?,
         restore: @escaping (UInt32, UInt32) -> Void,
-        onSuccess: () -> Void
+        onSuccess: () -> Void,
+        onFailure: (OSStatus) -> Void = { _ in }
     ) {
         switch result {
         case .registered:
             onSuccess()
         case let .failed(status):
             NSLog("[Meow] Failed to register \(name) hotkey: \(status)")
+            onFailure(status)
             guard let previous,
                   previous.keyCode != keyCode || previous.modifiers != modifiers
             else { return }
@@ -942,9 +974,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 normalized.hotkeyKeyCode,
                 normalized.hotkeyModifiers
             )
-        }
-        if case let .failed(status) = result {
-            viewModel.setWhiteboardHotkeyRegistrationError(
+        } onFailure: { [weak self] status in
+            self?.viewModel.setWhiteboardHotkeyRegistrationError(
                 String(format: L10n.whiteboardHotkeyError, status)
             )
         }
@@ -2299,6 +2330,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             hideLauncher()
         } else {
             showLauncher()
+        }
+    }
+
+    private func openFinder() {
+        hideLauncher()
+        let homeDirectory = FileManager.default.homeDirectoryForCurrentUser
+        guard NSWorkspace.shared.open(homeDirectory) else {
+            NSLog("[Meow] Failed to open Finder at %@", homeDirectory.path)
+            return
         }
     }
 

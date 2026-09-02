@@ -24,6 +24,50 @@ func olderSettingsCompatibility() throws {
     #expect(settings.systemMonitor == .default)
 }
 
+@Test("Finder shortcut localization is complete")
+func finderShortcutLocalizationIsComplete() throws {
+    let resourceRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("Sources/Resources", isDirectory: true)
+    let keys = [
+        "prefs.finder.hotkey.title",
+        "prefs.finder.hotkey.subtitle",
+        "prefs.finder.hotkey.error",
+    ]
+
+    for language in ["en", "zh-Hans"] {
+        let url = resourceRoot
+            .appendingPathComponent("\(language).lproj", isDirectory: true)
+            .appendingPathComponent("Localizable.strings")
+        let localizable = try String(contentsOf: url, encoding: .utf8)
+        for key in keys {
+            #expect(localizable.contains("\"\(key)\" ="))
+        }
+    }
+}
+
+@Test("Empty settings default the Finder hotkey to Option-E")
+func emptySettingsDefaultFinderHotkey() throws {
+    let settings = try JSONDecoder().decode(AppSettings.self, from: Data("{}".utf8))
+
+    #expect(settings.finderHotkeyKeyCode == 14)
+    #expect(settings.finderHotkeyModifiers == 2048)
+}
+
+@Test("Finder hotkey settings round trip")
+func finderHotkeySettingsRoundTrip() throws {
+    var settings = AppSettings.default
+    settings.finderHotkeyKeyCode = 0
+    settings.finderHotkeyModifiers = 4096
+
+    let encoded = try JSONEncoder().encode(settings)
+    let decoded = try JSONDecoder().decode(AppSettings.self, from: encoded)
+
+    #expect(decoded.finderHotkeyKeyCode == 0)
+    #expect(decoded.finderHotkeyModifiers == 4096)
+}
+
 @Test("System monitor settings clamp unsafe persisted values")
 func systemMonitorSettingsCompatibility() throws {
     let data = Data(

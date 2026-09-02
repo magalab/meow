@@ -504,8 +504,26 @@ struct PreferencesView: View {
                 keyCode: viewModel.settings.hotkeyKeyCode,
                 modifiers: viewModel.settings.hotkeyModifiers
             ) { keyCode, modifiers in
-                viewModel.settings.hotkeyKeyCode = keyCode
-                viewModel.settings.hotkeyModifiers = modifiers
+                viewModel.updateLauncherHotkey(keyCode: keyCode, modifiers: modifiers)
+            }
+
+            PreferenceHotkeyRecorderRow(
+                title: L10n.prefsFinderHotkeyTitle,
+                subtitle: L10n.prefsFinderHotkeySubtitle,
+                symbol: "folder",
+                theme: viewModel.settings.theme,
+                keyCode: viewModel.settings.finderHotkeyKeyCode,
+                modifiers: viewModel.settings.finderHotkeyModifiers
+            ) { keyCode, modifiers in
+                viewModel.updateFinderHotkey(keyCode: keyCode, modifiers: modifiers)
+            }
+
+            if let finderHotkeyRegistrationError = viewModel.finderHotkeyRegistrationError {
+                Label(finderHotkeyRegistrationError, systemImage: "exclamationmark.triangle.fill")
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundStyle(.orange)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 12)
             }
 
             PreferenceHotkeyRecorderRow(
@@ -516,8 +534,7 @@ struct PreferencesView: View {
                 keyCode: viewModel.settings.translateHotkeyKeyCode,
                 modifiers: viewModel.settings.translateHotkeyModifiers
             ) { keyCode, modifiers in
-                viewModel.settings.translateHotkeyKeyCode = keyCode
-                viewModel.settings.translateHotkeyModifiers = modifiers
+                viewModel.updateTranslateHotkey(keyCode: keyCode, modifiers: modifiers)
             }
 
             PreferenceHotkeyRecorderRow(
@@ -528,8 +545,7 @@ struct PreferencesView: View {
                 keyCode: viewModel.settings.textActionsHotkeyKeyCode,
                 modifiers: viewModel.settings.textActionsHotkeyModifiers
             ) { keyCode, modifiers in
-                viewModel.settings.textActionsHotkeyKeyCode = keyCode
-                viewModel.settings.textActionsHotkeyModifiers = modifiers
+                viewModel.updateTextActionsHotkey(keyCode: keyCode, modifiers: modifiers)
             }
 
         }

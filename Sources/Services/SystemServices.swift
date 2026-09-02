@@ -939,6 +939,15 @@ final class HotkeyService: @unchecked Sendable {
         registerHotkey(id: 1, keyCode: keyCode, modifiers: modifiers, pressedAction: action)
     }
 
+    /// Registers (or replaces) the Finder hotkey (id = 20).
+    func registerFinderHotkey(
+        keyCode: UInt32,
+        modifiers: UInt32,
+        action: @escaping () -> Void
+    ) -> RegistrationResult {
+        registerHotkey(id: 20, keyCode: keyCode, modifiers: modifiers, pressedAction: action)
+    }
+
     /// Registers (or replaces) the translate hotkey (id = 2).
     func registerTranslateHotkey(
         keyCode: UInt32,

@@ -89,6 +89,9 @@
 "prefs.hotkey.subtitle" = "Click record, then press the shortcut";
 "prefs.hotkey.recording" = "Recording...";
 "prefs.hotkey.recording.hint" = "Press shortcut now (Esc to cancel)";
+"prefs.finder.hotkey.title" = "Open Finder Shortcut";
+"prefs.finder.hotkey.subtitle" = "Open your home folder from any app";
+"prefs.finder.hotkey.error" = "This shortcut could not be registered (error %d). Choose a different shortcut.";
 
 "prefs.translate.hotkey.title" = "Translate Hotkey";
 "prefs.translate.hotkey.subtitle" = "Select text, then press to translate it";
