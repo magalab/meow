@@ -74,6 +74,16 @@ final class LanguageManager: ObservableObject {
             langBundle = Bundle(path: path)
         }
 
+        // SwiftPM test and `swift run` processes do not have an app bundle as
+        // Bundle.main. Bundle.module points to the executable target's
+        // processed resources in those environments.
+        if langBundle == nil,
+           let resourcesPath = Bundle.module.resourceURL?.path,
+           let path = findLprojPath(in: resourcesPath, for: code)
+        {
+            langBundle = Bundle(path: path)
+        }
+
         currentLanguageCode = code
 
         if let langBundle = langBundle {

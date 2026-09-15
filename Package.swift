@@ -14,9 +14,9 @@ let voiceSources = [
     "Services/SpeechSynthesisService.swift",
     "Services/TtsAudioPlayer.swift",
     "Services/TtsModelStore.swift",
-    "Views/SpeechOverlayView.swift",
-    "Views/SpeechPreferencesView.swift",
-    "Views/TtsPreferencesView.swift",
+    "Views/Speech/SpeechOverlayView.swift",
+    "Views/Preferences/SpeechPreferencesView.swift",
+    "Views/Preferences/TtsPreferencesView.swift",
 ]
 
 var executableDependencies: [Target.Dependency] = [

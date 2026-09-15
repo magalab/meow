@@ -15,11 +15,26 @@
 │   │   ├── KeystrokeModels.swift    # Keystroke visualizer settings and display models
 │   │   └── SpeechModels.swift       # Speech settings, runtime state, history entries
 │   ├── Services/
-│   │   ├── StatusItemService.swift / StatusItemDropView.swift # Menu bar item and file drop handling
-│   │   ├── DockService.swift / DockIconService.swift # Activation policy and runtime Dock icons
-│   │   ├── HotkeyService.swift     # Carbon global hotkey registration
+│   │   ├── System/                  # Shared macOS integration services and controllers
+│   │   │   ├── StatusItemService.swift / StatusItemDropView.swift # Menu bar item and file drop handling
+│   │   │   ├── DockService.swift / DockIconService.swift # Activation policy and runtime Dock icons
+│   │   │   ├── HotkeyService.swift # Carbon global hotkey registration
+│   │   │   ├── AutoLaunchService.swift # Login item management
+│   │   │   ├── InternalInputEventSuppressor.swift # Temporary input suppression
+│   │   │   ├── KeyDisplayFormatter.swift # Keyboard-layout-aware key labels
+│   │   │   ├── KeystrokeVisualizerService.swift # Global key event tap + overlay window
+│   │   │   └── MouseClickHighlighterController.swift # Mouse click visualization
+│   │   ├── Capture/                  # Screenshot, scrolling capture, and capture history services
+│   │   │   ├── CaptureEditorController.swift / CaptureEditorRenderer.swift
+│   │   │   ├── CaptureStore.swift / PostCaptureActionsController.swift
+│   │   │   ├── ScreenCaptureService.swift
+│   │   │   └── ScrollingCaptureController.swift / HUD / matcher / processor / stitcher
+│   │   ├── Recording/                # Recording lifecycle, source selection, and recording UI controllers
+│   │   │   ├── RecordingService.swift / RecordingStore.swift
+│   │   │   ├── RecordingContentPickerController.swift
+│   │   │   ├── RecordingNotificationService.swift
+│   │   │   └── CameraOverlayController.swift / ScreenMagnifierController.swift
 │   │   ├── AppDiscoveryService.swift # Installed application discovery
-│   │   ├── AutoLaunchService.swift # Login item management
 │   │   ├── SystemMonitor/           # Optional system metrics collection and history
 │   │   │   ├── Collectors/           # CPU, memory, GPU, network, disk, power, thermal collectors
 │   │   │   ├── SystemMetricsActor.swift # Sampling lifecycle and IPv4 address refresh
@@ -37,8 +52,6 @@
 │   │   ├── AuthenticatorSyncService.swift # Optional iCloud Keychain synchronization
 │   │   ├── CalendarService.swift    # Lunisolar calendar, solar terms, holidays, EventKit
 │   │   ├── HealthReminderService.swift # Work/break timer, daily records, break overlay
-│   │   ├── KeyDisplayFormatter.swift # Keyboard-layout-aware key labels
-│   │   ├── KeystrokeVisualizerService.swift # Global key event tap + overlay window
 │   │   ├── SpeechRecognitionService.swift # Audio capture, offline ASR, paste workflow
 │   │   ├── SpeechModelStore.swift   # Speech model download, SHA-256 verification, and switching
 │   │   ├── SpeechHistoryStore.swift # Transcript index and WAV persistence
@@ -47,19 +60,48 @@
 │   ├── ViewModels/
 │   │   └── LauncherViewModel.swift  # Search, ranking, app dispatch, clipboard management
 │   ├── Views/
-│   │   ├── LauncherView.swift       # Main search panel
-│   │   ├── SystemMonitorPopoverView.swift # Compact metric popover
-│   │   ├── SystemMonitorPreferencesView.swift # System monitor settings
-│   │   ├── TranslationView.swift    # Floating translation panel
-│   │   ├── AIChatView.swift         # AI chat with history sidebar
-│   │   ├── AuthenticatorPanelView.swift # Search and copy TOTP accounts
-│   │   ├── AuthenticatorPreferencesView.swift # Import, export, sync, account management
-│   │   ├── HealthBreakOverlayView.swift # Health reminder break panel
-│   │   ├── KeystrokeOverlayLayout.swift # Overlay sizing
-│   │   ├── KeystrokeOverlayView.swift # Keystroke overlay SwiftUI view
-│   │   ├── SpeechOverlayView.swift  # Non-activating speech status panel
-│   │   ├── SpeechPreferencesView.swift # Speech model, permission, and history settings
-│   │   ├── PreferencesView.swift    # Tabbed settings window
+│   │   ├── AI/
+│   │   │   └── AIChatView.swift # AI chat with history sidebar
+│   │   ├── Authenticator/
+│   │   │   └── AuthenticatorPanelView.swift # Search and copy TOTP accounts
+│   │   ├── Capture/
+│   │   │   ├── CaptureEditorView.swift # Screenshot editor
+│   │   │   ├── CaptureHistoryView.swift # Screenshot history
+│   │   │   └── CaptureOverlayView.swift # Capture selection overlay
+│   │   ├── Health/
+│   │   │   └── HealthBreakOverlayView.swift # Health reminder break panel
+│   │   ├── Keyboard/
+│   │   │   ├── KeystrokeOverlayLayout.swift # Overlay sizing
+│   │   │   └── KeystrokeOverlayView.swift # Keystroke overlay SwiftUI view
+│   │   ├── Launcher/
+│   │   │   └── LauncherView.swift # Main search panel
+│   │   ├── Recording/
+│   │   │   ├── RecordingControlView.swift # Floating recording controls
+│   │   │   ├── RecordingHistoryView.swift # Recording history
+│   │   │   ├── RecordingPreviewView.swift # Recording preview
+│   │   │   └── RecordingTrimmerView.swift # Recording trim editor
+│   │   ├── Speech/
+│   │   │   └── SpeechOverlayView.swift # Non-activating speech status panel
+│   │   ├── SystemMonitor/
+│   │   │   └── SystemMonitorPopoverView.swift # Compact metric popover
+│   │   ├── TextActions/
+│   │   │   └── TextActionsView.swift # Text actions panel
+│   │   ├── Translation/
+│   │   │   └── TranslationView.swift # Floating translation panel
+│   │   ├── Upload/
+│   │   │   └── UploadHistoryView.swift # Upload history
+│   │   ├── Preferences/
+│   │   │   ├── PreferencesView.swift # Tabbed settings window
+│   │   │   ├── AuthenticatorPreferencesView.swift # Import, export, sync, account management
+│   │   │   ├── ClipboardPreferencesView.swift # Clipboard history and image storage settings
+│   │   │   ├── FileHostingPreferencesView.swift # Upload provider settings
+│   │   │   ├── KeepAwakePreferencesView.swift # Keep Awake settings
+│   │   │   ├── RecordingPreferencesView.swift # Recording settings
+│   │   │   ├── ScreenshotPreferencesView.swift # Screenshot settings
+│   │   │   ├── SpeechPreferencesView.swift # Speech model, permission, and history settings
+│   │   │   ├── SystemMonitorPreferencesView.swift # System monitor settings
+│   │   │   ├── TtsPreferencesView.swift # Text-to-speech settings
+│   │   │   └── WhiteboardPreferencesView.swift # Whiteboard settings
 │   │   └── Components/
 │   │       ├── ActionMenu.swift     # Contextual action menu overlay
 │   │       ├── CalendarView.swift   # Menu bar calendar popover
@@ -68,8 +110,9 @@
 │   │       ├── PreferenceAISettingsSection.swift / PreferenceHealthReminderSection.swift
 │   │       ├── PreferenceKeystrokeVisualizerSection.swift / PreferenceDockIconRows.swift
 │   │       └── PreferenceRowStyles.swift # Shared preference row modifiers
-│   ├── Strings.swift                # LanguageManager and shared L10n lookup
-│   ├── Strings+<Domain>.swift       # Feature-grouped L10n accessors
+│   ├── Localization/
+│   │   ├── Strings.swift            # LanguageManager and shared L10n lookup
+│   │   └── Strings+<Domain>.swift   # Feature-grouped L10n accessors
 │   ├── Theme.swift                  # ThemePalette with 4 themes
 │   └── Resources/
 │       ├── en.lproj/                # English strings
@@ -92,10 +135,12 @@
 ## Architecture
 
 ### App Entry & Lifecycle
-- **MeowApp.swift** (`Sources/App/`): App entry and AppDelegate
-  - Sets up AppKit windows (launcher, translation, AI chat, preferences)
-  - Manages system services (hotkey, status item, clipboard monitoring)
-  - Handles language switching, settings persistence, and window lifecycle
+- **MeowApp.swift** (`Sources/App/`): App entry, composition root, and AppDelegate
+  - Wires the service registry, view model, and feature coordinators
+  - Handles top-level settings application and app-level command routing
+- **App*Coordinator.swift** (`Sources/App/`): Feature-specific application orchestration
+  - Capture, recording, clipboard actions, text actions, preferences, windows, hotkeys, and lifecycle
+  - Keeps AppKit/SwiftUI presentation flows separate from the service implementations
   - Windows use `NSPanel` (non-activating, floating) or regular `NSWindow`
 
 ### State Management
@@ -128,12 +173,12 @@
   - All views reactive to language changes via `.id(lang.refreshToken)`
 
 ### Services
-- **StatusItemService.swift** / **StatusItemDropView.swift** (`Sources/Services/`):
+- **StatusItemService.swift** / **StatusItemDropView.swift** (`Sources/Services/System/`):
   - NSStatusItem, custom date icons, calendar popover, menu, and file drop handling
-- **DockService.swift** / **DockIconService.swift**: Activation policy toggle and runtime icon rendering
-- **HotkeyService.swift**: Carbon-based global hotkeys (toggle, translate, and speech press/release), `@unchecked Sendable`
+- **DockService.swift** / **DockIconService.swift** (`Sources/Services/System/`): Activation policy toggle and runtime icon rendering
+- **HotkeyService.swift** (`Sources/Services/System/`): Carbon-based global hotkeys (toggle, translate, and speech press/release), `@unchecked Sendable`
 - **AppDiscoveryService.swift**: Scans system app directories
-- **AutoLaunchService.swift**: SMAppService-based login item
+- **AutoLaunchService.swift** (`Sources/Services/System/`): SMAppService-based login item
 
 - **ClipboardService.swift**: 0.5s pasteboard polling, 50-entry history, image caching
 - **TranslationService.swift**: AX API text capture + Cmd+C fallback
@@ -145,18 +190,18 @@
 - **SystemMetricsActor.swift**: Swift 6 actor-isolated sampling, metric collectors, IPv4 addresses, and public IPv4 retry backoff
 - **SystemMonitorHistory.swift**: Bounded in-memory recent samples for compact summaries
 - **HealthReminderService.swift**: Work/break timer, daily UserDefaults records, break overlay, light activity detection via system idle time
-- **KeystrokeVisualizerService.swift**: Accessibility-gated global key event tap, overlay window, drag persistence
+- **KeystrokeVisualizerService.swift** (`Sources/Services/System/`): Accessibility-gated global key event tap, overlay window, drag persistence
 - **SpeechRecognitionService.swift**: AVAudioEngine capture, 16 kHz mono conversion, sherpa-onnx inference, history, and temporary pasteboard restoration
 - **SpeechModelStore.swift**: downloads only `model.int8.onnx` and `tokens.txt`, then verifies SHA-256 before installation
-- **KeyDisplayFormatter.swift**: Current keyboard layout label lookup with fixed special-key fallback
+- **KeyDisplayFormatter.swift** (`Sources/Services/System/`): Current keyboard layout label lookup with fixed special-key fallback
 - **CalendarService.swift** / **CalendarEventService.swift**: Lunisolar calendar, EventKit integration
 - **LaunchHistoryStore.swift**: UserDefaults-based history scoring
 
 ### Localization
-- **Strings.swift**:
+- **Sources/Localization/Strings.swift**:
   - `LanguageManager`: Runtime bundle switching without app restart
   - Shared `L10n.loc` lookup using the active bundle
-- **Strings+<Domain>.swift**:
+- **Sources/Localization/Strings+<Domain>.swift**:
   - Computed `L10n` accessors grouped by feature, such as launcher, preferences,
     recording, AI chat, and authenticator
 - Both `en.lproj` and `zh-Hans.lproj` are maintained in parallel
@@ -266,8 +311,8 @@ struct MyType {
 ## Localization
 
 ### Adding Strings
-1. Add the accessor to the matching `Sources/Strings+<Domain>.swift` file. Keep
-   `Sources/Strings.swift` for `LanguageManager` and the shared lookup only:
+1. Add the accessor to the matching `Sources/Localization/Strings+<Domain>.swift` file. Keep
+   `Sources/Localization/Strings.swift` for `LanguageManager` and the shared lookup only:
 ```swift
 static var myString: String {
   loc("my_key")
@@ -387,12 +432,12 @@ log stream --predicate 'process == "Miao"'
 3. Add localization keys in both `Localizable.strings` files
 
 ### Add a Menu Bar Item
-1. Update `StatusItemService.setup()` in `Sources/Services/StatusItemService.swift`
+1. Update `StatusItemService.setup()` in `Sources/Services/System/StatusItemService.swift`
 2. Add menu item action closure in the setup block
 3. Add localization keys in both `.lproj` files
 
 ### Change Preferences Layout
-1. Edit `PreferencesView` in `Sources/Views/PreferencesView.swift`
+1. Edit `PreferencesView` in `Sources/Views/Preferences/PreferencesView.swift`
 2. Update `AppSettings` in `Sources/Models/AppSettings.swift`
 3. Handle in `AppDelegate.apply(settings:)` if system interaction needed
 

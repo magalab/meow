@@ -296,12 +296,17 @@ API Key 仍保存在 Meow 的本地设置中。聊天历史可在 AI 设置页�
 - `Sources/App/MeowApp.swift`: 应用生命周期与窗口管理
 - `Sources/ViewModels/LauncherViewModel.swift`: 搜索与排序逻辑
 - `Sources/Views/`: 启动器、AI 聊天、身份验证器、偏好设置、翻译面板与 UI 组件
+- `Sources/Views/Preferences/`: 设置窗口及各功能的偏好设置页面
+- `Sources/Views/Capture/` 和 `Sources/Views/Recording/`: 截图与录屏界面
+- `Sources/Views/{AI,Authenticator,Health,Keyboard,Launcher,Speech,SystemMonitor,TextActions,Translation,Upload}/`：各功能专属界面
 - `Sources/Theme.swift`: 主题配色系统
 - `Sources/Services/`: 快捷键、状态栏、自动启动、剪贴板、文件上传、翻译、系统监控、语音识别、身份验证器、AI 聊天与持久化
+- `Sources/Services/System/`: Dock、状态栏、快捷键、登录项和输入可视化等共用 macOS 系统集成
+- `Sources/Services/Capture/` 和 `Sources/Services/Recording/`：截图与录屏生命周期服务及控制器
 - `Sources/Services/SystemMonitor/`: 指标采集器、采样 Actor、历史记录和监控模型
 - `Sources/Services/Uploaders/`: 上传协议、上传服务和 S3 实现
 - `Sources/Models/`: 应用、剪贴板、文件托管、身份验证器与设置模型
-- `Sources/Strings.swift` 和 `Sources/Strings+<Domain>.swift`: 运行时语言管理器和按功能分组的本地化访问器
+- `Sources/Localization/`: 运行时语言管理器和按功能分组的本地化访问器
 - `Sources/Resources/`: 本地化资源
 - `Modules/WhiteboardFeature/`: 独立的本地 SwiftPM 功能模块
 - `Tests/`: Swift Testing 自动化测试
