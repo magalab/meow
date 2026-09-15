@@ -115,6 +115,7 @@ struct PreferencesView: View {
     @ObservedObject var keystrokeVisualizerService: KeystrokeVisualizerService
     @ObservedObject var authenticatorService: AuthenticatorService
     @ObservedObject var healthReminderService: HealthReminderService
+    @ObservedObject var keepAwakeService: KeepAwakeService
     #if MEOW_VOICE
     @ObservedObject var speechModelStore: SpeechModelStore
     @ObservedObject var speechHistoryStore: SpeechHistoryStore
@@ -427,6 +428,15 @@ struct PreferencesView: View {
                 symbol: "power.circle",
                 theme: viewModel.settings.theme,
                 isOn: animatedBinding(for: \.autoLaunch)
+            )
+
+            KeepAwakePreferencesView(
+                theme: viewModel.settings.theme,
+                settings: Binding(
+                    get: { viewModel.settings.keepAwake },
+                    set: { viewModel.settings.keepAwake = $0 }
+                ),
+                service: keepAwakeService
             )
 
             PreferenceLanguageRow(

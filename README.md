@@ -19,6 +19,7 @@ A lightweight macOS launcher with gadgets, built with SwiftUI + AppKit.
   address display, and configurable sampling/history settings
 - S3-compatible file uploads with AWS S3, Cloudflare R2, MinIO, custom endpoints,
   upload shortcuts, clipboard commands, and menu bar drag-and-drop
+- Optional Keep Awake sessions for preventing idle system or display sleep
 - Built-in commands (Preferences / Ask AI / Quit)
 - OpenAI-compatible AI chat assistant with local chat history
 - Ask AI from clipboard entries
@@ -162,6 +163,23 @@ status item.
 
 The system monitor does not require a separate permission. Local and public address values are
 limited to IPv4; IPv6 addresses are intentionally not displayed.
+
+## Keep Awake
+
+Keep Awake is off by default. Enable it under Preferences -> General -> Basics, then configure
+the default mode and duration. The launcher shows a start/stop command only while the feature is
+enabled, and Preferences always provides a Stop Now button for an active session.
+
+- System Awake prevents system idle sleep while allowing the display to follow its normal idle policy
+- Display Awake prevents both display and system idle sleep, and may significantly increase battery use on a MacBook
+- Sessions last 5, 15, 30, 60, or 120 minutes, or until stopped manually
+- The feature does not promise to override Apple menu sleep, lid closure, low-battery, thermal,
+  or other forced sleep paths; a session ends when the system takes one of those paths
+- Expiration only releases Meow's power assertion. It does not force the Mac to sleep
+- Recording may already hold an independent display-sleep assertion, so the two features can overlap
+
+Keep Awake uses temporary macOS power assertions and does not change permanent Energy settings.
+It only covers idle sleep; it does not actively turn on a display that is already off.
 
 ## File Uploads
 
