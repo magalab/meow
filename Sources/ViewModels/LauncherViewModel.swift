@@ -23,6 +23,7 @@ final class LauncherViewModel: ObservableObject {
     @Published private(set) var results: [SearchItem] = []
     @Published private(set) var finderHotkeyRegistrationError: String?
     @Published private(set) var whiteboardHotkeyRegistrationError: String?
+    @Published private(set) var keepAwakeState: KeepAwakeState = .idle
     @Published var settings: AppSettings {
         didSet {
             settingsStore.save(settings)
@@ -40,6 +41,7 @@ final class LauncherViewModel: ObservableObject {
     var onScreenshotCommand: ((ScreenshotCommand) -> Void)?
     var onRecordingCommand: ((RecordingCommand) -> Void)?
     var onWhiteboardCommand: ((WhiteboardCommand) -> Void)?
+    var onKeepAwakeCommand: (() -> Void)?
     var onSpeakText: ((String) -> Void)?
     var onSpeakSelectedText: (() -> Void)?
     var onPinClipboardImage: ((ImageClipboardContent) -> Void)?
@@ -63,6 +65,7 @@ final class LauncherViewModel: ObservableObject {
     private var lastDiscoveryAt: Date?
     private var isResettingForHide = false
     private var clipboardSearchTask: Task<Void, Never>?
+    private var keepAwakeRemainingMinutes: Int?
 
     private var commands: [CommandEntry] {
         var entries = [
@@ -115,6 +118,46 @@ final class LauncherViewModel: ObservableObject {
                 keywords: ["quit", "exit", "退出"]
             ),
         ]
+        if settings.keepAwake.enabled {
+            let isRunning = keepAwakeState.isStartingOrActive
+            let subtitle: String
+            switch keepAwakeState {
+            case let .active(session):
+                let detail: String
+                if session.duration == .indefinite {
+                    detail = L10n.keepAwakeDurationIndefinite
+                } else {
+                    detail = String(
+                        format: L10n.keepAwakeRemainingMinutes,
+                        keepAwakeRemainingMinutes ?? 0
+                    )
+                }
+                subtitle = L10n.cmdKeepAwakeActiveSubtitle(
+                    mode: session.mode.displayName,
+                    detail: detail
+                )
+            case .starting:
+                subtitle = L10n.cmdKeepAwakeStartingSubtitle
+            case let .unavailable(message):
+                subtitle = L10n.cmdKeepAwakeUnavailableSubtitle(message: message)
+            case .idle:
+                subtitle = L10n.cmdKeepAwakeConfiguredSubtitle(
+                    mode: settings.keepAwake.mode.displayName,
+                    detail: settings.keepAwake.duration.displayName
+                )
+            }
+
+            entries.insert(
+                CommandEntry(
+                    id: "meow.keepAwake",
+                    title: isRunning ? L10n.cmdKeepAwakeStopTitle : L10n.cmdKeepAwakeStartTitle,
+                    subtitle: subtitle,
+                    keywords: ["keep awake", "prevent sleep", "system sleep", "display sleep", "wake",
+                               "保持唤醒", "防止睡眠", "系统睡眠", "显示器睡眠", "唤醒"]
+                ),
+                at: min(2, entries.count)
+            )
+        }
         if settings.whiteboard.enabled {
             entries.insert(
                 contentsOf: [
@@ -328,6 +371,15 @@ final class LauncherViewModel: ObservableObject {
 
     /// Re-evaluates results with the current language bundle.
     func refresh() {
+        refreshResults()
+    }
+
+    func updateKeepAwakeState(_ state: KeepAwakeState, remainingMinutes: Int? = nil) {
+        let stateChanged = keepAwakeState != state
+        let remainingTimeChanged = keepAwakeRemainingMinutes != remainingMinutes
+        guard stateChanged || remainingTimeChanged else { return }
+        keepAwakeState = state
+        keepAwakeRemainingMinutes = remainingMinutes
         refreshResults()
     }
 
@@ -588,6 +640,8 @@ final class LauncherViewModel: ObservableObject {
             onRecordingCommand?(.openHistory)
         case "meow.recording.mobile":
             onRecordingCommand?(.recordMobileDevice)
+        case "meow.keepAwake":
+            onKeepAwakeCommand?()
         case "meow.tts.clipboard":
             speakLatestClipboardText()
         case "meow.tts.selection":

@@ -95,6 +95,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return service
     }()
     private let healthReminderService = HealthReminderService()
+    private let keepAwakeService = KeepAwakeService()
     private let clipboardStore = ClipboardStore()
     private lazy var screenCaptureService = ScreenCaptureService()
     private let captureOverlayController = CaptureOverlayController()
@@ -243,6 +244,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var calendarPopoverController: NSHostingController<CalendarPopoverView>?
     private var calendarRefreshToken = UUID()
     private var workspaceWakeObserver: NSObjectProtocol?
+    private var workspaceSleepObserver: NSObjectProtocol?
     private var uploadShutdownForTermination = false
     private var uploadNotificationAuthorizationRequested = false
 
@@ -274,6 +276,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         viewModel.onWhiteboardCommand = { [weak self] command in
             self?.handleWhiteboardCommand(command)
+        }
+        viewModel.onKeepAwakeCommand = { [weak self] in
+            self?.handleKeepAwakeCommand()
+        }
+        keepAwakeService.onStateChanged = { [weak self] state in
+            guard let self else { return }
+            self.viewModel.updateKeepAwakeState(
+                state,
+                remainingMinutes: self.keepAwakeService.remainingMinutes
+            )
+        }
+        keepAwakeService.onRemainingTimeChanged = { [weak self] remainingMinutes in
+            guard let self else { return }
+            self.viewModel.updateKeepAwakeState(
+                self.keepAwakeService.state,
+                remainingMinutes: remainingMinutes
+            )
         }
         viewModel.onUploadClipboard = { [weak self] in
             self?.hideLauncher()
@@ -361,7 +380,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let initial = settingsStore.load()
         dockIconService.start(style: initial.dockIconStyle)
         apply(settings: initial)
-        observeSystemWake()
+        observeSystemPowerState()
         setupOutsideClickDismissMonitor()
     }
 
@@ -447,11 +466,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             systemMonitorService.stop()
         }
         healthReminderService.stop()
+        Task { @MainActor [weak self] in
+            await self?.keepAwakeService.stop()
+        }
         clipboardStore.stopMonitoring()
         dockIconService.stop()
         if let workspaceWakeObserver {
             NSWorkspace.shared.notificationCenter.removeObserver(workspaceWakeObserver)
             self.workspaceWakeObserver = nil
+        }
+        if let workspaceSleepObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(workspaceSleepObserver)
+            self.workspaceSleepObserver = nil
         }
         if let globalMouseMonitor {
             NSEvent.removeMonitor(globalMouseMonitor)
@@ -475,6 +501,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard !uploadShutdownForTermination else { return .terminateNow }
         uploadShutdownForTermination = true
         Task { @MainActor [weak self, weak sender] in
+            await self?.keepAwakeService.stop()
             await self?.fileUploadService.shutdown()
             sender?.reply(toApplicationShouldTerminate: true)
         }
@@ -490,14 +517,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #endif
     }
 
-    private func observeSystemWake() {
+    private func observeSystemPowerState() {
         workspaceWakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didWakeNotification,
             object: nil,
             queue: .main
         ) { [weak self] _ in
             Task { @MainActor in
+                self?.keepAwakeService.systemDidWake()
                 self?.refreshDateUIAfterWake()
+            }
+        }
+        workspaceSleepObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.willSleepNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.keepAwakeService.systemWillSleep()
             }
         }
     }
@@ -671,6 +708,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         keystrokeVisualizerService.apply(settings: settings)
         healthReminderService.apply(settings: settings)
+        keepAwakeService.apply(settings: settings.keepAwake)
         #if MEOW_VOICE
         if settings.speech.enabled || speechRecognitionServiceLoaded {
             speechModelStore.apply(selectedModel: settings.speech.model)
@@ -921,6 +959,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .skipBreak:
             guard viewModel.settings.healthReminder.enabled else { return }
             healthReminderService.skipBreak()
+        }
+    }
+
+    private func handleKeepAwakeCommand() {
+        hideLauncher()
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                try await keepAwakeService.toggle()
+            } catch is CancellationError {
+                // An in-flight start can be invalidated by a user stop or replacement.
+            } catch {
+                presentKeepAwakeError(error)
+            }
         }
     }
 
@@ -2248,6 +2300,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func showLauncher() {
         createLauncherWindow()
+        viewModel.updateKeepAwakeState(
+            keepAwakeService.state,
+            remainingMinutes: keepAwakeService.remainingMinutes
+        )
         // Keep app list fresh so newly installed apps appear without restarting Meow.
         if !viewModel.refreshInstalledApps() {
             viewModel.refresh()
@@ -3062,6 +3118,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         alert.runModal()
     }
 
+    private func presentKeepAwakeError(_ error: Error) {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = L10n.keepAwakeErrorTitle
+        alert.informativeText = String(
+            format: L10n.keepAwakeUnavailableMessage,
+            error.localizedDescription
+        )
+        alert.addButton(withTitle: L10n.actionOK)
+        alert.runModal()
+    }
+
     private func captureImageContent(for artifact: CaptureArtifact) -> ImageClipboardContent {
         ImageClipboardContent(
             thumbnailPath: artifact.thumbnailURL.path,
@@ -3197,6 +3265,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 keystrokeVisualizerService: keystrokeVisualizerService,
                 authenticatorService: authenticatorService,
                 healthReminderService: healthReminderService,
+                keepAwakeService: keepAwakeService,
                 speechModelStore: speechModelStore,
                 speechHistoryStore: speechHistoryStore,
                 speechRecognitionService: speechRecognitionService,
@@ -3215,6 +3284,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 keystrokeVisualizerService: keystrokeVisualizerService,
                 authenticatorService: authenticatorService,
                 healthReminderService: healthReminderService,
+                keepAwakeService: keepAwakeService,
                 fileUploadService: fileUploadService,
                 makeCaptureHistoryView: makeCaptureHistoryView,
                 recordingHistoryContext: recordingHistoryContext

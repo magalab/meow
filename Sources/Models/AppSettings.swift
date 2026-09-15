@@ -286,6 +286,7 @@ struct AppSettings: Codable {
     var speech: SpeechSettings
     var tts: TtsSettings
     var healthReminder: HealthReminderSettings
+    var keepAwake: KeepAwakeSettings
     var authenticatorEnabled: Bool
     var authenticatorICloudSyncEnabled: Bool
     var systemMonitor: SystemMonitorSettings
@@ -331,6 +332,7 @@ struct AppSettings: Codable {
         speech: SpeechSettings = .default,
         tts: TtsSettings = .default,
         healthReminder: HealthReminderSettings = .default,
+        keepAwake: KeepAwakeSettings = .default,
         authenticatorEnabled: Bool = false,
         authenticatorICloudSyncEnabled: Bool = false,
         systemMonitor: SystemMonitorSettings = .default,
@@ -375,6 +377,7 @@ struct AppSettings: Codable {
         self.speech = speech
         self.tts = tts
         self.healthReminder = healthReminder
+        self.keepAwake = keepAwake
         self.authenticatorEnabled = authenticatorEnabled
         self.authenticatorICloudSyncEnabled = authenticatorICloudSyncEnabled
         self.systemMonitor = systemMonitor.normalized
@@ -443,6 +446,7 @@ extension AppSettings {
         case speech
         case tts
         case healthReminder
+        case keepAwake
         case authenticatorEnabled
         case authenticatorICloudSyncEnabled
         case systemMonitor
@@ -520,6 +524,10 @@ extension AppSettings {
             HealthReminderSettings.self,
             forKey: .healthReminder
         ) ?? Self.default.healthReminder
+        keepAwake = try container.decodeIfPresent(
+            KeepAwakeSettings.self,
+            forKey: .keepAwake
+        ) ?? Self.default.keepAwake
         authenticatorEnabled = try container.decodeIfPresent(
             Bool.self,
             forKey: .authenticatorEnabled

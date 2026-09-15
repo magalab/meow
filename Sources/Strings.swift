@@ -356,6 +356,63 @@ enum L10n {
         loc("prefs.general.page.shortcuts")
     }
 
+    static var keepAwakeEnabledTitle: String { loc("keep.awake.enabled.title") }
+    static var keepAwakeEnabledSubtitle: String { loc("keep.awake.enabled.subtitle") }
+    static var keepAwakeModeTitle: String { loc("keep.awake.mode.title") }
+    static var keepAwakeModeSystem: String { loc("keep.awake.mode.system") }
+    static var keepAwakeModeDisplay: String { loc("keep.awake.mode.display") }
+    static var keepAwakeDurationTitle: String { loc("keep.awake.duration.title") }
+    static var keepAwakeDurationFiveMinutes: String { loc("keep.awake.duration.five.minutes") }
+    static var keepAwakeDurationFifteenMinutes: String { loc("keep.awake.duration.fifteen.minutes") }
+    static var keepAwakeDurationThirtyMinutes: String { loc("keep.awake.duration.thirty.minutes") }
+    static var keepAwakeDurationSixtyMinutes: String { loc("keep.awake.duration.sixty.minutes") }
+    static var keepAwakeDurationOneHundredTwentyMinutes: String {
+        loc("keep.awake.duration.one.hundred.twenty.minutes")
+    }
+    static var keepAwakeDurationIndefinite: String { loc("keep.awake.duration.indefinite") }
+    static var keepAwakeStatusTitle: String { loc("keep.awake.status.title") }
+    static var keepAwakeStatusIdle: String { loc("keep.awake.status.idle") }
+    static var keepAwakeStatusStarting: String { loc("keep.awake.status.starting") }
+    static var keepAwakeStatusUnavailable: String { loc("keep.awake.status.unavailable") }
+    static var keepAwakeStop: String { loc("keep.awake.stop") }
+    static var keepAwakeBatteryWarningTitle: String { loc("keep.awake.battery.warning.title") }
+    static var keepAwakeBatteryWarning: String { loc("keep.awake.battery.warning") }
+    static var keepAwakeRecordingOverlapTitle: String { loc("keep.awake.recording.overlap.title") }
+    static var keepAwakeRecordingOverlap: String { loc("keep.awake.recording.overlap") }
+    static var keepAwakeErrorTitle: String { loc("keep.awake.error.title") }
+    static var keepAwakeUnavailableMessage: String { loc("keep.awake.unavailable.message") }
+    static var keepAwakeRemainingMinutes: String { loc("keep.awake.remaining.minutes") }
+    static var keepAwakeErrorDisabled: String { loc("keep.awake.error.disabled") }
+    static var keepAwakeErrorCleanupPending: String { loc("keep.awake.error.cleanup.pending") }
+
+    static func keepAwakeErrorInvalidAssertionID(mode: String) -> String {
+        String(format: loc("keep.awake.error.invalid.assertion.id"), mode)
+    }
+
+    static func keepAwakeErrorAssertionCreateFailed(mode: String, status: String) -> String {
+        String(format: loc("keep.awake.error.assertion.create.failed"), mode, status)
+    }
+
+    static func keepAwakeErrorAssertionReleaseFailed(
+        assertionID: String,
+        mode: String?,
+        status: String
+    ) -> String {
+        let modeDescription = mode.map {
+            String(format: loc("keep.awake.error.assertion.mode"), $0)
+        } ?? ""
+        return String(
+            format: loc("keep.awake.error.assertion.release.failed"),
+            assertionID,
+            modeDescription,
+            status
+        )
+    }
+
+    static func keepAwakeErrorAssertionRollbackFailed(assertionID: String, status: String) -> String {
+        String(format: loc("keep.awake.error.assertion.rollback.failed"), assertionID, status)
+    }
+
     static var prefsSectionKeyboard: String {
         loc("prefs.section.keyboard")
     }
@@ -1249,6 +1306,21 @@ enum L10n {
 
     static var cmdHealthSkipSubtitle: String {
         loc("cmd.health.skip.subtitle")
+    }
+
+    static var cmdKeepAwakeStartTitle: String { loc("cmd.keep.awake.start.title") }
+    static func cmdKeepAwakeConfiguredSubtitle(mode: String, detail: String) -> String {
+        String(format: loc("cmd.keep.awake.configured.subtitle"), mode, detail)
+    }
+    static var cmdKeepAwakeStopTitle: String { loc("cmd.keep.awake.stop.title") }
+    static var cmdKeepAwakeStartingSubtitle: String { loc("cmd.keep.awake.starting.subtitle") }
+
+    static func cmdKeepAwakeActiveSubtitle(mode: String, detail: String) -> String {
+        String(format: loc("cmd.keep.awake.active.subtitle"), mode, detail)
+    }
+
+    static func cmdKeepAwakeUnavailableSubtitle(message: String) -> String {
+        String(format: loc("cmd.keep.awake.unavailable.subtitle"), message)
     }
 
     static var cmdQuitTitle: String {
