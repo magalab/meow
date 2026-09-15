@@ -10,22 +10,15 @@ final class StatusItemService {
     private var preferencesItem: NSMenuItem?
     private var whiteboardItem: NSMenuItem?
     private var autoLaunchItem: NSMenuItem?
-    private var dockIconItem: NSMenuItem?
-    private var statusBarIconItem: NSMenuItem?
     private var quitItem: NSMenuItem?
     private var recordingStatusItem: NSMenuItem?
     private var recordingPauseItem: NSMenuItem?
     private var recordingStopItem: NSMenuItem?
-    private var recordingHistoryItem: NSMenuItem?
     private weak var dropView: StatusItemDropView?
     private var dateRefreshTimer: Timer?
     private var recordingActive = false
 
     private var currentStyle: DateIconStyle = .monthDay
-    private var iconStyleMenuItems: [NSMenuItem] = []
-    private var iconStyleSubmenuItem: NSMenuItem?
-
-    var onDateIconStyleChanged: ((DateIconStyle) -> Void)?
 
     func setup(
         initialSettings: AppSettings,
@@ -33,12 +26,9 @@ final class StatusItemService {
         openPreferences: @escaping () -> Void,
         showCalendar: @escaping () -> Void,
         toggleAutoLaunch: @escaping () -> Void,
-        toggleDockIcon: @escaping () -> Void,
-        toggleStatusBarIcon: @escaping () -> Void,
         toggleWhiteboard: @escaping () -> Void,
         pauseRecording: @escaping () -> Void,
         stopRecording: @escaping () -> Void,
-        openRecordingHistory: @escaping () -> Void,
         uploadDroppedFile: @escaping (URL) -> Void,
         quit: @escaping () -> Void
     ) {
@@ -61,6 +51,8 @@ final class StatusItemService {
             self.dropView = dropView
         }
 
+        // Keep the status menu focused on entry points and active controls.
+        // Settings-only options belong in Preferences.
         let menu = NSMenu()
 
         let openItem = NSMenuItem(title: L10n.menuOpen, action: nil, keyEquivalent: "")
@@ -125,19 +117,6 @@ final class StatusItemService {
         menu.addItem(recordingStopItem)
         self.recordingStopItem = recordingStopItem
 
-        let recordingHistoryItem = NSMenuItem(
-            title: L10n.recordingHistoryTitle,
-            action: nil,
-            keyEquivalent: ""
-        )
-        let historyTarget = BlockActionTarget { openRecordingHistory() }
-        actionTargets.append(historyTarget)
-        recordingHistoryItem.target = historyTarget
-        recordingHistoryItem.action = #selector(BlockActionTarget.invoke)
-        recordingHistoryItem.isHidden = !initialSettings.recording.enabled
-        menu.addItem(recordingHistoryItem)
-        self.recordingHistoryItem = recordingHistoryItem
-
         let preferencesItem = NSMenuItem(title: L10n.menuPreferences, action: nil, keyEquivalent: ",")
         preferencesItem.keyEquivalentModifierMask = [.command]
         let preferencesTarget = BlockActionTarget {
@@ -149,34 +128,6 @@ final class StatusItemService {
         menu.addItem(preferencesItem)
         self.preferencesItem = preferencesItem
 
-        menu.addItem(.separator())
-
-        let iconSubmenu = NSMenu()
-        let iconSubmenuItem = NSMenuItem(title: L10n.menuIconStyle, action: nil, keyEquivalent: "")
-        iconSubmenuItem.submenu = iconSubmenu
-        menu.addItem(iconSubmenuItem)
-        self.iconStyleSubmenuItem = iconSubmenuItem
-
-        for style in DateIconStyle.allCases {
-            let item = NSMenuItem(title: style.displayName, action: nil, keyEquivalent: "")
-            item.representedObject = style.rawValue
-            item.state = style == currentStyle ? .on : .off
-            let target = BlockActionTarget { [weak self] in
-                guard let self else { return }
-                self.currentStyle = style
-                self.statusItem?.button?.image = self.dateImage()
-                self.updateIconStyleSubmenuState()
-                self.onDateIconStyleChanged?(style)
-            }
-            actionTargets.append(target)
-            item.target = target
-            item.action = #selector(BlockActionTarget.invoke)
-            iconSubmenu.addItem(item)
-            iconStyleMenuItems.append(item)
-        }
-
-        menu.addItem(.separator())
-
         let autoLaunchItem = NSMenuItem(title: L10n.menuAutoLaunch, action: nil, keyEquivalent: "")
         let autoLaunchTarget = BlockActionTarget {
             toggleAutoLaunch()
@@ -186,26 +137,6 @@ final class StatusItemService {
         autoLaunchItem.action = #selector(BlockActionTarget.invoke)
         menu.addItem(autoLaunchItem)
         self.autoLaunchItem = autoLaunchItem
-
-        let dockIconItem = NSMenuItem(title: L10n.menuDock, action: nil, keyEquivalent: "")
-        let dockIconTarget = BlockActionTarget {
-            toggleDockIcon()
-        }
-        actionTargets.append(dockIconTarget)
-        dockIconItem.target = dockIconTarget
-        dockIconItem.action = #selector(BlockActionTarget.invoke)
-        menu.addItem(dockIconItem)
-        self.dockIconItem = dockIconItem
-
-        let statusBarIconItem = NSMenuItem(title: L10n.menuMenuBar, action: nil, keyEquivalent: "")
-        let statusBarIconTarget = BlockActionTarget {
-            toggleStatusBarIcon()
-        }
-        actionTargets.append(statusBarIconTarget)
-        statusBarIconItem.target = statusBarIconTarget
-        statusBarIconItem.action = #selector(BlockActionTarget.invoke)
-        menu.addItem(statusBarIconItem)
-        self.statusBarIconItem = statusBarIconItem
 
         menu.addItem(.separator())
 
@@ -251,9 +182,6 @@ final class StatusItemService {
 
     func updateToggleStates(_ settings: AppSettings) {
         autoLaunchItem?.state = settings.autoLaunch ? .on : .off
-        dockIconItem?.state = settings.showDockIcon ? .on : .off
-        statusBarIconItem?.state = settings.showStatusItem ? .on : .off
-        recordingHistoryItem?.isHidden = !settings.recording.enabled
         whiteboardItem?.isHidden = !settings.whiteboard.enabled
         dropView?.isDropEnabled = settings.fileHosting.s3.isEnabled
     }
@@ -261,27 +189,14 @@ final class StatusItemService {
     func updateL10n() {
         openItem?.title = L10n.menuOpen
         preferencesItem?.title = L10n.menuPreferences
-        whiteboardItem?.title = L10n.whiteboardMenuToggle
-        iconStyleSubmenuItem?.title = L10n.menuIconStyle
         autoLaunchItem?.title = L10n.menuAutoLaunch
-        dockIconItem?.title = L10n.menuDock
-        statusBarIconItem?.title = L10n.menuMenuBar
+        whiteboardItem?.title = L10n.whiteboardMenuToggle
         quitItem?.title = L10n.quitMeow
-        recordingHistoryItem?.title = L10n.recordingHistoryTitle
-        for item in iconStyleMenuItems {
-            if let rawValue = item.representedObject as? String,
-               let style = DateIconStyle(rawValue: rawValue)
-            {
-                item.title = style.displayName
-            }
-        }
-        updateIconStyleSubmenuState()
     }
 
     func updateDateIconStyle(_ style: DateIconStyle) {
         currentStyle = style
         statusItem?.button?.image = dateImage()
-        updateIconStyleSubmenuState()
     }
 
     /// Rebuilds the date icon and aligns its next scheduled update after a system wake.
@@ -319,13 +234,6 @@ final class StatusItemService {
             statusItem?.button?.contentTintColor = nil
             statusItem?.button?.title = ""
             statusItem?.button?.image = dateImage()
-        }
-    }
-
-    private func updateIconStyleSubmenuState() {
-        for item in iconStyleMenuItems {
-            let rawValue = item.representedObject as? String
-            item.state = rawValue == currentStyle.rawValue ? .on : .off
         }
     }
 

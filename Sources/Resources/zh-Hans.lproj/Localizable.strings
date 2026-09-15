@@ -59,11 +59,15 @@
 
 "prefs.autolaunch.title" = "登录时启动";
 "prefs.autolaunch.subtitle" = "登录时自动启动 Meow";
+"prefs.general.group.app" = "应用设置";
+"prefs.general.group.keep.awake" = "电源与睡眠";
 "keep.awake.enabled.title" = "保持唤醒";
 "keep.awake.enabled.subtitle" = "允许 Meow 在临时工作期间防止空闲睡眠";
 "keep.awake.mode.title" = "模式";
 "keep.awake.mode.system" = "系统唤醒";
 "keep.awake.mode.display" = "显示器唤醒";
+"keep.awake.mode.picker.system" = "系统";
+"keep.awake.mode.picker.display" = "显示器";
 "keep.awake.duration.title" = "默认时长";
 "keep.awake.duration.five.minutes" = "5 分钟";
 "keep.awake.duration.fifteen.minutes" = "15 分钟";
@@ -274,7 +278,7 @@
 "menu.open" = "打开 Meow";
 "menu.preferences" = "偏好设置…";
 "menu.calendar" = "日历";
-"menu.iconstyle" = "图标样式";
+"menu.autolaunch" = "登录时启动";
 "calendar.events.title" = "日历事件";
 "calendar.events.empty" = "无日历事件";
 "calendar.events.loading" = "正在加载事件…";
@@ -282,9 +286,6 @@
 "calendar.events.restricted" = "日历访问受限";
 "calendar.events.error" = "无法加载日历事件";
 "calendar.events.allday" = "全天";
-"menu.autolaunch" = "登录时启动";
-"menu.dock" = "显示 Dock 图标";
-"menu.menubar" = "显示菜单栏图标";
 "menu.health.start" = "开始健康计时";
 "menu.health.pause" = "暂停健康计时";
 "menu.health.resume" = "继续健康计时";

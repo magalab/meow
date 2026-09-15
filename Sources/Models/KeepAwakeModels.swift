@@ -16,6 +16,15 @@ enum KeepAwakeMode: String, Codable, CaseIterable, Identifiable, Sendable {
             return L10n.keepAwakeModeDisplay
         }
     }
+
+    var pickerDisplayName: String {
+        switch self {
+        case .system:
+            return L10n.keepAwakeModePickerSystem
+        case .display:
+            return L10n.keepAwakeModePickerDisplay
+        }
+    }
 }
 
 enum KeepAwakeDuration: String, Codable, CaseIterable, Identifiable, Sendable {

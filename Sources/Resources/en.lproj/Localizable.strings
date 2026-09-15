@@ -59,11 +59,15 @@
 
 "prefs.autolaunch.title" = "Launch at Login";
 "prefs.autolaunch.subtitle" = "Start Meow automatically when you sign in";
+"prefs.general.group.app" = "App Settings";
+"prefs.general.group.keep.awake" = "Power & Sleep";
 "keep.awake.enabled.title" = "Keep Awake";
 "keep.awake.enabled.subtitle" = "Allow Meow to prevent idle sleep for temporary work sessions";
 "keep.awake.mode.title" = "Mode";
 "keep.awake.mode.system" = "System Awake";
 "keep.awake.mode.display" = "Display Awake";
+"keep.awake.mode.picker.system" = "System";
+"keep.awake.mode.picker.display" = "Display";
 "keep.awake.duration.title" = "Default Duration";
 "keep.awake.duration.five.minutes" = "5 Minutes";
 "keep.awake.duration.fifteen.minutes" = "15 Minutes";
@@ -274,7 +278,7 @@
 "menu.open" = "Open Meow";
 "menu.preferences" = "Preferences...";
 "menu.calendar" = "Calendar";
-"menu.iconstyle" = "Icon Style";
+"menu.autolaunch" = "Launch at Login";
 "calendar.events.title" = "Calendar Events";
 "calendar.events.empty" = "No calendar events";
 "calendar.events.loading" = "Loading events...";
@@ -282,9 +286,6 @@
 "calendar.events.restricted" = "Calendar access is restricted";
 "calendar.events.error" = "Unable to load calendar events";
 "calendar.events.allday" = "All day";
-"menu.autolaunch" = "Launch at Login";
-"menu.dock" = "Show Dock Icon";
-"menu.menubar" = "Show Menu Bar Icon";
 "menu.health.start" = "Start Health Timer";
 "menu.health.pause" = "Pause Health Timer";
 "menu.health.resume" = "Resume Health Timer";
