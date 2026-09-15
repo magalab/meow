@@ -2,6 +2,7 @@ import SwiftUI
 
 struct KeepAwakePreferencesView: View {
     let theme: AppTheme
+    let recordingEnabled: Bool
     @Binding var settings: KeepAwakeSettings
     @ObservedObject var service: KeepAwakeService
     @Environment(\.colorScheme) private var colorScheme
@@ -27,11 +28,12 @@ struct KeepAwakePreferencesView: View {
                 ) {
                     Picker("", selection: $settings.mode) {
                         ForEach(KeepAwakeMode.allCases) { mode in
-                            Text(mode.displayName).tag(mode)
+                            Text(mode.pickerDisplayName).tag(mode)
                         }
                     }
                     .labelsHidden()
                     .pickerStyle(.menu)
+                    .frame(width: 120, alignment: .trailing)
                     .accessibilityLabel(L10n.keepAwakeModeTitle)
                 }
 
@@ -46,24 +48,12 @@ struct KeepAwakePreferencesView: View {
                     }
                     .labelsHidden()
                     .pickerStyle(.menu)
+                    .frame(width: 120, alignment: .trailing)
                     .accessibilityLabel(L10n.keepAwakeDurationTitle)
                 }
 
                 activeSessionRow
-
-                PreferenceInfoRow(
-                    title: L10n.keepAwakeBatteryWarningTitle,
-                    subtitle: L10n.keepAwakeBatteryWarning,
-                    symbol: "battery.75percent",
-                    theme: theme
-                )
-
-                PreferenceInfoRow(
-                    title: L10n.keepAwakeRecordingOverlapTitle,
-                    subtitle: L10n.keepAwakeRecordingOverlap,
-                    symbol: "record.circle",
-                    theme: theme
-                )
+                usageTipsSection
             }
 
             if let errorMessage = service.state.errorMessage {
@@ -75,6 +65,67 @@ struct KeepAwakePreferencesView: View {
                 )
             }
         }
+    }
+
+    @ViewBuilder
+    private var usageTipsSection: some View {
+        let showBatteryWarning = settings.mode == .display
+
+        if showBatteryWarning || recordingEnabled {
+            HStack(alignment: .top, spacing: 10) {
+                if showBatteryWarning {
+                    compactInfoCard(
+                        title: L10n.keepAwakeBatteryWarningTitle,
+                        subtitle: L10n.keepAwakeBatteryWarning,
+                        symbol: "battery.75percent"
+                    )
+                }
+
+                if recordingEnabled {
+                    compactInfoCard(
+                        title: L10n.keepAwakeRecordingOverlapTitle,
+                        subtitle: L10n.keepAwakeRecordingOverlap,
+                        symbol: "record.circle"
+                    )
+                }
+            }
+        }
+    }
+
+    private func compactInfoCard(
+        title: String,
+        subtitle: String,
+        symbol: String
+    ) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: symbol)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(palette.preferencesAccent)
+                .frame(width: 26, height: 26)
+                .background(
+                    palette.iconChipBackground,
+                    in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+                )
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.primary)
+                Text(subtitle)
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(palette.surfaceBackground, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(palette.surfaceStroke, lineWidth: 1)
+        )
+        .accessibilityElement(children: .combine)
     }
 
     @ViewBuilder

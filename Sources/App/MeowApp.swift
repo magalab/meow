@@ -538,14 +538,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 guard let self else { return }
                 self.viewModel.settings.autoLaunch.toggle()
             },
-            toggleDockIcon: { [weak self] in
-                guard let self else { return }
-                self.viewModel.settings.showDockIcon.toggle()
-            },
-            toggleStatusBarIcon: { [weak self] in
-                guard let self else { return }
-                self.viewModel.settings.showStatusItem.toggle()
-            },
             toggleWhiteboard: { [weak self] in
                 self?.whiteboardFeatureController.toggleEditing()
             },
@@ -555,9 +547,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             stopRecording: { [weak self] in
                 self?.recordingCoordinator.stop()
             },
-            openRecordingHistory: { [weak self] in
-                self?.showRecordingHistory()
-            },
             uploadDroppedFile: { [weak self] url in
                 guard self?.viewModel.settings.fileHosting.s3.isEnabled == true else { return }
                 self?.upload(fileURL: url)
@@ -566,10 +555,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 NSApp.terminate(nil)
             }
         )
-        statusItemService.onDateIconStyleChanged = { [weak self] style in
-            guard let self else { return }
-            self.viewModel.settings.dateIconStyle = style
-        }
     }
 
     private func apply(settings: AppSettings) {

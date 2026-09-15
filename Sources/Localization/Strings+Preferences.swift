@@ -31,11 +31,21 @@ extension L10n {
         loc("prefs.general.page.shortcuts")
     }
 
+    static var prefsGeneralGroupApp: String {
+        loc("prefs.general.group.app")
+    }
+
+    static var prefsGeneralGroupKeepAwake: String {
+        loc("prefs.general.group.keep.awake")
+    }
+
     static var keepAwakeEnabledTitle: String { loc("keep.awake.enabled.title") }
     static var keepAwakeEnabledSubtitle: String { loc("keep.awake.enabled.subtitle") }
     static var keepAwakeModeTitle: String { loc("keep.awake.mode.title") }
     static var keepAwakeModeSystem: String { loc("keep.awake.mode.system") }
     static var keepAwakeModeDisplay: String { loc("keep.awake.mode.display") }
+    static var keepAwakeModePickerSystem: String { loc("keep.awake.mode.picker.system") }
+    static var keepAwakeModePickerDisplay: String { loc("keep.awake.mode.picker.display") }
     static var keepAwakeDurationTitle: String { loc("keep.awake.duration.title") }
     static var keepAwakeDurationFiveMinutes: String { loc("keep.awake.duration.five.minutes") }
     static var keepAwakeDurationFifteenMinutes: String { loc("keep.awake.duration.fifteen.minutes") }

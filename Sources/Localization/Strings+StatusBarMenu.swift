@@ -15,8 +15,8 @@ extension L10n {
         loc("menu.calendar")
     }
 
-    static var menuIconStyle: String {
-        loc("menu.iconstyle")
+    static var menuAutoLaunch: String {
+        loc("menu.autolaunch")
     }
 
     static var calendarEventsTitle: String {
@@ -45,18 +45,6 @@ extension L10n {
 
     static var calendarAllDay: String {
         loc("calendar.events.allday")
-    }
-
-    static var menuAutoLaunch: String {
-        loc("menu.autolaunch")
-    }
-
-    static var menuDock: String {
-        loc("menu.dock")
-    }
-
-    static var menuMenuBar: String {
-        loc("menu.menubar")
     }
 
     static var menuHealthStart: String {

@@ -421,22 +421,15 @@ struct PreferencesView: View {
     }
 
     private var generalBasicsPage: some View {
-        VStack(spacing: 10) {
+        VStack(alignment: .leading, spacing: 10) {
+            preferenceGroupTitle(L10n.prefsGeneralGroupApp)
+
             PreferenceToggleRow(
                 title: L10n.prefsAutoLaunchTitle,
                 subtitle: L10n.prefsAutoLaunchSubtitle,
                 symbol: "power.circle",
                 theme: viewModel.settings.theme,
                 isOn: animatedBinding(for: \.autoLaunch)
-            )
-
-            KeepAwakePreferencesView(
-                theme: viewModel.settings.theme,
-                settings: Binding(
-                    get: { viewModel.settings.keepAwake },
-                    set: { viewModel.settings.keepAwake = $0 }
-                ),
-                service: keepAwakeService
             )
 
             PreferenceLanguageRow(
@@ -446,8 +439,29 @@ struct PreferencesView: View {
                     set: { viewModel.settings.language = $0 }
                 )
             )
+
+            preferenceGroupTitle(L10n.prefsGeneralGroupKeepAwake)
+                .padding(.top, 6)
+
+            KeepAwakePreferencesView(
+                theme: viewModel.settings.theme,
+                recordingEnabled: viewModel.settings.recording.enabled,
+                settings: Binding(
+                    get: { viewModel.settings.keepAwake },
+                    set: { viewModel.settings.keepAwake = $0 }
+                ),
+                service: keepAwakeService
+            )
         }
         .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+    }
+
+    private func preferenceGroupTitle(_ title: String) -> some View {
+        Text(title)
+            .font(.system(size: 12, weight: .semibold, design: .rounded))
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 4)
     }
 
     private var generalDockPage: some View {
