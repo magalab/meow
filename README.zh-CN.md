@@ -299,8 +299,11 @@ API Key 仍保存在 Meow 的本地设置中。聊天历史可在 AI 设置页�
 - `Sources/Theme.swift`: 主题配色系统
 - `Sources/Services/`: 快捷键、状态栏、自动启动、剪贴板、文件上传、翻译、系统监控、语音识别、身份验证器、AI 聊天与持久化
 - `Sources/Services/SystemMonitor/`: 指标采集器、采样 Actor、历史记录和监控模型
+- `Sources/Services/Uploaders/`: 上传协议、上传服务和 S3 实现
 - `Sources/Models/`: 应用、剪贴板、文件托管、身份验证器与设置模型
+- `Sources/Strings.swift` 和 `Sources/Strings+<Domain>.swift`: 运行时语言管理器和按功能分组的本地化访问器
 - `Sources/Resources/`: 本地化资源
+- `Modules/WhiteboardFeature/`: 独立的本地 SwiftPM 功能模块
 - `Tests/`: Swift Testing 自动化测试
 
 ## 说明

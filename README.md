@@ -323,8 +323,11 @@ Meow shows the destination endpoint and compression settings before each upload.
 - `Sources/Theme.swift`: theme palette system
 - `Sources/Services/`: hotkey, status item, auto-launch, clipboard, file upload, translation, system monitor, speech recognition, authenticator, AI chat, and persistence
 - `Sources/Services/SystemMonitor/`: metric collectors, sampling actor, history, and monitor models
+- `Sources/Services/Uploaders/`: upload protocol, service, and S3 implementation
 - `Sources/Models/`: app, clipboard, file hosting, authenticator, and settings models
+- `Sources/Strings.swift` and `Sources/Strings+<Domain>.swift`: runtime language manager and feature-grouped localization accessors
 - `Sources/Resources/`: localization resources
+- `Modules/WhiteboardFeature/`: standalone local SwiftPM feature module
 - `Tests/`: Swift Testing coverage
 
 ## Notes

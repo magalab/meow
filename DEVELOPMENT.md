@@ -15,7 +15,11 @@
 │   │   ├── KeystrokeModels.swift    # Keystroke visualizer settings and display models
 │   │   └── SpeechModels.swift       # Speech settings, runtime state, history entries
 │   ├── Services/
-│   │   ├── SystemServices.swift     # DockService, StatusItemService, AppDiscoveryService, AutoLaunchService, HotkeyService
+│   │   ├── StatusItemService.swift / StatusItemDropView.swift # Menu bar item and file drop handling
+│   │   ├── DockService.swift / DockIconService.swift # Activation policy and runtime Dock icons
+│   │   ├── HotkeyService.swift     # Carbon global hotkey registration
+│   │   ├── AppDiscoveryService.swift # Installed application discovery
+│   │   ├── AutoLaunchService.swift # Login item management
 │   │   ├── SystemMonitor/           # Optional system metrics collection and history
 │   │   │   ├── Collectors/           # CPU, memory, GPU, network, disk, power, thermal collectors
 │   │   │   ├── SystemMetricsActor.swift # Sampling lifecycle and IPv4 address refresh
@@ -23,6 +27,7 @@
 │   │   │   ├── SystemMonitorHistory.swift # Bounded recent samples
 │   │   │   └── SystemMonitorModels.swift # Modules, snapshots, configuration models
 │   │   ├── SystemMonitorService.swift # Optional menu bar item and popover lifecycle
+│   │   ├── Uploaders/               # Backend-neutral upload protocol and implementations
 │   │   ├── SettingsStore.swift      # UserDefaults-based persistence
 │   │   ├── ClipboardService.swift   # ClipboardStore, ClipboardImageCache
 │   │   ├── TranslationService.swift # AX text capture + fallback copy
@@ -59,15 +64,19 @@
 │   │       ├── ActionMenu.swift     # Contextual action menu overlay
 │   │       ├── CalendarView.swift   # Menu bar calendar popover
 │   │       ├── ItemComponents.swift # App icon / clipboard thumbnail
-│   │       └── PreferenceRows.swift # Toggle/hotkey/theme/language/AI settings rows
-│   ├── Strings.swift                # L10n enum + LanguageManager
+│   │       ├── PreferenceBasicRows.swift # Toggle, info, hotkey, theme, date, language rows
+│   │       ├── PreferenceAISettingsSection.swift / PreferenceHealthReminderSection.swift
+│   │       ├── PreferenceKeystrokeVisualizerSection.swift / PreferenceDockIconRows.swift
+│   │       └── PreferenceRowStyles.swift # Shared preference row modifiers
+│   ├── Strings.swift                # LanguageManager and shared L10n lookup
+│   ├── Strings+<Domain>.swift       # Feature-grouped L10n accessors
 │   ├── Theme.swift                  # ThemePalette with 4 themes
 │   └── Resources/
 │       ├── en.lproj/                # English strings
 │       ├── zh-Hans.lproj/           # Chinese strings
 │       └── solar_terms.json         # Solar term dates
-├── Tests/
-│   └── SystemMonitorTests.swift      # System monitor configuration, history, and localization tests
+├── Modules/WhiteboardFeature/        # Standalone local SwiftPM feature module
+├── Tests/                            # Tests grouped by feature
 ├── Package.swift                    # Swift Package manifest (Swift 6, macOS 15+)
 ├── scripts/
 │   ├── build-dmg.sh                 # Create distributable DMG
@@ -114,16 +123,17 @@
   - `SystemMonitorPopoverView`: Compact metric cards, IPv4 address cards, copy feedback, and recent summaries
   - `HealthBreakOverlayView`: Floating break reminder with countdown, progress, and break actions
   - `KeystrokeOverlayView`: Draggable global keystroke overlay rendered in a non-activating panel
-  - `Components/`: Reusable pieces — `ActionMenu`, `CalendarView`, `ItemComponents`, `PreferenceRows`
+  - `Components/`: Reusable pieces — `ActionMenu`, `CalendarView`, `ItemComponents`,
+    and focused preference row/section files
   - All views reactive to language changes via `.id(lang.refreshToken)`
 
 ### Services
-- **SystemServices.swift** (`Sources/Services/`):
-  - `HotkeyService`: Carbon-based global hotkeys (toggle, translate, and speech press/release), `@unchecked Sendable`
-  - `StatusItemService`: NSStatusItem with custom date icons, calendar popover, menu
-  - `DockService` / `DockIconService`: Activation policy toggle, runtime icon rendering
-  - `AppDiscoveryService`: Scans system app directories
-  - `AutoLaunchService`: SMAppService-based login item
+- **StatusItemService.swift** / **StatusItemDropView.swift** (`Sources/Services/`):
+  - NSStatusItem, custom date icons, calendar popover, menu, and file drop handling
+- **DockService.swift** / **DockIconService.swift**: Activation policy toggle and runtime icon rendering
+- **HotkeyService.swift**: Carbon-based global hotkeys (toggle, translate, and speech press/release), `@unchecked Sendable`
+- **AppDiscoveryService.swift**: Scans system app directories
+- **AutoLaunchService.swift**: SMAppService-based login item
 
 - **ClipboardService.swift**: 0.5s pasteboard polling, 50-entry history, image caching
 - **TranslationService.swift**: AX API text capture + Cmd+C fallback
@@ -145,9 +155,11 @@
 ### Localization
 - **Strings.swift**:
   - `LanguageManager`: Runtime bundle switching without app restart
-  - `L10n`: Computed property accessors using active bundle
-  - Falls back to English if key not found
-  - Both `en.lproj` and `zh-Hans.lproj` maintained in parallel
+  - Shared `L10n.loc` lookup using the active bundle
+- **Strings+<Domain>.swift**:
+  - Computed `L10n` accessors grouped by feature, such as launcher, preferences,
+    recording, AI chat, and authenticator
+- Both `en.lproj` and `zh-Hans.lproj` are maintained in parallel
 
 ## Building
 
@@ -254,7 +266,8 @@ struct MyType {
 ## Localization
 
 ### Adding Strings
-1. Add to `L10n` enum in `Strings.swift`:
+1. Add the accessor to the matching `Sources/Strings+<Domain>.swift` file. Keep
+   `Sources/Strings.swift` for `LanguageManager` and the shared lookup only:
 ```swift
 static var myString: String {
   loc("my_key")
@@ -374,7 +387,7 @@ log stream --predicate 'process == "Miao"'
 3. Add localization keys in both `Localizable.strings` files
 
 ### Add a Menu Bar Item
-1. Update `StatusItemService.setup()` in `SystemServices.swift`
+1. Update `StatusItemService.setup()` in `Sources/Services/StatusItemService.swift`
 2. Add menu item action closure in the setup block
 3. Add localization keys in both `.lproj` files
 

@@ -90,7 +90,8 @@ The app supports multiple languages. String resources are in `Sources/Resources/
 
 ### Adding New Strings
 
-1. Add to `L10n` enum in `Sources/Strings.swift`:
+1. Add the accessor to the matching `Sources/Strings+<Domain>.swift` file.
+   `Sources/Strings.swift` contains the language manager and shared lookup:
 ```swift
 static var myNewString: String {
     loc("my_new_key")
