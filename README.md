@@ -320,12 +320,17 @@ Meow shows the destination endpoint and compression settings before each upload.
 - `Sources/App/MeowApp.swift`: app lifecycle and window management
 - `Sources/ViewModels/LauncherViewModel.swift`: search and ranking logic
 - `Sources/Views/`: launcher, AI chat, authenticator, preferences, translation, and UI components
+- `Sources/Views/Preferences/`: settings window and feature-specific preference screens
+- `Sources/Views/Capture/` and `Sources/Views/Recording/`: screenshot and recording screens
+- `Sources/Views/{AI,Authenticator,Health,Keyboard,Launcher,Speech,SystemMonitor,TextActions,Translation,Upload}/`: feature-specific screens
 - `Sources/Theme.swift`: theme palette system
 - `Sources/Services/`: hotkey, status item, auto-launch, clipboard, file upload, translation, system monitor, speech recognition, authenticator, AI chat, and persistence
+- `Sources/Services/System/`: shared Dock, status item, hotkey, login item, and input visualization integrations
+- `Sources/Services/Capture/` and `Sources/Services/Recording/`: screenshot and recording lifecycle services/controllers
 - `Sources/Services/SystemMonitor/`: metric collectors, sampling actor, history, and monitor models
 - `Sources/Services/Uploaders/`: upload protocol, service, and S3 implementation
 - `Sources/Models/`: app, clipboard, file hosting, authenticator, and settings models
-- `Sources/Strings.swift` and `Sources/Strings+<Domain>.swift`: runtime language manager and feature-grouped localization accessors
+- `Sources/Localization/`: runtime language manager and feature-grouped localization accessors
 - `Sources/Resources/`: localization resources
 - `Modules/WhiteboardFeature/`: standalone local SwiftPM feature module
 - `Tests/`: Swift Testing coverage
