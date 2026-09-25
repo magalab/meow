@@ -226,7 +226,7 @@ func ttsSettingsCompatibility() throws {
     let normalized = decoded.normalized()
 
     #expect(decoded.enabled)
-    #expect(decoded.model == .matchaChineseEnglish)
+    #expect(decoded.model == .system)
     #expect(normalized.speed == 1)
     #expect(normalized.voiceID == 0)
     #expect(decoded.autoPlay)
@@ -235,7 +235,7 @@ func ttsSettingsCompatibility() throws {
         TtsSettings.self,
         from: Data(#"{"enabled":true,"model":"legacyUnsupportedModel","voiceID":57}"#.utf8)
     )
-    #expect(migrated.model == .matchaChineseEnglish)
+    #expect(migrated.model == .system)
     #expect(migrated.voiceID == 0)
 }
 

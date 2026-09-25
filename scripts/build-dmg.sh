@@ -76,16 +76,6 @@ rm -rf "$APP_DIR"
 mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources" "$APP_DIR/Contents/Frameworks"
 cp "$BUILD_RELEASE_DIR/$BINARY_NAME" "$APP_DIR/Contents/MacOS/$BINARY_NAME"
 
-if [ "$MEOW_EDITION" = "voice" ]; then
-    ONNXRUNTIME_DYLIB="$BUILD_RELEASE_DIR/libonnxruntime.1.24.4.dylib"
-    if [ ! -f "$ONNXRUNTIME_DYLIB" ]; then
-        echo "Error: ONNX Runtime library not found at $ONNXRUNTIME_DYLIB"
-        exit 1
-    fi
-    cp "$ONNXRUNTIME_DYLIB" "$APP_DIR/Contents/Frameworks/"
-    install_name_tool -add_rpath "@loader_path/../Frameworks" "$APP_DIR/Contents/MacOS/$BINARY_NAME"
-fi
-
 strip -x "$APP_DIR/Contents/MacOS/$BINARY_NAME" || echo "Warning: Failed to strip binary"
 
 # Copy app icon
@@ -172,9 +162,6 @@ EOF
 SIGN_IDENTITY="-"
 echo "Signing app bundle with identity: ${SIGN_IDENTITY}"
 
-if [ "$MEOW_EDITION" = "voice" ]; then
-    codesign --force --sign "${SIGN_IDENTITY}" "$APP_DIR/Contents/Frameworks/libonnxruntime.1.24.4.dylib"
-fi
 codesign --force --deep --entitlements "$SCRIPT_DIR/Meow.entitlements" --sign "${SIGN_IDENTITY}" "$APP_DIR"
 
 rm -f "$DMG_PATH"

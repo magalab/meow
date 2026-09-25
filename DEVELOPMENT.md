@@ -55,7 +55,8 @@
 │   │   ├── SpeechRecognitionService.swift # Audio capture, offline ASR, paste workflow
 │   │   ├── SpeechModelStore.swift   # Speech model download, SHA-256 verification, and switching
 │   │   ├── SpeechHistoryStore.swift # Transcript index and WAV persistence
-│   │   ├── SherpaOnnxRecognizer.swift # sherpa-onnx C API wrapper
+│   │   ├── SpeechRecognizerFactory.swift # Voice-edition backend composition boundary
+│   │   ├── SystemSpeechSynthesizer.swift # macOS system-voice TTS backend
 │   │   └── LaunchHistoryStore.swift # Launch frequency/recency tracking
 │   ├── ViewModels/
 │   │   └── LauncherViewModel.swift  # Search, ranking, app dispatch, clipboard management
@@ -191,8 +192,8 @@
 - **SystemMonitorHistory.swift**: Bounded in-memory recent samples for compact summaries
 - **HealthReminderService.swift**: Work/break timer, daily UserDefaults records, break overlay, light activity detection via system idle time
 - **KeystrokeVisualizerService.swift** (`Sources/Services/System/`): Accessibility-gated global key event tap, overlay window, drag persistence
-- **SpeechRecognitionService.swift**: AVAudioEngine capture, 16 kHz mono conversion, sherpa-onnx inference, history, and temporary pasteboard restoration
-- **SpeechModelStore.swift**: downloads only `model.int8.onnx` and `tokens.txt`, then verifies SHA-256 before installation
+- **SpeechRecognitionService.swift**: AVAudioEngine capture, 16 kHz mono conversion, SenseVoice CoreML inference, history, and temporary pasteboard restoration
+- **SpeechModelStore.swift**: downloads the pinned SenseVoice CoreML artifact manifest and verifies SHA-256 before installation
 - **KeyDisplayFormatter.swift** (`Sources/Services/System/`): Current keyboard layout label lookup with fixed special-key fallback
 - **CalendarService.swift** / **CalendarEventService.swift**: Lunisolar calendar, EventKit integration
 - **LaunchHistoryStore.swift**: UserDefaults-based history scoring
@@ -244,31 +245,25 @@ This will:
 1. Generate icon from `logo.png` if needed
 2. Build release binary
 3. Create `.app` bundle with resources
-4. Embed ONNX Runtime in `Contents/Frameworks` for the Miao voice edition
-5. Create `.dmg` installer
+4. Create `.dmg` installer
 
-### Speech Native Dependencies
+### Speech Dependencies
 
-The package vendors universal macOS binaries in `Vendor/`:
+The voice edition uses the extracted `Packages/MeowSpeech` Swift package and
+Apple's CoreML/AVFoundation frameworks. No external speech runtime or vendored
+speech binary is linked into the app.
 
-- sherpa-onnx 1.13.2 static xcframework
-- ONNX Runtime 1.24.4 dynamic xcframework
+The current SenseVoice product path intentionally uses CoreML CPU inference.
+This avoids the multi-minute first Neural Engine graph specialization observed
+on the development host; revisit after a device benchmark.
 
-Speech models are not committed. They are downloaded on demand from the
-configured source and checked against these SHA-256 values before being
-installed into the user's Application Support directory:
+Speech models are not committed. The pinned SenseVoice CoreML artifact manifest
+in `Sources/Models/SpeechModels.swift` is downloaded on demand and each file is
+checked against its SHA-256 before installation into the user's Application
+Support directory.
 
-```text
-model.int8.onnx c71f0ce00bec95b07744e116345e33d8cbbe08cef896382cf907bf4b51a2cd51
-tokens.txt       f449eb28dc567533d7fa59be34e2abca8784f771850c78a47fb731a31429a1dc
-```
-
-Release bundles include `THIRD_PARTY_NOTICES.md` and the complete pinned
-license texts under `THIRD_PARTY_LICENSES/`, including ONNX Runtime dependency
-notices and the FunASR Model Open Source License Agreement 1.1.
-
-Installed speech models can be switched in Preferences -> Speech between the
-default multilingual SenseVoice model and the English Parakeet model.
+Release bundles include `THIRD_PARTY_NOTICES.md` plus the FluidAudio Apache 2.0
+and SenseVoice MIT license texts under `THIRD_PARTY_LICENSES/`.
 
 Notes:
 - Minimum supported macOS version is 15.0 (`Package.swift` and generated `Info.plist`).

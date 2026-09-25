@@ -6,12 +6,13 @@ let isVoiceEdition = ProcessInfo.processInfo.environment["MEOW_EDITION"] == "voi
 let executableName = isVoiceEdition ? "Miao" : "Meow"
 
 let voiceSources = [
-    "Services/SherpaOnnxRecognizer.swift",
-    "Services/SherpaOnnxSynthesizer.swift",
     "Services/SpeechHistoryStore.swift",
     "Services/SpeechModelStore.swift",
+    "Services/SpeechRecognizerFactory.swift",
     "Services/SpeechRecognitionService.swift",
     "Services/SpeechSynthesisService.swift",
+    "Services/SpeechSynthesizerFactory.swift",
+    "Services/SystemSpeechSynthesizer.swift",
     "Services/TtsAudioPlayer.swift",
     "Services/TtsModelStore.swift",
     "Views/Speech/SpeechOverlayView.swift",
@@ -21,11 +22,14 @@ let voiceSources = [
 
 var executableDependencies: [Target.Dependency] = [
     .target(name: "WhiteboardFeature"),
+    .product(name: "MeowSpeechCore", package: "MeowSpeech"),
     .product(name: "GRDB", package: "GRDB.swift"),
     .product(name: "SotoS3", package: "soto"),
 ]
 if isVoiceEdition {
-    executableDependencies += ["SherpaOnnxC", "ONNXRuntime"]
+    executableDependencies += [
+        .product(name: "MeowSpeechSenseVoice", package: "MeowSpeech"),
+    ]
 }
 
 let testSwiftSettings: [SwiftSetting] = isVoiceEdition ? [.define("MEOW_VOICE")] : []
@@ -38,8 +42,6 @@ if isVoiceEdition {
 }
 
 let targets: [Target] = [
-    .binaryTarget(name: "SherpaOnnxC", path: "Vendor/SherpaOnnx.xcframework"),
-    .binaryTarget(name: "ONNXRuntime", path: "Vendor/ONNXRuntime.xcframework"),
     .target(
         name: "WhiteboardFeature",
         path: "Modules/WhiteboardFeature/Sources",
@@ -75,6 +77,7 @@ let package = Package(
     platforms: [.macOS(.v15)],
     products: [.executable(name: executableName, targets: [executableName])],
     dependencies: [
+        .package(path: "Packages/MeowSpeech"),
         .package(url: "https://github.com/groue/GRDB.swift.git", from: "7.8.0"),
         .package(url: "https://github.com/soto-project/soto.git", from: "7.0.0"),
     ],

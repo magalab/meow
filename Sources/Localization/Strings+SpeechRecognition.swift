@@ -22,10 +22,6 @@ extension L10n {
     static var speechModelSenseVoiceSubtitle: String { loc("speech.model.sensevoice.subtitle") }
     static var speechModelSenseVoiceDownloadConfirmTitle: String { loc("speech.model.sensevoice.download.confirm.title") }
     static var speechModelSenseVoiceDownloadConfirmMessage: String { loc("speech.model.sensevoice.download.confirm.message") }
-    static var speechModelParakeetTitle: String { loc("speech.model.parakeet.title") }
-    static var speechModelParakeetSubtitle: String { loc("speech.model.parakeet.subtitle") }
-    static var speechModelParakeetDownloadConfirmTitle: String { loc("speech.model.parakeet.download.confirm.title") }
-    static var speechModelParakeetDownloadConfirmMessage: String { loc("speech.model.parakeet.download.confirm.message") }
     static var speechModelNotInstalled: String { loc("speech.model.not.installed") }
     static var speechModelInstalled: String { loc("speech.model.installed") }
     static var speechModelDownloading: String { loc("speech.model.downloading") }

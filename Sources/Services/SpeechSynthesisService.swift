@@ -1,5 +1,6 @@
 @preconcurrency import AVFoundation
 import Foundation
+import MeowSpeechCore
 
 @MainActor
 final class SpeechSynthesisService: ObservableObject {
@@ -8,7 +9,6 @@ final class SpeechSynthesisService: ObservableObject {
 
     var onNeedsModel: (() -> Void)?
 
-    private let modelStore: TtsModelStore
     private let engine = TtsSynthesisEngine()
     private let audioPlayer = TtsAudioPlayer()
     private var synthesisTask: Task<Void, Never>?
@@ -16,7 +16,7 @@ final class SpeechSynthesisService: ObservableObject {
     private var currentSettings = TtsSettings.default
 
     init(modelStore: TtsModelStore) {
-        self.modelStore = modelStore
+        _ = modelStore
     }
 
     func apply(settings: TtsSettings) {
@@ -40,12 +40,6 @@ final class SpeechSynthesisService: ObservableObject {
             return
         }
         guard !state.isGenerating else { return }
-        guard let modelDirectory = modelStore.configurationDirectory(for: normalizedSettings.model) else {
-            state = .needsModel
-            onNeedsModel?()
-            return
-        }
-
         audioPlayer.stop()
         synthesisTask?.cancel()
         let synthesisID = UUID()
@@ -59,11 +53,7 @@ final class SpeechSynthesisService: ObservableObject {
             do {
                 let result = try await engine.synthesize(
                     chunks: chunks,
-                    fullText: normalizedText,
-                    model: normalizedSettings.model,
-                    modelDirectory: modelDirectory,
-                    voiceID: normalizedSettings.voiceID,
-                    speed: 1
+                    fullText: normalizedText
                 ) { [weak self] progress in
                     DispatchQueue.main.async {
                         guard let self, self.synthesisID == synthesisID else { return }
@@ -338,44 +328,24 @@ private actor TtsSynthesisEngine {
     private static let leadingSilenceSeconds: Double = 0.08
     private static let interChunkSilenceSeconds: Double = 0.12
 
-    private var synthesizer: SherpaOnnxSynthesizer?
-    private var loadedModel: TtsModelKind?
-    private var loadedDirectory: URL?
+    private let synthesizer: any SpeechSynthesizer = AppSpeechSynthesizerFactory.make()
 
     func synthesize(
         chunks: [String],
         fullText: String,
-        model: TtsModelKind,
-        modelDirectory: URL,
-        voiceID: Int32,
-        speed: Float,
         progress: @escaping @Sendable (Double) -> Void
     ) async throws -> TtsAudioResult {
         try Task.checkCancellation()
-        let activeSynthesizer: SherpaOnnxSynthesizer
-        if let synthesizer, loadedModel == model, loadedDirectory == modelDirectory {
-            activeSynthesizer = synthesizer
-        } else {
-            let synthesizer = try SherpaOnnxSynthesizer(model: model, modelDirectory: modelDirectory)
-            self.synthesizer = synthesizer
-            loadedModel = model
-            loadedDirectory = modelDirectory
-            activeSynthesizer = synthesizer
-        }
-
         var combinedSamples: [Float] = []
         var sampleRate = 0
         for (index, chunk) in chunks.enumerated() {
             try Task.checkCancellation()
-            let chunkResult = try await activeSynthesizer.synthesize(
-                text: chunk,
-                voiceID: voiceID,
-                speed: speed
-            ) { chunkProgress in
-                let completed = Double(index) / Double(max(chunks.count, 1))
-                let current = chunkProgress / Double(max(chunks.count, 1))
-                progress(completed + current)
-            }
+            let chunkResult = try await collectAudio(
+                from: synthesizer.synthesize(text: chunk, voice: nil),
+                text: chunk
+            )
+            let completed = Double(index) / Double(max(chunks.count, 1))
+            progress(completed)
             if sampleRate == 0 {
                 sampleRate = chunkResult.sampleRate
             } else if sampleRate != chunkResult.sampleRate {
@@ -393,21 +363,39 @@ private actor TtsSynthesisEngine {
             combinedSamples.append(contentsOf: chunkResult.samples)
         }
         guard !combinedSamples.isEmpty, sampleRate > 0 else {
-            throw SherpaOnnxSynthesizerError.emptyAudio
+            throw TtsExportError.invalidAudio
         }
         progress(1)
         return TtsAudioResult(
             samples: combinedSamples,
             sampleRate: sampleRate,
             text: fullText,
-            voiceID: voiceID
+            voiceID: 0
         )
     }
 
     func unload() {
-        synthesizer = nil
-        loadedModel = nil
-        loadedDirectory = nil
+        // The system voice backend does not retain a downloadable model.
+    }
+
+    private func collectAudio(
+        from stream: AsyncThrowingStream<AudioChunk, Error>,
+        text: String
+    ) async throws -> TtsAudioResult {
+        var samples: [Float] = []
+        var sampleRate = 0
+        for try await chunk in stream {
+            if sampleRate == 0 {
+                sampleRate = chunk.sampleRate
+            } else if sampleRate != chunk.sampleRate {
+                throw TtsExportError.inconsistentSampleRate
+            }
+            samples.append(contentsOf: chunk.samples)
+        }
+        guard sampleRate > 0, !samples.isEmpty else {
+            throw TtsExportError.invalidAudio
+        }
+        return TtsAudioResult(samples: samples, sampleRate: sampleRate, text: text, voiceID: 0)
     }
 }
 

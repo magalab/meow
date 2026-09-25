@@ -244,7 +244,7 @@ iCloud Keychain sync requires a stable Apple-signed build with the required enti
 Offline speech recognition is available in the Miao voice edition. Configure it from Preferences -> Speech.
 
 - Enable the feature, then hold `Option+R` for up to 30 seconds and release to recognize and paste
-- Uses sherpa-onnx and on-device speech models, including multilingual SenseVoice Small int8 and English Parakeet int8
+- Uses the extracted MeowSpeech SenseVoice CoreML backend and an on-device multilingual model
 - Downloads the approximately 230 MB model only after confirmation in Preferences
 - Supports Chinese, English, Japanese, Korean, and Cantonese
 - Saves successful transcripts and WAV recordings locally for 30 days by default
@@ -261,20 +261,13 @@ Speech history and models are stored under:
 
 Offline speech synthesis is available in the Miao voice edition. Configure it from Preferences -> Speech -> Synthesis.
 
-- Uses the existing sherpa-onnx runtime with the Matcha Chinese-English model
-- Supports Chinese, English, mixed-language text, and a stable single voice
-- Downloads the approximately 140 MB model and vocoder only after confirmation
+- Uses the voices already installed in macOS; no third-party TTS runtime or model download is required
+- Supports Chinese, English, and mixed-language text through the system speech backend
 - Supports play, pause, resume, stop, and WAV export
 - Adds read-aloud actions for selected text, clipboard entries, and launcher commands when enabled
 - Configures the read-selection hotkey from Preferences -> Speech -> Synthesis
 - Reading selected text requires Accessibility permission
-- Runs fully offline after the model is installed
-
-The TTS model is stored under:
-
-```text
-~/Library/Application Support/Meow/Models/TTS/
-```
+- Runs fully offline with the selected macOS voice
 
 ## Health Reminder
 
@@ -333,6 +326,7 @@ Meow shows the destination endpoint and compression settings before each upload.
 - `Sources/Localization/`: runtime language manager and feature-grouped localization accessors
 - `Sources/Resources/`: localization resources
 - `Modules/WhiteboardFeature/`: standalone local SwiftPM feature module
+- `Packages/MeowSpeech/`: standalone speech contracts, extracted SenseVoice CoreML backend, and MOSS-TTS-Nano extension point
 - `Tests/`: Swift Testing coverage
 
 ## Notes
