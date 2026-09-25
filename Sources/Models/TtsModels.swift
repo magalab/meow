@@ -1,109 +1,45 @@
 import Foundation
 
 enum TtsModelKind: String, Codable, CaseIterable, Identifiable, Sendable {
-    case matchaChineseEnglish
+    case system
 
     var id: String { rawValue }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         let rawValue = try container.decode(String.self)
-        self = TtsModelKind(rawValue: rawValue) ?? .matchaChineseEnglish
+        // `matchaChineseEnglish` was the former downloadable model setting. Keep
+        // decoding it as the built-in voice backend so existing preferences
+        // do not re-enable the removed runtime or trigger a model download.
+        self = rawValue == "matchaChineseEnglish"
+            ? .system
+            : TtsModelKind(rawValue: rawValue) ?? .system
     }
 
     var displayName: String {
         switch self {
-        case .matchaChineseEnglish:
-            return L10n.ttsModelMatchaTitle
+        case .system:
+            return L10n.ttsModelSystemTitle
         }
     }
 
     var description: String {
         switch self {
-        case .matchaChineseEnglish:
-            return L10n.ttsModelMatchaSubtitle
+        case .system:
+            return L10n.ttsModelSystemSubtitle
         }
     }
 
     var storageDirectoryName: String {
         switch self {
-        case .matchaChineseEnglish:
-            return "matcha-icefall-zh-en"
+        case .system:
+            return "system-voices"
         }
-    }
-
-    var archive: TtsModelArchive {
-        switch self {
-        case .matchaChineseEnglish:
-            return TtsModelArchive(
-                remoteURL: URL(
-                    string: "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/matcha-icefall-zh-en.tar.bz2"
-                )!,
-                fileName: "matcha-icefall-zh-en.tar.bz2",
-                sha256: nil,
-                approximateSizeMB: 90
-            )
-        }
-    }
-
-    var additionalFiles: [TtsModelFile] {
-        switch self {
-        case .matchaChineseEnglish:
-            return [
-                TtsModelFile(
-                    remoteURL: URL(
-                        string: "https://github.com/k2-fsa/sherpa-onnx/releases/download/vocoder-models/vocos-16khz-univ.onnx"
-                    )!,
-                    relativePath: "vocos-16khz-univ.onnx",
-                    sha256: nil,
-                    approximateSizeMB: 51
-                ),
-            ]
-        }
-    }
-
-    var sourceURL: URL {
-        switch self {
-        case .matchaChineseEnglish:
-            return URL(
-                string: "https://k2-fsa.github.io/sherpa/onnx/tts/all/Chinese-English/matcha-icefall-zh-en.html"
-            )!
-        }
-    }
-
-    var downloadSizeMB: Int {
-        archive.approximateSizeMB + additionalFiles.reduce(0) { $0 + $1.approximateSizeMB }
     }
 
     var requiredRelativePaths: [String] {
-        switch self {
-        case .matchaChineseEnglish:
-            return [
-                "model-steps-3.onnx",
-                "vocos-16khz-univ.onnx",
-                "tokens.txt",
-                "espeak-ng-data",
-                "lexicon.txt",
-                "date-zh.fst",
-                "phone-zh.fst",
-                "number-zh.fst",
-            ]
-        }
+        []
     }
-}
-
-struct TtsModelArchive: Sendable {
-    let remoteURL: URL
-    let fileName: String
-    let sha256: String?
-    let approximateSizeMB: Int
-}
-
-struct TtsModelFile: Sendable {
-    let remoteURL: URL
-    let relativePath: String
-    let sha256: String?
-    let approximateSizeMB: Int
 }
 
 struct TtsSettings: Codable, Equatable, Sendable {
@@ -116,7 +52,7 @@ struct TtsSettings: Codable, Equatable, Sendable {
 
     static let `default` = TtsSettings(
         enabled: false,
-        model: .matchaChineseEnglish,
+        model: .system,
         voiceID: 0,
         speed: 1,
         autoPlay: true,
@@ -151,7 +87,7 @@ extension TtsSettings {
 
     func normalized() -> TtsSettings {
         var copy = self
-        copy.model = .matchaChineseEnglish
+        copy.model = .system
         copy.speed = 1
         copy.autoPlay = true
         copy.voiceID = 0

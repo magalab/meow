@@ -4,50 +4,59 @@ import Testing
 #if MEOW_VOICE
 @testable import Miao
 
-@Test("SenseVoice downloads accept the flat file staging layout")
+@Test("SenseVoice downloads accept the CoreML model staging layout")
 func senseVoiceDownloadStagingValidation() throws {
     let root = FileManager.default.temporaryDirectory
         .appendingPathComponent("Meow-ASR-Test-\(UUID().uuidString)", isDirectory: true)
     defer { try? FileManager.default.removeItem(at: root) }
     try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-    try Data("model".utf8).write(to: root.appendingPathComponent("model.int8.onnx"))
-    try Data("tokens".utf8).write(to: root.appendingPathComponent("tokens.txt"))
+    for relativePath in SpeechModelKind.senseVoice.requiredRelativePaths {
+        let fileURL = root.appendingPathComponent(relativePath)
+        try FileManager.default.createDirectory(
+            at: fileURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try Data("model".utf8).write(to: fileURL)
+    }
 
     try SpeechModelStore.validateStagingContents(for: .senseVoice, in: root)
 
-    try FileManager.default.removeItem(at: root.appendingPathComponent("tokens.txt"))
+    try FileManager.default.removeItem(
+        at: root.appendingPathComponent("vocab.json")
+    )
     #expect(throws: (any Error).self) {
         try SpeechModelStore.validateStagingContents(for: .senseVoice, in: root)
     }
 }
 
-@Test("TTS model manifest identifies a complete installation")
+@Test("Legacy speech model settings migrate to SenseVoice")
+func legacySpeechModelSettingMigration() throws {
+    let settings = try JSONDecoder().decode(
+        SpeechSettings.self,
+        from: Data("{\"model\":\"parakeetEnglish\"}".utf8)
+    )
+
+    #expect(settings.model == .senseVoice)
+}
+
+@Test("SenseVoice manifest is pinned and has unique verified artifacts")
+func senseVoiceManifestIsPinned() {
+    let artifacts = SpeechModelKind.senseVoice.manifest.artifacts
+    #expect(SpeechModelKind.senseVoice.manifest.version.count == 40)
+    #expect(Set(artifacts.map(\.relativePath)).count == artifacts.count)
+    #expect(artifacts.allSatisfy { $0.sha256.count == 64 })
+    #expect(artifacts.allSatisfy { $0.remoteURL.absoluteString.contains("/resolve/") })
+}
+
+@Test("Legacy Matcha TTS settings migrate to system voices")
 @MainActor
-func ttsModelManifestValidation() throws {
-    let root = FileManager.default.temporaryDirectory
-        .appendingPathComponent("Meow-TTS-Test-\(UUID().uuidString)", isDirectory: true)
-    defer { try? FileManager.default.removeItem(at: root) }
+func legacyTtsSettingsMigration() throws {
+    let settings = try JSONDecoder().decode(
+        TtsSettings.self,
+        from: Data("{\"model\":\"matchaChineseEnglish\"}".utf8)
+    )
 
-    let model = TtsModelKind.matchaChineseEnglish
-    let modelDirectory = root.appendingPathComponent(model.storageDirectoryName, isDirectory: true)
-    try FileManager.default.createDirectory(at: modelDirectory, withIntermediateDirectories: true)
-    let store = TtsModelStore(modelsRootDirectory: root)
-    #expect(!store.isInstalled)
-
-    for relativePath in model.requiredRelativePaths {
-        let url = modelDirectory.appendingPathComponent(relativePath)
-        if url.pathExtension.isEmpty {
-            try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-        } else {
-            try Data().write(to: url)
-        }
-    }
-    store.refreshState()
-
-    #expect(store.isInstalled)
-    #expect(store.state == .installed)
-    #expect(model.archive.fileName == "matcha-icefall-zh-en.tar.bz2")
-    #expect(model.additionalFiles.map(\.relativePath) == ["vocos-16khz-univ.onnx"])
+    #expect(settings.model == .system)
 }
 
 @Test("TTS text normalization and chunking preserve mixed-language content")
@@ -75,6 +84,25 @@ func ttsTextChunking() {
     #expect(chineseChunks == ["你好，我是你的好朋友，小汪。"])
 }
 
+@Test("System voice synthesis emits PCM audio (opt-in)")
+func systemVoiceSynthesisSmokeTest() async throws {
+    guard ProcessInfo.processInfo.environment["MEOW_SYSTEM_TTS_SMOKE"] == "1" else {
+        return
+    }
+
+    var samples: [Float] = []
+    var sampleRate = 0
+    for try await chunk in SystemSpeechSynthesizer().synthesize(
+        text: "Hello from Meow.",
+        voice: nil
+    ) {
+        sampleRate = chunk.sampleRate
+        samples.append(contentsOf: chunk.samples)
+    }
+    #expect(sampleRate > 0)
+    #expect(!samples.isEmpty)
+}
+
 @Test("TTS WAV export preserves sample rate and duration")
 func ttsWAVExport() throws {
     let url = FileManager.default.temporaryDirectory
@@ -94,22 +122,4 @@ func ttsWAVExport() throws {
     #expect(abs(result.duration - 0.1) < 0.0001)
 }
 
-@Test("Installed Matcha model synthesizes Chinese and English")
-func installedMatchaModelSmokeTest() async throws {
-    guard let modelPath = ProcessInfo.processInfo.environment["MEOW_TTS_MODEL_DIR"] else {
-        return
-    }
-    let synthesizer = try SherpaOnnxSynthesizer(
-        model: .matchaChineseEnglish,
-        modelDirectory: URL(fileURLWithPath: modelPath)
-    )
-    let result = try await synthesizer.synthesize(
-        text: "Hello from Meow. 你好，欢迎使用离线语音合成。",
-        voiceID: 0,
-        speed: 1,
-        progress: { _ in }
-    )
-    #expect(result.sampleRate == 16_000)
-    #expect(result.samples.count > 16_000)
-}
 #endif

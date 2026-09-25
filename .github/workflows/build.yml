@@ -6,6 +6,7 @@ on:
     paths:
       - 'Sources/**'
       - 'Modules/**'
+      - 'Packages/**'
       - 'Tests/**'
       - 'scripts/**'
       - 'Package.swift'
@@ -48,13 +49,13 @@ jobs:
         run: |
           set -euo pipefail
           echo "Checking trailing whitespace..."
-          if grep -RInE "[[:blank:]]+$" Sources/ Modules/ Package.swift scripts/ .github/workflows/build.yml; then
+          if grep -RInE "[[:blank:]]+$" Sources/ Modules/ Packages/MeowSpeech/Sources/ Packages/MeowSpeech/Tests/ Package.swift scripts/ .github/workflows/build.yml; then
             echo "Error: trailing whitespace found"
             exit 1
           fi
 
           echo "Checking tab indentation in Swift files..."
-          if grep -RInP "^\t+" Sources/ Modules/ --include='*.swift'; then
+          if grep -RInP "^\t+" Sources/ Modules/ Packages/MeowSpeech/Sources/ Packages/MeowSpeech/Tests/ --include='*.swift'; then
             echo "Error: tab indentation found in Swift source"
             exit 1
           fi
@@ -63,7 +64,7 @@ jobs:
         run: |
           set -euo pipefail
           echo "Checking for TODO/FIXME comments..."
-          if grep -RInE "TODO|FIXME" Sources/ Modules/; then
+          if grep -RInE "TODO|FIXME" Sources/ Modules/ Packages/MeowSpeech/Sources/ Packages/MeowSpeech/Tests/; then
             echo "Error: TODO/FIXME comments found"
             exit 1
           fi

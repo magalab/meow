@@ -8,7 +8,7 @@ extension L10n {
     static var ttsDisabled: String { loc("tts.disabled") }
     static var ttsInputTitle: String { loc("tts.input.title") }
     static var ttsInputPlaceholder: String { loc("tts.input.placeholder") }
-    static var ttsVoiceMatchaSingle: String { loc("tts.voice.matcha.single") }
+    static var ttsVoiceSystem: String { loc("tts.voice.system") }
     static var ttsGenerate: String { loc("tts.generate") }
     static var ttsPlay: String { loc("tts.play") }
     static var ttsPause: String { loc("tts.pause") }
@@ -24,22 +24,12 @@ extension L10n {
     static var ttsStatusReadyDuration: String { loc("tts.status.ready.duration") }
     static var ttsStatusPlaying: String { loc("tts.status.playing") }
     static var ttsStatusPaused: String { loc("tts.status.paused") }
-    static var ttsModelMatchaTitle: String { loc("tts.model.matcha.title") }
-    static var ttsModelMatchaSubtitle: String { loc("tts.model.matcha.subtitle") }
+    static var ttsModelSystemTitle: String { loc("tts.model.system.title") }
+    static var ttsModelSystemSubtitle: String { loc("tts.model.system.subtitle") }
     static var ttsModelLicense: String { loc("tts.model.license") }
-    static var ttsModelSource: String { loc("tts.model.source") }
     static var ttsModelNotInstalled: String { loc("tts.model.not.installed") }
     static var ttsModelInstalled: String { loc("tts.model.installed") }
     static var ttsModelDownloading: String { loc("tts.model.downloading") }
-    static var ttsModelDownload: String { loc("tts.model.download") }
-    static var ttsModelOpenFolder: String { loc("tts.model.open.folder") }
-    static var ttsModelDelete: String { loc("tts.model.delete") }
-    static var ttsModelDownloadConfirmTitle: String { loc("tts.model.download.confirm.title") }
-    static var ttsModelDownloadConfirmMessage: String { loc("tts.model.download.confirm.message") }
-    static var ttsModelDeleteConfirmTitle: String { loc("tts.model.delete.confirm.title") }
-    static var ttsModelDeleteConfirmMessage: String { loc("tts.model.delete.confirm.message") }
-    static var ttsModelChecksumFailed: String { loc("tts.model.checksum.failed") }
-    static var ttsModelDownloadFailed: String { loc("tts.model.download.failed") }
     static var ttsErrorIncompleteModel: String { loc("tts.error.incomplete.model") }
     static var ttsErrorLoadModel: String { loc("tts.error.load.model") }
     static var ttsErrorGenerationFailed: String { loc("tts.error.generation.failed") }

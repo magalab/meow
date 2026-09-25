@@ -1,6 +1,7 @@
 import AppKit
 @preconcurrency import AVFoundation
 import Foundation
+import MeowSpeechCore
 
 enum SpeechPermissionState: Equatable, Sendable {
     case notDetermined
@@ -221,9 +222,7 @@ final class SpeechRecognitionService: ObservableObject {
 
         playSound(named: "Pop")
         setState(.transcribing)
-        let model = currentSettings.model
-        let modelURL = modelStore.modelURL
-        let tokensURL = modelStore.tokensURL
+        let modelDirectory = modelStore.modelDirectory
         let settings = currentSettings
 
         recognitionTask = Task { [weak self] in
@@ -231,9 +230,7 @@ final class SpeechRecognitionService: ObservableObject {
             do {
                 let result = try await self.recognitionEngine.recognize(
                     samples: samples,
-                    model: model,
-                    modelURL: modelURL,
-                    tokensURL: tokensURL
+                    modelDirectory: modelDirectory
                 )
                 try Task.checkCancellation()
                 do {
@@ -422,32 +419,30 @@ private final class SpeechRecordingLimitNotifier: @unchecked Sendable {
 }
 
 private actor SpeechRecognitionEngine {
-    private var recognizer: SherpaOnnxRecognizer?
-    private var loadedModel: SpeechModelKind?
+    private var recognizer: (any SpeechRecognizer)?
+    private var loadedModelDirectory: URL?
 
     func recognize(
         samples: [Float],
-        model: SpeechModelKind,
-        modelURL: URL,
-        tokensURL: URL
-    ) throws -> SpeechRecognitionResult {
+        modelDirectory: URL
+    ) async throws -> TranscriptionResult {
         try Task.checkCancellation()
-        let activeRecognizer: SherpaOnnxRecognizer
-        if let recognizer, loadedModel == model {
+        let activeRecognizer: any SpeechRecognizer
+        if let recognizer, loadedModelDirectory == modelDirectory {
             activeRecognizer = recognizer
         } else {
-            let recognizer = try SherpaOnnxRecognizer(model: model, modelURL: modelURL, tokensURL: tokensURL)
+            let recognizer = AppSpeechRecognizerFactory.make(modelDirectory: modelDirectory)
             self.recognizer = recognizer
-            loadedModel = model
+            loadedModelDirectory = modelDirectory
             activeRecognizer = recognizer
         }
-        let result = try activeRecognizer.recognize(samples: samples, sampleRate: 16_000)
+        let result = try await activeRecognizer.transcribe(samples: samples, sampleRate: 16_000)
         try Task.checkCancellation()
         return result
     }
 
     func unload() async {
         recognizer = nil
-        loadedModel = nil
+        loadedModelDirectory = nil
     }
 }

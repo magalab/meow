@@ -69,7 +69,7 @@ struct TtsPreferencesView: View {
                     )
 
                 HStack(spacing: 12) {
-                    Text(L10n.ttsVoiceMatchaSingle)
+                    Text(L10n.ttsVoiceSystem)
                         .font(.system(size: 12, weight: .medium, design: .rounded))
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: 260, alignment: .leading)
@@ -142,11 +142,6 @@ struct TtsPreferencesView: View {
                     Text(L10n.ttsModelLicense)
                         .font(.system(size: 11, weight: .medium, design: .rounded))
                         .foregroundStyle(.tertiary)
-                    Link(
-                        L10n.ttsModelSource,
-                        destination: normalizedModel.sourceURL
-                    )
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
                 }
                 Spacer()
                 modelActions
@@ -190,33 +185,17 @@ struct TtsPreferencesView: View {
     private var modelActions: some View {
         switch modelStore.state {
         case .notInstalled, .failed:
-            Button(L10n.ttsModelDownload) {
-                presentDownloadConfirmation()
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.small)
-            .tint(palette.preferencesAccent)
+            Text(L10n.ttsModelNotInstalled)
+                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                .foregroundStyle(.secondary)
         case .downloading:
-            Button(L10n.actionCancel) {
-                modelStore.cancelDownload()
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
+            Text(normalizedModel.description)
+                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                .foregroundStyle(.secondary)
         case .installed:
-            VStack(alignment: .trailing, spacing: 6) {
-                Button(L10n.ttsModelOpenFolder) {
-                    modelStore.openModelFolder()
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-
-                Button(L10n.ttsModelDelete, role: .destructive) {
-                    presentDeleteConfirmation()
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .disabled(synthesisService.state.isGenerating)
-            }
+            Text(L10n.ttsModelInstalled)
+                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -296,31 +275,6 @@ struct TtsPreferencesView: View {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd HH-mm-ss"
         return "Meow TTS \(formatter.string(from: Date())).wav"
-    }
-
-    private func presentDownloadConfirmation() {
-        NSLog("[Meow] TTS download button tapped")
-        let alert = NSAlert()
-        alert.messageText = L10n.ttsModelDownloadConfirmTitle
-        alert.informativeText = String(
-            format: L10n.ttsModelDownloadConfirmMessage,
-            normalizedModel.downloadSizeMB
-        )
-        alert.addButton(withTitle: L10n.ttsModelDownload)
-        alert.addButton(withTitle: L10n.actionCancel)
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
-        modelStore.downloadModel()
-    }
-
-    private func presentDeleteConfirmation() {
-        let alert = NSAlert()
-        alert.messageText = L10n.ttsModelDeleteConfirmTitle
-        alert.informativeText = L10n.ttsModelDeleteConfirmMessage
-        alert.addButton(withTitle: L10n.ttsModelDelete)
-        alert.addButton(withTitle: L10n.actionCancel)
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
-        synthesisService.unloadModel()
-        modelStore.deleteModel()
     }
 
     private func presentError(title: String, message: String) {

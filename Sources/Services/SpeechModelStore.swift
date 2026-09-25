@@ -36,14 +36,6 @@ final class SpeechModelStore: ObservableObject {
         directory(for: selectedModel)
     }
 
-    var modelURL: URL {
-        modelDirectory.appendingPathComponent(selectedModel.modelFileName)
-    }
-
-    var tokensURL: URL {
-        modelDirectory.appendingPathComponent(selectedModel.tokensFileName)
-    }
-
     var isInstalled: Bool {
         isInstalled(for: selectedModel)
     }
@@ -127,8 +119,9 @@ final class SpeechModelStore: ObservableObject {
 
     private func isInstalled(for model: SpeechModelKind) -> Bool {
         let directory = directory(for: model)
-        return FileManager.default.fileExists(atPath: directory.appendingPathComponent(model.modelFileName).path) &&
-            FileManager.default.fileExists(atPath: directory.appendingPathComponent(model.tokensFileName).path)
+        return model.requiredRelativePaths.allSatisfy {
+            FileManager.default.fileExists(atPath: directory.appendingPathComponent($0).path)
+        }
     }
 
     private func directory(for model: SpeechModelKind) -> URL {
@@ -149,23 +142,25 @@ final class SpeechModelStore: ObservableObject {
         try fileManager.createDirectory(at: staging, withIntermediateDirectories: true)
         defer { try? fileManager.removeItem(at: staging) }
 
-        switch model.downloadSource {
-        case let .files(files):
-            try await downloadFiles(files, into: staging, downloadID: downloadID)
-        case let .archive(archive):
-            let archiveURL = staging.appendingPathComponent(archive.localFileName)
+        for (index, artifact) in model.manifest.artifacts.enumerated() {
+            let destination = staging.appendingPathComponent(artifact.relativePath)
+            try fileManager.createDirectory(
+                at: destination.deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
             try await download(
-                archive.remoteURL,
-                to: archiveURL,
-                expectedSHA256: archive.sha256
+                artifact.remoteURL,
+                to: destination,
+                expectedSHA256: artifact.sha256
             ) { [weak self] progress in
                 Task { @MainActor in
                     guard self?.downloadID == downloadID else { return }
-                    self?.state = .downloading(progress)
+                    let base = Double(index) / Double(max(model.manifest.artifacts.count, 1))
+                    let span = progress / Double(max(model.manifest.artifacts.count, 1))
+                    self?.state = .downloading(base + span)
                 }
             }
             try Task.checkCancellation()
-            try Self.extractArchive(at: archiveURL, into: staging)
         }
 
         try Self.validateStagingContents(for: model, in: staging, fileManager: fileManager)
@@ -173,25 +168,53 @@ final class SpeechModelStore: ObservableObject {
         let targetDirectory = directory(for: model)
         let replacement = modelsRootDirectory.appendingPathComponent(".\(model.storageDirectoryName)-\(UUID().uuidString)", isDirectory: true)
 
-        if case let .files(files) = model.downloadSource {
-            try fileManager.createDirectory(at: replacement, withIntermediateDirectories: true)
-            for file in files {
-                try fileManager.moveItem(
-                    at: staging.appendingPathComponent(file.localFileName),
-                    to: replacement.appendingPathComponent(file.localFileName)
-                )
-            }
-        } else {
-            let extractedRoot = staging.appendingPathComponent(model.storageDirectoryName)
-            try fileManager.moveItem(at: extractedRoot, to: replacement)
+        try fileManager.createDirectory(at: replacement, withIntermediateDirectories: true)
+        for relativePath in model.requiredRelativePaths {
+            let source = staging.appendingPathComponent(relativePath)
+            let destination = replacement.appendingPathComponent(relativePath)
+            try fileManager.createDirectory(
+                at: destination.deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
+            try fileManager.moveItem(at: source, to: destination)
         }
 
         try fileManager.createDirectory(at: modelsRootDirectory, withIntermediateDirectories: true)
+        var backupDirectory: URL?
+        var replacementInstalled = false
+        defer {
+            if !replacementInstalled, fileManager.fileExists(atPath: replacement.path) {
+                try? fileManager.removeItem(at: replacement)
+            }
+            if let backupDirectory,
+               fileManager.fileExists(atPath: backupDirectory.path)
+            {
+                if fileManager.fileExists(atPath: targetDirectory.path) {
+                    try? fileManager.removeItem(at: backupDirectory)
+                } else {
+                    do {
+                        try fileManager.moveItem(at: backupDirectory, to: targetDirectory)
+                    } catch {
+                        NSLog("[Meow] Failed to restore the previous speech model: \(error.localizedDescription)")
+                    }
+                }
+            }
+        }
+
         if fileManager.fileExists(atPath: targetDirectory.path) {
-            try fileManager.removeItem(at: targetDirectory)
-            try fileManager.moveItem(at: replacement, to: targetDirectory)
-        } else {
-            try fileManager.moveItem(at: replacement, to: targetDirectory)
+            let backup = modelsRootDirectory.appendingPathComponent(
+                ".\(model.storageDirectoryName)-backup-\(UUID().uuidString)",
+                isDirectory: true
+            )
+            try fileManager.moveItem(at: targetDirectory, to: backup)
+            backupDirectory = backup
+        }
+
+        try fileManager.moveItem(at: replacement, to: targetDirectory)
+        replacementInstalled = true
+
+        if let backupDirectory {
+            try? fileManager.removeItem(at: backupDirectory)
         }
     }
 
@@ -200,40 +223,9 @@ final class SpeechModelStore: ObservableObject {
         in staging: URL,
         fileManager: FileManager = .default
     ) throws {
-        switch model.downloadSource {
-        case let .files(files):
-            guard files.allSatisfy({
-                fileManager.fileExists(atPath: staging.appendingPathComponent($0.localFileName).path)
-            }) else { throw SpeechModelError.missingDownload }
-        case .archive:
-            let extractedRoot = staging.appendingPathComponent(model.storageDirectoryName)
-            guard fileManager.fileExists(atPath: extractedRoot.path) else {
-                throw SpeechModelError.missingDownload
-            }
-        }
-    }
-
-    private func downloadFiles(
-        _ files: [SpeechModelDownloadFile],
-        into staging: URL,
-        downloadID: UUID
-    ) async throws {
-        for (index, file) in files.enumerated() {
-            let destination = staging.appendingPathComponent(file.localFileName)
-            try await download(
-                file.remoteURL,
-                to: destination,
-                expectedSHA256: file.sha256
-            ) { [weak self] progress in
-                Task { @MainActor in
-                    guard self?.downloadID == downloadID else { return }
-                    let baseProgress = Double(index) / Double(max(files.count, 1))
-                    let stepProgress = progress / Double(max(files.count, 1))
-                    self?.state = .downloading(baseProgress + stepProgress)
-                }
-            }
-            try Task.checkCancellation()
-        }
+        guard model.requiredRelativePaths.allSatisfy({
+            fileManager.fileExists(atPath: staging.appendingPathComponent($0).path)
+        }) else { throw SpeechModelError.missingDownload }
     }
 
     private nonisolated func download(
@@ -255,22 +247,6 @@ final class SpeechModelStore: ObservableObject {
         try FileManager.default.moveItem(at: temporaryURL, to: destinationURL)
     }
 
-    private nonisolated static func extractArchive(at archiveURL: URL, into destination: URL) throws {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/tar")
-        process.arguments = ["-xjf", archiveURL.path, "-C", destination.path]
-        let pipe = Pipe()
-        process.standardError = pipe
-        process.standardOutput = pipe
-        try process.run()
-        process.waitUntilExit()
-        guard process.terminationStatus == 0 else {
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            let message = String(data: data, encoding: .utf8) ?? ""
-            throw SpeechModelError.extractionFailed(message)
-        }
-    }
-
     private nonisolated static func sha256(of url: URL) throws -> String {
         let handle = try FileHandle(forReadingFrom: url)
         defer { try? handle.close() }
@@ -288,7 +264,6 @@ final class SpeechModelStore: ObservableObject {
 private enum SpeechModelError: LocalizedError {
     case checksumMismatch
     case missingDownload
-    case extractionFailed(String)
 
     var errorDescription: String? {
         switch self {
@@ -296,8 +271,6 @@ private enum SpeechModelError: LocalizedError {
             return L10n.speechModelChecksumFailed
         case .missingDownload:
             return L10n.speechModelDownloadFailed
-        case let .extractionFailed(message):
-            return message.isEmpty ? L10n.speechModelDownloadFailed : message
         }
     }
 }
