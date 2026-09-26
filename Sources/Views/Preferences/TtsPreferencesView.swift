@@ -69,7 +69,7 @@ struct TtsPreferencesView: View {
                     )
 
                 HStack(spacing: 12) {
-                    Text(L10n.ttsVoiceSystem)
+                    Text(voiceDescription)
                         .font(.system(size: 12, weight: .medium, design: .rounded))
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: 260, alignment: .leading)
@@ -139,12 +139,22 @@ struct TtsPreferencesView: View {
                     Text(normalizedModel.description)
                         .font(.system(size: 12, weight: .medium, design: .rounded))
                         .foregroundStyle(.secondary)
-                    Text(L10n.ttsModelLicense)
+                    Text(normalizedModel.licenseDescription)
                         .font(.system(size: 11, weight: .medium, design: .rounded))
                         .foregroundStyle(.tertiary)
                 }
                 Spacer()
-                modelActions
+                VStack(alignment: .trailing, spacing: 7) {
+                    Picker("", selection: $settings.model) {
+                        ForEach(TtsModelKind.allCases) { model in
+                            Text(model.displayName).tag(model)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                    .frame(width: 190)
+                    modelActions
+                }
             }
 
             if case let .downloading(progress) = modelStore.state {
@@ -183,19 +193,41 @@ struct TtsPreferencesView: View {
 
     @ViewBuilder
     private var modelActions: some View {
-        switch modelStore.state {
-        case .notInstalled, .failed:
-            Text(L10n.ttsModelNotInstalled)
-                .font(.system(size: 11, weight: .semibold, design: .rounded))
-                .foregroundStyle(.secondary)
-        case .downloading:
-            Text(normalizedModel.description)
-                .font(.system(size: 11, weight: .semibold, design: .rounded))
-                .foregroundStyle(.secondary)
-        case .installed:
+        if normalizedModel == .system {
             Text(L10n.ttsModelInstalled)
                 .font(.system(size: 11, weight: .semibold, design: .rounded))
                 .foregroundStyle(.secondary)
+        } else {
+            switch modelStore.state {
+            case .notInstalled, .failed:
+                Button(L10n.speechModelDownload) {
+                    modelStore.downloadModel()
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .tint(palette.preferencesAccent)
+            case .downloading:
+                Button(L10n.actionCancel) {
+                    modelStore.cancelDownload()
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            case .installed:
+                HStack(spacing: 6) {
+                    Button(L10n.speechModelOpenFolder) {
+                        modelStore.openModelFolder()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+
+                    Button(L10n.speechModelDelete, role: .destructive) {
+                        synthesisService.unloadModel()
+                        modelStore.deleteModel()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+            }
         }
     }
 
@@ -207,6 +239,17 @@ struct TtsPreferencesView: View {
             return L10n.ttsResume
         default:
             return L10n.ttsPlay
+        }
+    }
+
+    private var voiceDescription: String {
+        switch normalizedModel {
+        case .system:
+            return L10n.ttsVoiceSystem
+        #if MEOW_VOICE
+        case .mossTTSNano:
+            return L10n.ttsVoiceMoss
+        #endif
         }
     }
 
@@ -242,7 +285,7 @@ struct TtsPreferencesView: View {
     private var modelStatusText: String {
         switch modelStore.state {
         case .notInstalled:
-            return L10n.ttsModelNotInstalled
+            return normalizedModel == .system ? L10n.ttsModelInstalled : L10n.ttsModelNotInstalled
         case .downloading:
             return normalizedModel.description
         case .installed:

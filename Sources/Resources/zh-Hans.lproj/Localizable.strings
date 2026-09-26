@@ -641,6 +641,7 @@
 "tts.input.title" = "朗读文本";
 "tts.input.placeholder" = "输入中文、英文或中英混合文本…";
 "tts.voice.system" = "macOS 系统语音 · 无需下载模型";
+"tts.voice.moss" = "MOSS-TTS-Nano 内置音色 · 模型保存在本机";
 "tts.generate" = "生成";
 "tts.play" = "播放";
 "tts.pause" = "暂停";
@@ -658,11 +659,15 @@
 "tts.status.paused" = "已暂停";
 "tts.model.system.title" = "macOS 系统语音";
 "tts.model.system.subtitle" = "中文、英文及中英混合文本 · 使用已安装的系统语音";
+"tts.model.moss.title" = "MOSS-TTS-Nano";
+"tts.model.moss.subtitle" = "多语言声音克隆 · CoreML 模型保存在本机";
+"tts.model.moss.license" = "OpenMOSS / FluidInference · Apache-2.0 · 按需下载";
 "tts.model.license" = "由 macOS 提供 · 无第三方模型文件";
 "tts.model.not.installed" = "无需下载模型，文本仅保留在本机。";
 "tts.model.installed" = "macOS 系统语音已可用";
 "tts.model.downloading" = "正在准备系统语音…";
 "tts.error.incomplete.model" = "TTS 模型文件不完整。";
+"tts.error.model.checksum" = "下载的 TTS 模型文件校验失败。";
 "tts.error.load.model" = "无法加载 TTS 模型。";
 "tts.error.generation.failed" = "语音生成失败。";
 "tts.error.empty.audio" = "模型没有返回音频。";

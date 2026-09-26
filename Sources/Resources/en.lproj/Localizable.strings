@@ -641,6 +641,7 @@
 "tts.input.title" = "Text to Speak";
 "tts.input.placeholder" = "Enter Chinese, English, or mixed text…";
 "tts.voice.system" = "macOS system voice · no model download";
+"tts.voice.moss" = "MOSS-TTS-Nano built-in voice · model stored locally";
 "tts.generate" = "Generate";
 "tts.play" = "Play";
 "tts.pause" = "Pause";
@@ -658,11 +659,15 @@
 "tts.status.paused" = "Paused";
 "tts.model.system.title" = "macOS System Voices";
 "tts.model.system.subtitle" = "Chinese, English, and mixed text · uses installed system voices";
+"tts.model.moss.title" = "MOSS-TTS-Nano";
+"tts.model.moss.subtitle" = "Multilingual voice cloning · CoreML model stored locally";
+"tts.model.moss.license" = "OpenMOSS / FluidInference · Apache-2.0 · downloaded on demand";
 "tts.model.license" = "Provided by macOS · no third-party model files";
 "tts.model.not.installed" = "No downloadable model is required. Text stays on this Mac.";
 "tts.model.installed" = "Built-in macOS voices are available";
 "tts.model.downloading" = "Preparing built-in voices…";
 "tts.error.incomplete.model" = "The TTS model is incomplete.";
+"tts.error.model.checksum" = "A downloaded TTS model file failed verification.";
 "tts.error.load.model" = "The TTS model could not be loaded.";
 "tts.error.generation.failed" = "Speech generation failed.";
 "tts.error.empty.audio" = "The model returned no audio.";

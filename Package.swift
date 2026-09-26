@@ -29,6 +29,7 @@ var executableDependencies: [Target.Dependency] = [
 if isVoiceEdition {
     executableDependencies += [
         .product(name: "MeowSpeechSenseVoice", package: "MeowSpeech"),
+        .product(name: "MeowSpeechMossTTS", package: "MeowSpeech"),
     ]
 }
 
