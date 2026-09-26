@@ -9,6 +9,7 @@ extension L10n {
     static var ttsInputTitle: String { loc("tts.input.title") }
     static var ttsInputPlaceholder: String { loc("tts.input.placeholder") }
     static var ttsVoiceSystem: String { loc("tts.voice.system") }
+    static var ttsVoiceMoss: String { loc("tts.voice.moss") }
     static var ttsGenerate: String { loc("tts.generate") }
     static var ttsPlay: String { loc("tts.play") }
     static var ttsPause: String { loc("tts.pause") }
@@ -26,11 +27,15 @@ extension L10n {
     static var ttsStatusPaused: String { loc("tts.status.paused") }
     static var ttsModelSystemTitle: String { loc("tts.model.system.title") }
     static var ttsModelSystemSubtitle: String { loc("tts.model.system.subtitle") }
+    static var ttsModelMossTitle: String { loc("tts.model.moss.title") }
+    static var ttsModelMossSubtitle: String { loc("tts.model.moss.subtitle") }
+    static var ttsModelMossLicense: String { loc("tts.model.moss.license") }
     static var ttsModelLicense: String { loc("tts.model.license") }
     static var ttsModelNotInstalled: String { loc("tts.model.not.installed") }
     static var ttsModelInstalled: String { loc("tts.model.installed") }
     static var ttsModelDownloading: String { loc("tts.model.downloading") }
     static var ttsErrorIncompleteModel: String { loc("tts.error.incomplete.model") }
+    static var ttsErrorModelChecksum: String { loc("tts.error.model.checksum") }
     static var ttsErrorLoadModel: String { loc("tts.error.load.model") }
     static var ttsErrorGenerationFailed: String { loc("tts.error.generation.failed") }
     static var ttsErrorEmptyAudio: String { loc("tts.error.empty.audio") }

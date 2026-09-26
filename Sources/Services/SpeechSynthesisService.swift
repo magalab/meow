@@ -9,25 +9,53 @@ final class SpeechSynthesisService: ObservableObject {
 
     var onNeedsModel: (() -> Void)?
 
-    private let engine = TtsSynthesisEngine()
+    private let engine: TtsSynthesisEngine
     private let audioPlayer = TtsAudioPlayer()
     private var synthesisTask: Task<Void, Never>?
     private var synthesisID: UUID?
+    private var streamingPlaybackError: Error?
     private var currentSettings = TtsSettings.default
 
     init(modelStore: TtsModelStore) {
-        _ = modelStore
+        engine = TtsSynthesisEngine(
+            model: modelStore.selectedModel,
+            modelDirectory: modelStore.modelDirectory
+        )
+        self.modelStore = modelStore
     }
+
+    private let modelStore: TtsModelStore
 
     func apply(settings: TtsSettings) {
         let normalized = settings.normalized()
-        let shouldUnload = currentSettings.model != normalized.model
+        let shouldConfigure = currentSettings.model != normalized.model
         currentSettings = normalized
+        if shouldConfigure {
+            clearResult()
+        }
+
+        if normalized.enabled && modelStore.isInstalled {
+            let modelDirectory = modelStore.modelDirectory
+            Task {
+                if shouldConfigure {
+                    await engine.configure(
+                        model: normalized.model,
+                        modelDirectory: modelDirectory
+                    )
+                }
+                await engine.prepareIfNeeded()
+            }
+        } else if shouldConfigure {
+            let modelDirectory = modelStore.modelDirectory
+            Task {
+                await engine.configure(
+                    model: normalized.model,
+                    modelDirectory: modelDirectory
+                )
+            }
+        }
         if !normalized.enabled {
             clearResult()
-        } else if shouldUnload {
-            clearResult()
-            Task { await engine.unload() }
         }
     }
 
@@ -39,9 +67,15 @@ final class SpeechSynthesisService: ObservableObject {
             state = .failed(L10n.ttsErrorEmptyText)
             return
         }
+        guard normalizedSettings.model == .system || modelStore.isInstalled else {
+            state = .needsModel
+            onNeedsModel?()
+            return
+        }
         guard !state.isGenerating else { return }
         audioPlayer.stop()
         synthesisTask?.cancel()
+        streamingPlaybackError = nil
         let synthesisID = UUID()
         self.synthesisID = synthesisID
         result = nil
@@ -57,20 +91,48 @@ final class SpeechSynthesisService: ObservableObject {
                 ) { [weak self] progress in
                     DispatchQueue.main.async {
                         guard let self, self.synthesisID == synthesisID else { return }
+                        guard !self.audioPlayer.isStreaming else { return }
                         self.state = .synthesizing(progress)
+                    }
+                } audioChunk: { [weak self] chunk in
+                    guard let self else { return }
+                    await MainActor.run {
+                        guard self.synthesisID == synthesisID else { return }
+                        do {
+                            if !self.audioPlayer.isStreaming {
+                                try self.audioPlayer.startStreaming(
+                                    sampleRate: chunk.sampleRate
+                                ) { [weak self] in
+                                    guard let self else { return }
+                                    self.state = self.result == nil ? .idle : .ready
+                                }
+                                self.state = .playing
+                            }
+                            try self.audioPlayer.append(
+                                samples: chunk.samples,
+                                sampleRate: chunk.sampleRate,
+                                isFinal: chunk.isFinal
+                            )
+                        } catch {
+                            self.streamingPlaybackError = error
+                        }
                     }
                 }
                 try Task.checkCancellation()
                 guard self.synthesisID == synthesisID else { return }
+                if let streamingPlaybackError {
+                    throw streamingPlaybackError
+                }
                 self.result = result
-                self.state = .ready
-                self.play()
+                self.state = self.audioPlayer.isStreaming ? .playing : .ready
             } catch is CancellationError {
                 if self.synthesisID == synthesisID {
+                    self.audioPlayer.stop()
                     self.state = .idle
                 }
             } catch {
                 if self.synthesisID == synthesisID {
+                    self.audioPlayer.stop()
                     self.state = .failed(error.localizedDescription)
                 }
             }
@@ -83,6 +145,7 @@ final class SpeechSynthesisService: ObservableObject {
 
     func cancel() {
         synthesisID = nil
+        streamingPlaybackError = nil
         synthesisTask?.cancel()
         synthesisTask = nil
         audioPlayer.stop()
@@ -130,7 +193,13 @@ final class SpeechSynthesisService: ObservableObject {
 
     func unloadModel() {
         clearResult()
-        Task { await engine.unload() }
+        let modelDirectory = modelStore.modelDirectory
+        Task {
+            await engine.configure(
+                model: currentSettings.model,
+                modelDirectory: modelDirectory
+            )
+        }
     }
 
     func exportResult(to url: URL) throws {
@@ -324,44 +393,106 @@ final class SpeechSynthesisService: ObservableObject {
     }
 }
 
+private struct TtsSynthesisChunk: Sendable {
+    let samples: [Float]
+    let sampleRate: Int
+    let isFinal: Bool
+}
+
 private actor TtsSynthesisEngine {
     private static let leadingSilenceSeconds: Double = 0.08
     private static let interChunkSilenceSeconds: Double = 0.12
 
-    private let synthesizer: any SpeechSynthesizer = AppSpeechSynthesizerFactory.make()
+    private var synthesizer: any SpeechSynthesizer
+
+    init(model: TtsModelKind, modelDirectory: URL) {
+        synthesizer = AppSpeechSynthesizerFactory.make(
+            model: model,
+            modelDirectory: modelDirectory
+        )
+    }
+
+    func configure(model: TtsModelKind, modelDirectory: URL) {
+        synthesizer = AppSpeechSynthesizerFactory.make(
+            model: model,
+            modelDirectory: modelDirectory
+        )
+    }
+
+    func prepareIfNeeded() async {
+        guard let preparable = synthesizer as? any PreparableSpeechSynthesizer else { return }
+        do {
+            try await preparable.prepare()
+        } catch {
+            NSLog("Speech model prewarm failed: %@", error.localizedDescription)
+        }
+    }
 
     func synthesize(
         chunks: [String],
         fullText: String,
-        progress: @escaping @Sendable (Double) -> Void
+        progress: @escaping @Sendable (Double) -> Void,
+        audioChunk: @escaping @Sendable (TtsSynthesisChunk) async -> Void
     ) async throws -> TtsAudioResult {
         try Task.checkCancellation()
         var combinedSamples: [Float] = []
         var sampleRate = 0
+        var renderedAudio = false
+        var pendingAudioChunk: TtsSynthesisChunk?
         for (index, chunk) in chunks.enumerated() {
             try Task.checkCancellation()
-            let chunkResult = try await collectAudio(
-                from: synthesizer.synthesize(text: chunk, voice: nil),
-                text: chunk
-            )
+            var renderedChunkAudio = false
+            for try await audio in synthesizer.synthesize(text: chunk, voice: nil) {
+                try Task.checkCancellation()
+                guard !audio.samples.isEmpty else { continue }
+                if sampleRate == 0 {
+                    sampleRate = audio.sampleRate
+                } else if sampleRate != audio.sampleRate {
+                    throw TtsExportError.inconsistentSampleRate
+                }
+
+                var outputSamples: [Float] = []
+                if !renderedChunkAudio {
+                    let silenceSeconds = renderedAudio
+                        ? Self.interChunkSilenceSeconds
+                        : Self.leadingSilenceSeconds
+                    outputSamples.reserveCapacity(
+                        Int(Double(sampleRate) * silenceSeconds) + audio.samples.count
+                    )
+                    outputSamples.append(
+                        contentsOf: repeatElement(
+                            0,
+                            count: Int(Double(sampleRate) * silenceSeconds)
+                        )
+                    )
+                    renderedChunkAudio = true
+                    renderedAudio = true
+                }
+                outputSamples.append(contentsOf: audio.samples)
+                combinedSamples.append(contentsOf: outputSamples)
+
+                let nextAudioChunk = TtsSynthesisChunk(
+                    samples: outputSamples,
+                    sampleRate: audio.sampleRate,
+                    isFinal: false
+                )
+                if let pendingAudioChunk {
+                    await audioChunk(pendingAudioChunk)
+                }
+                pendingAudioChunk = nextAudioChunk
+            }
             let completed = Double(index) / Double(max(chunks.count, 1))
             progress(completed)
-            if sampleRate == 0 {
-                sampleRate = chunkResult.sampleRate
-            } else if sampleRate != chunkResult.sampleRate {
-                throw TtsExportError.inconsistentSampleRate
-            }
-            if combinedSamples.isEmpty {
-                combinedSamples.append(
-                    contentsOf: repeatElement(0, count: Int(Double(sampleRate) * Self.leadingSilenceSeconds))
-                )
-            } else {
-                combinedSamples.append(
-                    contentsOf: repeatElement(0, count: Int(Double(sampleRate) * Self.interChunkSilenceSeconds))
-                )
-            }
-            combinedSamples.append(contentsOf: chunkResult.samples)
         }
+        guard var pendingAudioChunk else {
+            throw TtsExportError.invalidAudio
+        }
+        pendingAudioChunk = TtsSynthesisChunk(
+            samples: pendingAudioChunk.samples,
+            sampleRate: pendingAudioChunk.sampleRate,
+            isFinal: true
+        )
+        await audioChunk(pendingAudioChunk)
         guard !combinedSamples.isEmpty, sampleRate > 0 else {
             throw TtsExportError.invalidAudio
         }
@@ -372,30 +503,6 @@ private actor TtsSynthesisEngine {
             text: fullText,
             voiceID: 0
         )
-    }
-
-    func unload() {
-        // The system voice backend does not retain a downloadable model.
-    }
-
-    private func collectAudio(
-        from stream: AsyncThrowingStream<AudioChunk, Error>,
-        text: String
-    ) async throws -> TtsAudioResult {
-        var samples: [Float] = []
-        var sampleRate = 0
-        for try await chunk in stream {
-            if sampleRate == 0 {
-                sampleRate = chunk.sampleRate
-            } else if sampleRate != chunk.sampleRate {
-                throw TtsExportError.inconsistentSampleRate
-            }
-            samples.append(contentsOf: chunk.samples)
-        }
-        guard sampleRate > 0, !samples.isEmpty else {
-            throw TtsExportError.invalidAudio
-        }
-        return TtsAudioResult(samples: samples, sampleRate: sampleRate, text: text, voiceID: 0)
     }
 }
 

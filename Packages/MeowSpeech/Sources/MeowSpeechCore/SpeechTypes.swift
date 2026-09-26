@@ -14,6 +14,14 @@ public protocol SpeechSynthesizer: Sendable {
     ) -> AsyncThrowingStream<AudioChunk, Error>
 }
 
+/// A synthesizer that can load its runtime before the first utterance.
+///
+/// Implementations should keep this operation idempotent so callers can
+/// trigger it opportunistically when the speech service becomes active.
+public protocol PreparableSpeechSynthesizer: SpeechSynthesizer {
+    func prepare() async throws
+}
+
 public struct TranscriptionResult: Sendable, Equatable {
     public let text: String
     public let language: String?

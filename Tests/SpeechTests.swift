@@ -48,6 +48,90 @@ func senseVoiceManifestIsPinned() {
     #expect(artifacts.allSatisfy { $0.remoteURL.absoluteString.contains("/resolve/") })
 }
 
+@Test("MOSS TTS manifest is pinned and has complete CoreML artifacts")
+func mossTtsManifestIsPinned() {
+    let manifest = TtsModelKind.mossTTSNano.manifest
+    #expect(manifest.version == "408475d01c46c9290b6546edf31e9cc5cbb202cd")
+    #expect(manifest.artifacts.count == 22)
+    #expect(Set(manifest.requiredRelativePaths).count == manifest.artifacts.count)
+    #expect(manifest.artifacts.allSatisfy { $0.sha256.count == 64 })
+    #expect(manifest.artifacts.allSatisfy { $0.remoteURL.absoluteString.contains("/resolve/") })
+}
+
+@Test("MOSS TTS download staging validation requires every manifest artifact")
+func mossTtsDownloadStagingValidation() throws {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("Meow-TTS-Test-\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    for relativePath in TtsModelKind.mossTTSNano.requiredRelativePaths {
+        let fileURL = root.appendingPathComponent(relativePath)
+        try FileManager.default.createDirectory(
+            at: fileURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try Data("model".utf8).write(to: fileURL)
+    }
+
+    try TtsModelStore.validateStagingContents(for: .mossTTSNano, in: root)
+    try FileManager.default.removeItem(at: root.appendingPathComponent("config.json"))
+    #expect(throws: (any Error).self) {
+        try TtsModelStore.validateStagingContents(for: .mossTTSNano, in: root)
+    }
+}
+
+@Test("TTS model store tracks the selected model's installed files")
+@MainActor
+func ttsModelStoreTracksInstallationState() throws {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("Meow-TTS-Store-Test-\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let store = TtsModelStore(modelsRootDirectory: root)
+    #expect(store.isInstalled)
+
+    store.apply(selectedModel: .mossTTSNano)
+    #expect(!store.isInstalled)
+    #expect(store.state == .notInstalled)
+
+    for relativePath in TtsModelKind.mossTTSNano.requiredRelativePaths {
+        let fileURL = root
+            .appendingPathComponent(TtsModelKind.mossTTSNano.storageDirectoryName, isDirectory: true)
+            .appendingPathComponent(relativePath)
+        try FileManager.default.createDirectory(
+            at: fileURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try Data("model".utf8).write(to: fileURL)
+    }
+    store.refreshState()
+
+    #expect(store.isInstalled)
+    #expect(store.state == .installed)
+}
+
+@Test("TTS synthesis requests model installation before generating")
+@MainActor
+func ttsSynthesisRequiresModelInstallation() {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("Meow-TTS-Service-Test-\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let store = TtsModelStore(modelsRootDirectory: root)
+    store.apply(selectedModel: .mossTTSNano)
+    let service = SpeechSynthesisService(modelStore: store)
+    var didRequestModel = false
+    service.onNeedsModel = { didRequestModel = true }
+
+    var settings = TtsSettings.default
+    settings.enabled = true
+    settings.model = .mossTTSNano
+    service.synthesize(text: "Hello from Meow", settings: settings)
+
+    #expect(service.state == .needsModel)
+    #expect(didRequestModel)
+}
+
 @Test("Legacy Matcha TTS settings migrate to system voices")
 @MainActor
 func legacyTtsSettingsMigration() throws {

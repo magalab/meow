@@ -26,5 +26,36 @@
 
 ## MOSS-TTS-Nano
 
-No upstream implementation has been imported yet. `MeowSpeechMossTTS` currently
-contains only the stable streaming placeholder contract.
+The CoreML model conversion is published at
+`https://huggingface.co/FluidInference/moss-tts-nano-coreml` and is based on
+the Apache-2.0 MOSS-TTS-Nano and MOSS-Audio-Tokenizer releases. The published
+graph set is:
+
+- `MossNano-Prefill-T512-M1024-fp16`
+- `MossNano-Step-M1024-fp16`
+- `MossNano-Frame-fp16`
+- `MossNano-CodecStep-fp16`
+- `MossNano-CodecDecoder-fp16`
+- `MossNano-CodecEncoder-fp32`
+
+`MeowSpeechMossTTS` now owns the model layout, CoreML graph loader, model-side
+configuration decoding, prompt construction, SentencePiece tokenizer, the
+prefill → frame → autoregressive step loop, and full-frame codec decoding.
+These pieces are covered by package-level shape and contract tests, but the
+real CoreML artifacts still need an opt-in device smoke test before they are
+connected to a production device path.
+
+The package now also exposes preset-voice loading, reference-audio encoding
+through `MossNano-CodecEncoder`, and a model-directory synthesizer that
+downmixes decoded stereo to Meow's mono `AudioChunk` contract. The voice
+edition app now owns the pinned manifest, checksum-verified download, model
+selection UI, and default synthesizer factory wiring. The remaining work is
+optional `MossNano-CodecStep` streaming and parity testing against the real
+CoreML artifacts on Apple Silicon. The no-argument public synthesizer remains
+an explicit placeholder for package-only callers that have not supplied a
+model directory.
+
+The current public `FluidAudio` main branch inspected on 2026-09-25 does not
+contain the `Sources/FluidAudio/TTS/MossTtsNano` path referenced by the model
+card, so the implementation will be extracted from the published model I/O
+contract rather than copied from an unavailable upstream source tree.
