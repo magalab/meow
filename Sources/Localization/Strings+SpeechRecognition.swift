@@ -9,7 +9,6 @@ extension L10n {
     static var speechPageModel: String { loc("speech.page.model") }
     static var speechPageShortcuts: String { loc("speech.page.shortcuts") }
     static var speechPageRecognition: String { loc("speech.page.recognition") }
-    static var speechPageSynthesis: String { loc("speech.page.synthesis") }
     static var speechPageModels: String { loc("speech.page.models") }
     static var speechPageHistory: String { loc("speech.page.history") }
     static var speechRecognitionDisabled: String { loc("speech.recognition.disabled") }

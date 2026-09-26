@@ -20,8 +20,6 @@ final class AppPreferencesCoordinator {
         let speechModelStore: SpeechModelStore
         let speechHistoryStore: SpeechHistoryStore
         let speechRecognitionService: SpeechRecognitionService
-        let ttsModelStore: TtsModelStore
-        let speechSynthesisService: SpeechSynthesisService
         #endif
     }
 
@@ -71,8 +69,6 @@ final class AppPreferencesCoordinator {
             speechModelStore: dependencies.speechModelStore,
             speechHistoryStore: dependencies.speechHistoryStore,
             speechRecognitionService: dependencies.speechRecognitionService,
-            ttsModelStore: dependencies.ttsModelStore,
-            speechSynthesisService: dependencies.speechSynthesisService,
             fileUploadService: dependencies.fileUploadService,
             makeCaptureHistoryView: dependencies.makeCaptureHistoryView,
             recordingHistoryContext: recordingHistoryContext

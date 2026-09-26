@@ -25,6 +25,7 @@ final class SpeechModelStore: ObservableObject {
             .appendingPathComponent("Meow", isDirectory: true)
             .appendingPathComponent("Models", isDirectory: true)
             .appendingPathComponent("ASR", isDirectory: true)
+        Self.reconcileOrphanedBackups(at: modelsRootDirectory, fileManager: fileManager)
         refreshState()
     }
 
@@ -133,6 +134,63 @@ final class SpeechModelStore: ObservableObject {
             fileManager.homeDirectoryForCurrentUser
             .appendingPathComponent("Library", isDirectory: true)
             .appendingPathComponent("Application Support", isDirectory: true)
+    }
+
+    nonisolated static func reconcileOrphanedBackups(
+        at rootDirectory: URL,
+        fileManager: FileManager = .default
+    ) {
+        guard let entries = try? fileManager.contentsOfDirectory(
+            at: rootDirectory,
+            includingPropertiesForKeys: nil,
+            options: []
+        ) else {
+            return
+        }
+
+        for model in SpeechModelKind.allCases {
+            let targetDirectory = rootDirectory.appendingPathComponent(
+                model.storageDirectoryName,
+                isDirectory: true
+            )
+            let prefix = ".\(model.storageDirectoryName)-backup-"
+            let backups = entries.filter { $0.lastPathComponent.hasPrefix(prefix) }
+            guard !backups.isEmpty else { continue }
+
+            if fileManager.fileExists(atPath: targetDirectory.path) {
+                for backup in backups {
+                    try? fileManager.removeItem(at: backup)
+                }
+                continue
+            }
+
+            let validBackups = backups.filter { backup in
+                model.requiredRelativePaths.allSatisfy {
+                    fileManager.fileExists(atPath: backup.appendingPathComponent($0).path)
+                }
+            }
+            guard let backup = validBackups.max(by: { lhs, rhs in
+                let lhsDate = (try? lhs.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
+                    ?? .distantPast
+                let rhsDate = (try? rhs.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
+                    ?? .distantPast
+                return lhsDate < rhsDate
+            }) else {
+                for backup in backups {
+                    try? fileManager.removeItem(at: backup)
+                }
+                continue
+            }
+
+            do {
+                try fileManager.moveItem(at: backup, to: targetDirectory)
+                for otherBackup in backups where otherBackup != backup {
+                    try? fileManager.removeItem(at: otherBackup)
+                }
+            } catch {
+                NSLog("[Meow] Failed to restore the previous speech model: \(error.localizedDescription)")
+            }
+        }
     }
 
     private func performDownload(for model: SpeechModelKind, downloadID: UUID) async throws {

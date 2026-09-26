@@ -25,8 +25,6 @@ final class AppLifecycleCoordinator {
         let closePinnedImages: @MainActor () -> Void
         let speechRecognitionServiceLoaded: @MainActor () -> Bool
         let cancelSpeechRecognition: @MainActor () -> Void
-        let speechSynthesisServiceLoaded: @MainActor () -> Bool
-        let cancelSpeechSynthesis: @MainActor () -> Void
         let hideSpeechOverlay: @MainActor () -> Void
         let stopKeystrokeVisualizer: @MainActor () -> Void
         let systemMonitorServiceLoaded: @MainActor () -> Bool
@@ -111,9 +109,6 @@ final class AppLifecycleCoordinator {
         #if MEOW_VOICE
         if actions.speechRecognitionServiceLoaded() {
             actions.cancelSpeechRecognition()
-        }
-        if actions.speechSynthesisServiceLoaded() {
-            actions.cancelSpeechSynthesis()
         }
         actions.hideSpeechOverlay()
         #endif

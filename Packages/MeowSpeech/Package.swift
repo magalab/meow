@@ -7,7 +7,6 @@ let package = Package(
     products: [
         .library(name: "MeowSpeechCore", targets: ["MeowSpeechCore"]),
         .library(name: "MeowSpeechSenseVoice", targets: ["MeowSpeechSenseVoice"]),
-        .library(name: "MeowSpeechMossTTS", targets: ["MeowSpeechMossTTS"]),
     ],
     targets: [
         .target(
@@ -19,11 +18,6 @@ let package = Package(
             dependencies: ["MeowSpeechCore"],
             path: "Sources/MeowSpeechSenseVoice"
         ),
-        .target(
-            name: "MeowSpeechMossTTS",
-            dependencies: ["MeowSpeechCore"],
-            path: "Sources/MeowSpeechMossTTS"
-        ),
         .testTarget(
             name: "MeowSpeechCoreTests",
             dependencies: ["MeowSpeechCore"],
@@ -34,11 +28,6 @@ let package = Package(
             dependencies: ["MeowSpeechSenseVoice"],
             path: "Tests/MeowSpeechSenseVoiceTests",
             resources: [.process("Fixtures")]
-        ),
-        .testTarget(
-            name: "MeowSpeechMossTTSTests",
-            dependencies: ["MeowSpeechMossTTS"],
-            path: "Tests/MeowSpeechMossTTSTests"
         ),
     ]
 )

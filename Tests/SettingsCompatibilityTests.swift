@@ -15,7 +15,6 @@ func olderSettingsCompatibility() throws {
     #expect(settings.recording == .default)
     #expect(settings.whiteboard == .default)
     #expect(!settings.whiteboard.enabled)
-    #expect(settings.tts == .default)
     #expect(!settings.screenshot.automaticallyIndexOCRText)
     #expect(settings.screenshot.postCaptureActionDuration == .tenSeconds)
     #expect(settings.ai.supportsVision)
@@ -215,28 +214,6 @@ func whiteboardHostLocalizationIsComplete() throws {
             #expect(contents.contains("\"\(key)\" ="))
         }
     }
-}
-
-@Test("TTS settings decode missing fields and normalize invalid values")
-func ttsSettingsCompatibility() throws {
-    let decoded = try JSONDecoder().decode(
-        TtsSettings.self,
-        from: Data(#"{"enabled":true,"speed":9,"voiceID":999}"#.utf8)
-    )
-    let normalized = decoded.normalized()
-
-    #expect(decoded.enabled)
-    #expect(decoded.model == .system)
-    #expect(normalized.speed == 1)
-    #expect(normalized.voiceID == 0)
-    #expect(decoded.autoPlay)
-
-    let migrated = try JSONDecoder().decode(
-        TtsSettings.self,
-        from: Data(#"{"enabled":true,"model":"legacyUnsupportedModel","voiceID":57}"#.utf8)
-    )
-    #expect(migrated.model == .system)
-    #expect(migrated.voiceID == 0)
 }
 
 @Test("Older capture metadata decodes without OCR text")

@@ -87,10 +87,6 @@ extension L10n {
         loc("text.actions.ask.ai")
     }
 
-    static var textActionsSpeak: String {
-        loc("text.actions.speak")
-    }
-
     static var textActionsUnavailableTitle: String {
         loc("text.actions.unavailable.title")
     }
@@ -109,14 +105,6 @@ extension L10n {
 
     static var textActionsHotkeyConflictMessage: String {
         loc("text.actions.hotkey.conflict.message")
-    }
-
-    static var prefsTtsHotkeyTitle: String {
-        loc("prefs.tts.hotkey.title")
-    }
-
-    static var prefsTtsHotkeySubtitle: String {
-        loc("prefs.tts.hotkey.subtitle")
     }
 
 }

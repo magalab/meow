@@ -2,7 +2,6 @@ import SwiftUI
 
 private enum SpeechPreferencePage: String, CaseIterable, Identifiable {
     case recognition
-    case synthesis
     case models
     case history
 
@@ -13,7 +12,6 @@ private enum SpeechPreferencePage: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .recognition: return L10n.speechPageRecognition
-        case .synthesis: return L10n.speechPageSynthesis
         case .models: return L10n.speechPageModels
         case .history: return L10n.speechPageHistory
         }
@@ -33,11 +31,6 @@ struct PreferenceSpeechSection: View {
     @ObservedObject var modelStore: SpeechModelStore
     @ObservedObject var historyStore: SpeechHistoryStore
     @ObservedObject var recognitionService: SpeechRecognitionService
-    @Binding var ttsSettings: TtsSettings
-    @Binding var ttsHotkeyKeyCode: UInt32
-    @Binding var ttsHotkeyModifiers: UInt32
-    @ObservedObject var ttsModelStore: TtsModelStore
-    @ObservedObject var synthesisService: SpeechSynthesisService
 
     @Environment(\.colorScheme) private var colorScheme
     @State private var selectedPage = SpeechPreferencePage.recognition
@@ -60,15 +53,7 @@ struct PreferenceSpeechSection: View {
                 isOn: $settings.enabled
             )
 
-            PreferenceToggleRow(
-                title: L10n.ttsEnabledTitle,
-                subtitle: L10n.ttsEnabledSubtitle,
-                symbol: "waveform.badge.plus",
-                theme: theme,
-                isOn: $ttsSettings.enabled
-            )
-
-            if settings.enabled || ttsSettings.enabled {
+            if settings.enabled {
                 Picker("", selection: $selectedPage) {
                     ForEach(SpeechPreferencePage.allCases) { page in
                         Text(page.title).tag(page)
@@ -79,8 +64,6 @@ struct PreferenceSpeechSection: View {
                 switch selectedPage {
                 case .recognition:
                     recognitionPage
-                case .synthesis:
-                    synthesisPage
                 case .models:
                     modelsPage
                 case .history:
@@ -89,7 +72,6 @@ struct PreferenceSpeechSection: View {
             }
         }
         .animation(.snappy(duration: 0.22), value: settings.enabled)
-        .animation(.snappy(duration: 0.22), value: ttsSettings.enabled)
         .animation(.snappy(duration: 0.22), value: selectedPage)
         .alert(item: $confirmation) { confirmation in
             switch confirmation {
@@ -147,39 +129,10 @@ struct PreferenceSpeechSection: View {
         }
     }
 
-    @ViewBuilder
-    private var synthesisPage: some View {
-        if ttsSettings.enabled {
-            TtsPreferencesView(
-                mode: .synthesis,
-                theme: theme,
-                settings: $ttsSettings,
-                hotkeyKeyCode: $ttsHotkeyKeyCode,
-                hotkeyModifiers: $ttsHotkeyModifiers,
-                modelStore: ttsModelStore,
-                synthesisService: synthesisService
-            )
-            .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
-        } else {
-            disabledPage(L10n.ttsDisabled)
-        }
-    }
-
     private var modelsPage: some View {
         VStack(spacing: 10) {
             if settings.enabled {
                 modelRow
-            }
-            if ttsSettings.enabled {
-                TtsPreferencesView(
-                    mode: .model,
-                    theme: theme,
-                    settings: $ttsSettings,
-                    hotkeyKeyCode: $ttsHotkeyKeyCode,
-                    hotkeyModifiers: $ttsHotkeyModifiers,
-                    modelStore: ttsModelStore,
-                    synthesisService: synthesisService
-                )
             }
         }
         .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
@@ -219,14 +172,10 @@ struct PreferenceSpeechSection: View {
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 6) {
-                    Picker("", selection: $settings.model) {
-                        ForEach(SpeechModelKind.allCases) { model in
-                            Text(model.displayName).tag(model)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .labelsHidden()
-                    .frame(width: 210)
+                    Text(settings.model.displayName)
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 210)
 
                     modelActions
                 }

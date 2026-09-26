@@ -21,7 +21,6 @@ final class AppHotkeyCoordinator {
         #if MEOW_VOICE
         case speechPressed
         case speechReleased
-        case speakSelectedText
         #endif
     }
 
@@ -46,7 +45,6 @@ final class AppHotkeyCoordinator {
         case whiteboard
         #if MEOW_VOICE
         case speech
-        case textToSpeech
         #endif
     }
 
@@ -168,28 +166,6 @@ final class AppHotkeyCoordinator {
         }
         #else
         hotkeyService.unregisterSpeechHotkey()
-        #endif
-
-        #if MEOW_VOICE
-        if settings.tts.normalized().enabled {
-            register(
-                hotkeyService.registerTtsSelectionHotkey(
-                    keyCode: settings.ttsHotkeyKeyCode,
-                    modifiers: settings.ttsHotkeyModifiers,
-                    action: callback(.speakSelectedText, actions)
-                ),
-                kind: .textToSpeech,
-                name: "text-to-speech",
-                keyCode: settings.ttsHotkeyKeyCode,
-                modifiers: settings.ttsHotkeyModifiers,
-                actions: actions
-            )
-        } else {
-            hotkeyService.unregisterTtsSelectionHotkey()
-            lastRegistered[.textToSpeech] = nil
-        }
-        #else
-        hotkeyService.unregisterTtsSelectionHotkey()
         #endif
 
         applyScreenshot(settings.screenshot, actions: actions)

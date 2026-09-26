@@ -19,9 +19,8 @@
 - 兼容 OpenAI Chat Completions 的 AI 聊天助手，并支持本地聊天历史
 - 可从剪贴板条目直接询问 AI
 - 选中文本翻译面板（需要辅助功能权限）
-- 系统文本服务与 `Option+X` 操作面板，可翻译、询问 AI，并在 Miao 中朗读选中文本
+- 系统文本服务与 `Option+X` 操作面板，可翻译或询问 AI
 - 离线语音识别，支持按住说话、自动粘贴和本地 WAV 历史
-- 离线中英文语音合成，支持本地播放、WAV 导出和剪贴板朗读
 - 按键可视化叠层，支持拖拽、显示模式、显示时长、透明度与历史数量
 - 健康提醒，支持工作/休息计时、休息叠层、每日目标与轻量键鼠活跃检测
 - 菜单栏日历，含农历日期、节气、节假日及 Calendar.app 事件
@@ -60,11 +59,11 @@ bash scripts/build-dmg.sh
 Meow 提供两个构建版本：
 
 ```bash
-# 基础版：Meow，不包含离线语音识别和语音合成
+# 基础版：Meow，不包含离线语音识别
 swift build -c release --product Meow
 bash scripts/build-dmg.sh
 
-# 语音版：Miao，包含离线语音识别和语音合成
+# 语音版：Miao，包含离线语音识别
 MEOW_EDITION=voice swift build -c release --product Miao
 MEOW_EDITION=voice bash scripts/build-dmg.sh
 ```
@@ -87,7 +86,7 @@ APP_BUNDLE_ID=tech.lury.meow bash scripts/build-dmg.sh
 
 ## 选中文本操作
 
-在支持 macOS 服务的应用中选中文字，然后从右键菜单或应用菜单选择「服务 -> 用 Meow 处理」（语音版显示为 Miao）。Meow 会打开统一操作面板，提供翻译和询问 AI；Miao 启用离线语音合成后还会显示朗读操作。
+在支持 macOS 服务的应用中选中文字，然后从右键菜单或应用菜单选择「服务 -> 用 Meow 处理」（语音版显示为 Miao）。Meow 会打开统一操作面板，提供翻译和询问 AI。
 
 默认全局快捷键为 `Option+X`，可在「偏好设置 -> 通用 -> 快捷键」中修改。系统服务入口直接接收选中文字，不需要辅助功能权限；全局快捷键通过 Meow 的选区捕获回退机制读取文本，因此需要辅助功能权限。macOS 通常将入口放在「服务」子菜单中，Meow 无法强制它出现在所有应用的一级右键菜单。
 
@@ -234,18 +233,6 @@ iCloud 钥匙串同步需要稳定的 Apple 签名及相应 entitlement。未签
 ~/Library/Application Support/Meow/ASRHistory/
 ~/Library/Application Support/Meow/Models/ASR/
 ```
-
-## 离线语音合成
-
-离线语音合成仅在 Miao 语音版中提供。可在「偏好设置 -> 语音 -> 合成」中配置。
-
-- 使用 macOS 已安装的系统语音，不需要第三方运行库或模型下载
-- 支持中文、英文和中英混合文本
-- 支持播放、暂停、继续、停止和 WAV 导出
-- 启用后可朗读选中文本，并可从文本剪贴板条目和启动器命令朗读文本
-- 朗读选中文本快捷键在「偏好设置 -> 语音 -> 合成」中配置
-- 朗读选中文本需要辅助功能权限
-- 使用系统语音时全程离线运行
 
 ## 健康提醒
 

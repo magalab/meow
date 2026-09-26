@@ -7,27 +7,15 @@ enum TextActionsVisuals {
 enum TextAction: Hashable, Sendable {
     case translate
     case askAI
-    #if MEOW_VOICE
-    case speak
-    #endif
 
-    static func available(canSpeak: Bool) -> [TextAction] {
-        var actions: [TextAction] = [.translate, .askAI]
-        #if MEOW_VOICE
-        if canSpeak {
-            actions.append(.speak)
-        }
-        #endif
-        return actions
+    static func available() -> [TextAction] {
+        [.translate, .askAI]
     }
 
     var title: String {
         switch self {
         case .translate: return L10n.textActionsTranslate
         case .askAI: return L10n.textActionsAskAI
-        #if MEOW_VOICE
-        case .speak: return L10n.textActionsSpeak
-        #endif
         }
     }
 
@@ -35,9 +23,6 @@ enum TextAction: Hashable, Sendable {
         switch self {
         case .translate: return "translate"
         case .askAI: return "sparkles"
-        #if MEOW_VOICE
-        case .speak: return "speaker.wave.2.fill"
-        #endif
         }
     }
 }
@@ -45,7 +30,6 @@ enum TextAction: Hashable, Sendable {
 struct TextActionsPanelView: View {
     let text: String
     let theme: AppTheme
-    let canSpeak: Bool
     let onAction: (TextAction) -> Void
     let onDismiss: () -> Void
 
@@ -113,7 +97,7 @@ struct TextActionsPanelView: View {
 
     private var actions: some View {
         HStack(spacing: 10) {
-            ForEach(TextAction.available(canSpeak: canSpeak), id: \.self) { action in
+            ForEach(TextAction.available(), id: \.self) { action in
                 actionButton(
                     title: action.title,
                     symbol: action.symbol,

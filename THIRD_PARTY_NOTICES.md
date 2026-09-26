@@ -2,7 +2,7 @@
 
 Meow's voice edition uses the extracted `MeowSpeech` package instead of a
 third-party speech runtime. The package uses Apple's CoreML and AVFoundation
-frameworks for inference and system-voice synthesis.
+frameworks for offline speech inference and audio capture.
 
 ## FluidAudio-derived SenseVoice implementation
 

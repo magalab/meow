@@ -40,9 +40,13 @@ public actor SenseVoiceRecognizer: SpeechRecognizer {
         }
 
         let loadedModels = try loadModelsIfNeeded()
+        try Task.checkCancellation()
         let features = try runPreprocessor(samples, model: loadedModels.preprocessor)
+        try Task.checkCancellation()
         let (logits, validFrames) = try runEncoder(features, model: loadedModels.encoder)
+        try Task.checkCancellation()
         let rawText = decodeRaw(logits: logits, validFrames: validFrames, vocabulary: loadedModels.vocabulary)
+        try Task.checkCancellation()
         let parsed = parseTranscription(rawText)
         guard !parsed.text.isEmpty else {
             throw SpeechError.inferenceFailed("No speech was recognized.")
