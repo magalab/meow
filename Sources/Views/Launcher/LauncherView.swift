@@ -361,7 +361,6 @@ struct LauncherView: View {
                 let actions = actionMenuActions(for: selected)
                 ActionMenu(
                     selectedItem: selected,
-                    showsSpeakAction: BuildEdition.includesVoiceFeatures && viewModel.settings.tts.enabled,
                     showsWhiteboardAction: viewModel.settings.whiteboard.enabled,
                     highlightedAction: actions.isEmpty ? nil : actions[actionMenuSelectionIndex.clamped(to: 0 ... (actions.count - 1))],
                     onAction: { action in
@@ -492,9 +491,6 @@ struct LauncherView: View {
                     .recognizeText, .translateImageText, .scanQRCode,
                 ]
             }
-            if BuildEdition.includesVoiceFeatures, viewModel.settings.tts.enabled, case .text = entry.content {
-                actions.append(.speak)
-            }
             actions += [.askAI, .delete]
             return actions
         case .command:
@@ -523,7 +519,7 @@ struct LauncherView: View {
         switch (selectedItem, action) {
         case (.app, .open), (.app, .showInFinder), (.app, .copyPath):
             return true
-        case (.clipboard, .paste), (.clipboard, .copy), (.clipboard, .speak), (.clipboard, .askAI),
+        case (.clipboard, .paste), (.clipboard, .copy), (.clipboard, .askAI),
              (.clipboard, .pinHistory), (.clipboard, .unpinHistory),
              (.clipboard, .openImage), (.clipboard, .saveImageAs),
              (.clipboard, .pin), (.clipboard, .recognizeText),
@@ -554,8 +550,6 @@ struct LauncherView: View {
             copyClipboardContent()
         case .pinHistory, .unpinHistory:
             viewModel.toggleClipboardPinned(selected)
-        case .speak:
-            viewModel.speakClipboardText(selected)
         case .askAI:
             askAIAboutClipboard(selected)
         case .pin:

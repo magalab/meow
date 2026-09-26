@@ -24,9 +24,8 @@ A lightweight macOS launcher with gadgets, built with SwiftUI + AppKit.
 - OpenAI-compatible AI chat assistant with local chat history
 - Ask AI from clipboard entries
 - Translation panel for selected text (requires Accessibility permission)
-- System text service and `Option+X` action panel for translating, asking AI, or reading selected text aloud in Miao
+- System text service and `Option+X` action panel for translating or asking AI
 - Offline speech recognition with a hold-to-talk shortcut, automatic paste, and local WAV history
-- Offline Chinese and English speech synthesis with local playback, WAV export, and clipboard read-aloud actions
 - Keystroke visualizer with draggable overlay, display modes, duration, opacity, and history count
 - Health reminder with work/break timer, break overlay, daily goal, and light activity detection
 - Menu bar calendar with Chinese lunisolar dates, solar terms, and Calendar.app events
@@ -65,11 +64,11 @@ The DMG build script regenerates `AppIcon.icns` when `logo.png` is newer than th
 Meow has two build editions:
 
 ```bash
-# Base edition: Meow, without offline speech recognition or speech synthesis
+# Base edition: Meow, without offline speech recognition
 swift build -c release --product Meow
 bash scripts/build-dmg.sh
 
-# Voice edition: Miao, with offline speech recognition and speech synthesis
+# Voice edition: Miao, with offline speech recognition
 MEOW_EDITION=voice swift build -c release --product Miao
 MEOW_EDITION=voice bash scripts/build-dmg.sh
 ```
@@ -92,7 +91,7 @@ APP_BUNDLE_ID=tech.lury.meow bash scripts/build-dmg.sh
 
 ## Selected Text Actions
 
-Select text in an app that supports macOS Services, then choose **Services -> Process with Meow** (or Miao) from its context or application menu. Meow opens one action panel for translation and Ask AI; Miao also shows Read Aloud when offline text-to-speech is enabled.
+Select text in an app that supports macOS Services, then choose **Services -> Process with Meow** (or Miao) from its context or application menu. Meow opens one action panel for translation and Ask AI.
 
 The default global shortcut is `Option+X` and can be changed under Preferences -> General -> Shortcuts. The Services entry receives selected text directly and does not require Accessibility permission. The global shortcut uses Meow's selection capture fallback and therefore does require Accessibility permission. macOS normally places the entry in the Services submenu; Meow cannot force it into the top level of every app's context menu.
 
@@ -257,18 +256,6 @@ Speech history and models are stored under:
 ~/Library/Application Support/Meow/Models/ASR/
 ```
 
-## Offline Speech Synthesis
-
-Offline speech synthesis is available in the Miao voice edition. Configure it from Preferences -> Speech -> Synthesis.
-
-- Uses the voices already installed in macOS; no third-party TTS runtime or model download is required
-- Supports Chinese, English, and mixed-language text through the system speech backend
-- Supports play, pause, resume, stop, and WAV export
-- Adds read-aloud actions for selected text, clipboard entries, and launcher commands when enabled
-- Configures the read-selection hotkey from Preferences -> Speech -> Synthesis
-- Reading selected text requires Accessibility permission
-- Runs fully offline with the selected macOS voice
-
 ## Health Reminder
 
 Meow can alternate focused work sessions with short breaks. Configure it from Preferences -> Health.
@@ -326,7 +313,7 @@ Meow shows the destination endpoint and compression settings before each upload.
 - `Sources/Localization/`: runtime language manager and feature-grouped localization accessors
 - `Sources/Resources/`: localization resources
 - `Modules/WhiteboardFeature/`: standalone local SwiftPM feature module
-- `Packages/MeowSpeech/`: standalone speech contracts, extracted SenseVoice CoreML backend, and MOSS-TTS-Nano extension point
+- `Packages/MeowSpeech/`: standalone speech contracts and extracted SenseVoice CoreML backend
 - `Tests/`: Swift Testing coverage
 
 ## Notes

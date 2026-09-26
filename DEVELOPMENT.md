@@ -56,7 +56,6 @@
 │   │   ├── SpeechModelStore.swift   # Speech model download, SHA-256 verification, and switching
 │   │   ├── SpeechHistoryStore.swift # Transcript index and WAV persistence
 │   │   ├── SpeechRecognizerFactory.swift # Voice-edition backend composition boundary
-│   │   ├── SystemSpeechSynthesizer.swift # macOS system-voice TTS backend
 │   │   └── LaunchHistoryStore.swift # Launch frequency/recency tracking
 │   ├── ViewModels/
 │   │   └── LauncherViewModel.swift  # Search, ranking, app dispatch, clipboard management
@@ -101,7 +100,6 @@
 │   │   │   ├── ScreenshotPreferencesView.swift # Screenshot settings
 │   │   │   ├── SpeechPreferencesView.swift # Speech model, permission, and history settings
 │   │   │   ├── SystemMonitorPreferencesView.swift # System monitor settings
-│   │   │   ├── TtsPreferencesView.swift # Text-to-speech settings
 │   │   │   └── WhiteboardPreferencesView.swift # Whiteboard settings
 │   │   └── Components/
 │   │       ├── ActionMenu.swift     # Contextual action menu overlay
@@ -221,10 +219,10 @@ swift build -c release
 
 ### Build Editions
 ```bash
-# Base edition: Meow, without offline speech recognition or speech synthesis
+# Base edition: Meow, without offline speech recognition
 swift build -c release --product Meow
 
-# Voice edition: Miao, with offline speech recognition and speech synthesis
+# Voice edition: Miao, with offline speech recognition
 MEOW_EDITION=voice swift build -c release --product Miao
 ```
 

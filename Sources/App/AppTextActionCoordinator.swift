@@ -6,9 +6,6 @@ final class AppTextActionCoordinator {
     struct Actions {
         let settings: @MainActor () -> AppSettings
         let openAIChat: @MainActor (AIChatInitialInput?) -> Void
-        #if MEOW_VOICE
-        let speak: @MainActor (String) -> Void
-        #endif
     }
 
     private let translationService: TranslationService
@@ -91,17 +88,9 @@ final class AppTextActionCoordinator {
             return
         }
 
-        let canSpeak: Bool
-        #if MEOW_VOICE
-        canSpeak = actions.settings().tts.enabled
-        #else
-        canSpeak = false
-        #endif
-
         let view = TextActionsPanelView(
             text: normalized,
             theme: actions.settings().theme,
-            canSpeak: canSpeak,
             onAction: { [weak self] action in
                 self?.performTextAction(action, text: normalized)
             },
@@ -143,10 +132,6 @@ final class AppTextActionCoordinator {
             presentTranslationPanel(text: text, axPermissionDenied: false)
         case .askAI:
             actions.openAIChat(AIChatInitialInput(text: text))
-        #if MEOW_VOICE
-        case .speak:
-            actions.speak(text)
-        #endif
         }
     }
 

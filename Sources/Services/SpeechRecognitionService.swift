@@ -27,6 +27,7 @@ final class SpeechRecognitionService: ObservableObject {
     private var isInputTapInstalled = false
     private var durationTimer: Timer?
     private var recognitionTask: Task<Void, Never>?
+    private var recognitionTaskID: UUID?
     private var resetTask: Task<Void, Never>?
     private var isHotkeyHeld = false
     private var currentSettings = SpeechSettings.default
@@ -136,6 +137,7 @@ final class SpeechRecognitionService: ObservableObject {
 
     func cancel() {
         isHotkeyHeld = false
+        recognitionTaskID = nil
         recognitionTask?.cancel()
         recognitionTask = nil
         resetTask?.cancel()
@@ -224,6 +226,8 @@ final class SpeechRecognitionService: ObservableObject {
         setState(.transcribing)
         let modelDirectory = modelStore.modelDirectory
         let settings = currentSettings
+        let recognitionTaskID = UUID()
+        self.recognitionTaskID = recognitionTaskID
 
         recognitionTask = Task { [weak self] in
             guard let self else { return }
@@ -233,6 +237,7 @@ final class SpeechRecognitionService: ObservableObject {
                     modelDirectory: modelDirectory
                 )
                 try Task.checkCancellation()
+                guard self.recognitionTaskID == recognitionTaskID else { return }
                 do {
                     try self.historyStore.append(
                         text: result.text,
@@ -245,14 +250,19 @@ final class SpeechRecognitionService: ObservableObject {
                     NSLog("[Meow] Failed to save speech history: \(error.localizedDescription)")
                 }
                 try Task.checkCancellation()
+                guard self.recognitionTaskID == recognitionTaskID else { return }
                 let pasted = self.clipboardStore.performTemporaryTextPaste(result.text)
                 self.setTransientState(pasted ? .pasted : .copied)
             } catch is CancellationError {
+                guard self.recognitionTaskID == recognitionTaskID else { return }
                 self.setTransientState(.cancelled)
             } catch {
+                guard self.recognitionTaskID == recognitionTaskID else { return }
                 self.setFailure(error.localizedDescription)
             }
+            guard self.recognitionTaskID == recognitionTaskID else { return }
             self.recognitionTask = nil
+            self.recognitionTaskID = nil
         }
     }
 

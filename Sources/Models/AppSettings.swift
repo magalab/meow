@@ -270,10 +270,6 @@ struct AppSettings: Codable {
     var textActionsHotkeyKeyCode: UInt32
     /// Carbon modifier flags for the selected-text actions hotkey (default: 2048 = optionKey = ⌥X).
     var textActionsHotkeyModifiers: UInt32
-    /// Key code for the text-to-speech selection hotkey (default: 1 = kVK_ANSI_S).
-    var ttsHotkeyKeyCode: UInt32
-    /// Carbon modifier flags for the text-to-speech selection hotkey (default: 2048 = optionKey = ⌥S).
-    var ttsHotkeyModifiers: UInt32
     var language: AppLanguage
     var theme: AppTheme
     var dateIconStyle: DateIconStyle
@@ -284,7 +280,6 @@ struct AppSettings: Codable {
     var recording: RecordingSettings
     var whiteboard: WhiteboardSettings
     var speech: SpeechSettings
-    var tts: TtsSettings
     var healthReminder: HealthReminderSettings
     var keepAwake: KeepAwakeSettings
     var authenticatorEnabled: Bool
@@ -318,8 +313,6 @@ struct AppSettings: Codable {
         translateHotkeyModifiers: UInt32,
         textActionsHotkeyKeyCode: UInt32 = 7,
         textActionsHotkeyModifiers: UInt32 = 2048,
-        ttsHotkeyKeyCode: UInt32,
-        ttsHotkeyModifiers: UInt32,
         language: AppLanguage,
         theme: AppTheme,
         dateIconStyle: DateIconStyle = .pawPrint,
@@ -330,7 +323,6 @@ struct AppSettings: Codable {
         recording: RecordingSettings = .default,
         whiteboard: WhiteboardSettings = .default,
         speech: SpeechSettings = .default,
-        tts: TtsSettings = .default,
         healthReminder: HealthReminderSettings = .default,
         keepAwake: KeepAwakeSettings = .default,
         authenticatorEnabled: Bool = false,
@@ -363,8 +355,6 @@ struct AppSettings: Codable {
         self.translateHotkeyModifiers = translateHotkeyModifiers
         self.textActionsHotkeyKeyCode = textActionsHotkeyKeyCode
         self.textActionsHotkeyModifiers = textActionsHotkeyModifiers
-        self.ttsHotkeyKeyCode = ttsHotkeyKeyCode
-        self.ttsHotkeyModifiers = ttsHotkeyModifiers
         self.language = language
         self.theme = theme
         self.dateIconStyle = dateIconStyle
@@ -375,7 +365,6 @@ struct AppSettings: Codable {
         self.recording = recording
         self.whiteboard = whiteboard
         self.speech = speech
-        self.tts = tts
         self.healthReminder = healthReminder
         self.keepAwake = keepAwake
         self.authenticatorEnabled = authenticatorEnabled
@@ -407,14 +396,14 @@ struct AppSettings: Codable {
         translateHotkeyModifiers: 2048,
         textActionsHotkeyKeyCode: 7,
         textActionsHotkeyModifiers: 2048,
-        ttsHotkeyKeyCode: 1,
-        ttsHotkeyModifiers: 2048,
         language: .system,
         theme: .gingerCat
     )
 }
 
 extension AppSettings {
+    // The removed TTS keys are intentionally omitted. Keyed decoding ignores
+    // those legacy values, and the next settings save drops them from disk.
     private enum CodingKeys: String, CodingKey {
         case autoLaunch
         case clipboardHistoryEnabled
@@ -432,8 +421,6 @@ extension AppSettings {
         case translateHotkeyModifiers
         case textActionsHotkeyKeyCode
         case textActionsHotkeyModifiers
-        case ttsHotkeyKeyCode
-        case ttsHotkeyModifiers
         case language
         case theme
         case dateIconStyle
@@ -444,7 +431,6 @@ extension AppSettings {
         case recording
         case whiteboard
         case speech
-        case tts
         case healthReminder
         case keepAwake
         case authenticatorEnabled
@@ -498,8 +484,6 @@ extension AppSettings {
             UInt32.self,
             forKey: .textActionsHotkeyModifiers
         ) ?? Self.default.textActionsHotkeyModifiers
-        ttsHotkeyKeyCode = try container.decodeIfPresent(UInt32.self, forKey: .ttsHotkeyKeyCode) ?? Self.default.ttsHotkeyKeyCode
-        ttsHotkeyModifiers = try container.decodeIfPresent(UInt32.self, forKey: .ttsHotkeyModifiers) ?? Self.default.ttsHotkeyModifiers
         language = try container.decodeIfPresent(AppLanguage.self, forKey: .language) ?? Self.default.language
         theme = try container.decodeIfPresent(AppTheme.self, forKey: .theme) ?? Self.default.theme
         dateIconStyle = try container.decodeIfPresent(DateIconStyle.self, forKey: .dateIconStyle) ?? Self.default.dateIconStyle
@@ -519,7 +503,6 @@ extension AppSettings {
             forKey: .whiteboard
         ) ?? Self.default.whiteboard
         speech = try container.decodeIfPresent(SpeechSettings.self, forKey: .speech) ?? Self.default.speech
-        tts = try container.decodeIfPresent(TtsSettings.self, forKey: .tts) ?? Self.default.tts
         healthReminder = try container.decodeIfPresent(
             HealthReminderSettings.self,
             forKey: .healthReminder

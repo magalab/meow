@@ -120,8 +120,6 @@ struct PreferencesView: View {
     @ObservedObject var speechModelStore: SpeechModelStore
     @ObservedObject var speechHistoryStore: SpeechHistoryStore
     @ObservedObject var speechRecognitionService: SpeechRecognitionService
-    @ObservedObject var ttsModelStore: TtsModelStore
-    @ObservedObject var speechSynthesisService: SpeechSynthesisService
     #endif
     @ObservedObject var fileUploadService: FileUploadService
     let makeCaptureHistoryView: (AppTheme) -> CaptureHistoryView
@@ -277,21 +275,7 @@ struct PreferencesView: View {
                                 ),
                                 modelStore: speechModelStore,
                                 historyStore: speechHistoryStore,
-                                recognitionService: speechRecognitionService,
-                                ttsSettings: Binding(
-                                    get: { viewModel.settings.tts },
-                                    set: { viewModel.settings.tts = $0 }
-                                ),
-                                ttsHotkeyKeyCode: Binding(
-                                    get: { viewModel.settings.ttsHotkeyKeyCode },
-                                    set: { viewModel.settings.ttsHotkeyKeyCode = $0 }
-                                ),
-                                ttsHotkeyModifiers: Binding(
-                                    get: { viewModel.settings.ttsHotkeyModifiers },
-                                    set: { viewModel.settings.ttsHotkeyModifiers = $0 }
-                                ),
-                                ttsModelStore: ttsModelStore,
-                                synthesisService: speechSynthesisService
+                                recognitionService: speechRecognitionService
                             )
                             .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
                         }

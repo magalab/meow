@@ -7,21 +7,6 @@ public protocol SpeechRecognizer: Sendable {
     ) async throws -> TranscriptionResult
 }
 
-public protocol SpeechSynthesizer: Sendable {
-    func synthesize(
-        text: String,
-        voice: VoiceProfile?
-    ) -> AsyncThrowingStream<AudioChunk, Error>
-}
-
-/// A synthesizer that can load its runtime before the first utterance.
-///
-/// Implementations should keep this operation idempotent so callers can
-/// trigger it opportunistically when the speech service becomes active.
-public protocol PreparableSpeechSynthesizer: SpeechSynthesizer {
-    func prepare() async throws
-}
-
 public struct TranscriptionResult: Sendable, Equatable {
     public let text: String
     public let language: String?
@@ -34,44 +19,19 @@ public struct TranscriptionResult: Sendable, Equatable {
     }
 }
 
-public struct AudioChunk: Sendable, Equatable {
-    public let samples: [Float]
-    public let sampleRate: Int
-    public let isFinal: Bool
-
-    public init(samples: [Float], sampleRate: Int, isFinal: Bool = false) {
-        self.samples = samples
-        self.sampleRate = sampleRate
-        self.isFinal = isFinal
-    }
-}
-
-public struct VoiceProfile: Sendable, Identifiable, Equatable {
-    public let id: String
-    public let name: String
-    public let language: String?
-
-    public init(id: String, name: String, language: String? = nil) {
-        self.id = id
-        self.name = name
-        self.language = language
-    }
-}
-
 public enum SpeechError: Error, LocalizedError, Sendable, Equatable {
     case modelUnavailable
     case modelLoadFailed(String)
     case invalidAudio(String)
     case inferenceFailed(String)
     case cancelled
-    case unsupported(String)
 
     public var errorDescription: String? {
         switch self {
         case .modelUnavailable:
             return "The speech model is not installed."
         case let .modelLoadFailed(message), let .invalidAudio(message),
-             let .inferenceFailed(message), let .unsupported(message):
+             let .inferenceFailed(message):
             return message
         case .cancelled:
             return "Speech processing was cancelled."

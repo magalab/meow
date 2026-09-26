@@ -179,7 +179,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     #if MEOW_VOICE
     private lazy var speechModelStore = SpeechModelStore()
     private lazy var speechHistoryStore = SpeechHistoryStore()
-    private lazy var ttsModelStore = TtsModelStore()
     private var speechRecognitionServiceLoaded = false
     private lazy var speechRecognitionService: SpeechRecognitionService = {
         speechRecognitionServiceLoaded = true
@@ -193,16 +192,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         speechOverlayController.connect(to: service)
         service.apply(settings: viewModel.settings.speech)
-        return service
-    }()
-    private var speechSynthesisServiceLoaded = false
-    private lazy var speechSynthesisService: SpeechSynthesisService = {
-        speechSynthesisServiceLoaded = true
-        let service = SpeechSynthesisService(modelStore: ttsModelStore)
-        service.onNeedsModel = { [weak self] in
-            self?.showPreferences(section: .speech)
-        }
-        service.apply(settings: viewModel.settings.tts.normalized())
         return service
     }()
     private let speechOverlayController = SpeechOverlayController()
@@ -254,9 +243,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             },
             speechModelStore: speechModelStore,
             speechHistoryStore: speechHistoryStore,
-            speechRecognitionService: speechRecognitionService,
-            ttsModelStore: ttsModelStore,
-            speechSynthesisService: speechSynthesisService
+            speechRecognitionService: speechRecognitionService
         )
         return AppPreferencesCoordinator(windowCoordinator: windowCoordinator, dependencies: dependencies)
         #else
@@ -299,10 +286,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var localMouseMonitor: Any?
     private var globalKeyMonitor: Any?
     private var localKeyMonitor: Any?
-    #if MEOW_VOICE
-    private var selectedTextForTts = ""
-    private var ttsSelectionPermissionDenied = false
-    #endif
     private var appliedLanguage: AppLanguage?
     private var whiteboardPreparedForRecording = false
     private var clipboardMonitoringEnabled = false
@@ -359,16 +342,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.hideLauncher()
             self?.uploadFromClipboard()
         }
-        #if MEOW_VOICE
-        viewModel.onSpeakText = { [weak self] text in
-            guard let self else { return }
-            self.hideLauncher()
-            self.speechSynthesisService.synthesize(text: text, settings: self.viewModel.settings.tts)
-        }
-        viewModel.onSpeakSelectedText = { [weak self] in
-            self?.speakCapturedSelection()
-        }
-        #endif
         viewModel.onPinClipboardImage = { [weak self] image in
             self?.hideLauncher()
             self?.pinnedImageController.pin(image)
@@ -558,14 +531,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func apply(settings: AppSettings) {
-        var settings = settings
-        #if MEOW_VOICE
-        let normalizedTTSSettings = settings.tts.normalized()
-        if settings.tts != normalizedTTSSettings {
-            settings.tts = normalizedTTSSettings
-            viewModel.settings.tts = normalizedTTSSettings
-        }
-        #endif
         let languageChanged = appliedLanguage != settings.language
         if languageChanged {
             LanguageManager.shared.apply(settings.language)
@@ -627,10 +592,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if settings.speech.enabled || speechRecognitionServiceLoaded {
             speechModelStore.apply(selectedModel: settings.speech.model)
             speechRecognitionService.apply(settings: settings.speech)
-        }
-        if normalizedTTSSettings.enabled || speechSynthesisServiceLoaded {
-            ttsModelStore.apply(selectedModel: normalizedTTSSettings.model)
-            speechSynthesisService.apply(settings: normalizedTTSSettings)
         }
         #endif
         let actualAutoLaunchEnabled = autoLaunchService.apply(enabled: settings.autoLaunch)
@@ -794,18 +755,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.speechRecognitionService.cancel()
                 #endif
             },
-            speechSynthesisServiceLoaded: { [weak self] in
-                #if MEOW_VOICE
-                self?.speechSynthesisServiceLoaded == true
-                #else
-                false
-                #endif
-            },
-            cancelSpeechSynthesis: { [weak self] in
-                #if MEOW_VOICE
-                self?.speechSynthesisService.cancel()
-                #endif
-            },
             hideSpeechOverlay: { [weak self] in
                 #if MEOW_VOICE
                 self?.speechOverlayController.hide()
@@ -902,28 +851,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func makeTextActions() -> AppTextActionCoordinator.Actions {
-        #if MEOW_VOICE
-        return AppTextActionCoordinator.Actions(
-            settings: { [weak self] in self?.viewModel.settings ?? .default },
-            openAIChat: { [weak self] input in
-                self?.openAIChat(input)
-            },
-            speak: { [weak self] text in
-                guard let self else { return }
-                self.speechSynthesisService.synthesize(
-                    text: text,
-                    settings: self.viewModel.settings.tts
-                )
-            }
-        )
-        #else
         return AppTextActionCoordinator.Actions(
             settings: { [weak self] in self?.viewModel.settings ?? .default },
             openAIChat: { [weak self] input in
                 self?.openAIChat(input)
             }
         )
-        #endif
     }
 
     private func makeHotkeyActions() -> AppHotkeyCoordinator.Actions {
@@ -983,8 +916,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             speechRecognitionService.hotkeyPressed()
         case .speechReleased:
             speechRecognitionService.hotkeyReleased()
-        case .speakSelectedText:
-            speakSelectedTextViaHotkey()
         #endif
         }
     }
@@ -1049,9 +980,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .speech:
             viewModel.settings.speech.hotkeyKeyCode = keyCode
             viewModel.settings.speech.hotkeyModifiers = modifiers
-        case .textToSpeech:
-            viewModel.settings.ttsHotkeyKeyCode = keyCode
-            viewModel.settings.ttsHotkeyModifiers = modifiers
         #endif
         }
     }
@@ -1443,15 +1371,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if !viewModel.refreshInstalledApps() {
             viewModel.refresh()
         }
-        #if MEOW_VOICE
-        if viewModel.settings.tts.enabled {
-            selectedTextForTts = translationService.captureViaAccessibility()
-            ttsSelectionPermissionDenied = translationService.axPermissionDenied
-        } else {
-            selectedTextForTts = ""
-            ttsSelectionPermissionDenied = false
-        }
-        #endif
         windowCoordinator.showLauncher { [weak self] in
             guard let self else { return NSViewController() }
             return NSHostingController(
@@ -1461,60 +1380,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             )
         }
     }
-
-    #if MEOW_VOICE
-    private func speakCapturedSelection() {
-        let text = selectedTextForTts
-        let permissionDenied = ttsSelectionPermissionDenied
-        hideLauncher()
-
-        if text.isEmpty, !permissionDenied {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { [weak self] in
-                guard let self else { return }
-                let fallbackText = self.translationService.captureWithFallback(promptForPermission: true)
-                self.ttsSelectionPermissionDenied = self.translationService.axPermissionDenied
-                self.speakSelectedText(fallbackText)
-            }
-            return
-        }
-
-        speakSelectedText(text)
-    }
-
-    private func speakSelectedText(_ text: String) {
-        guard !text.isEmpty else {
-            let alert = NSAlert()
-            alert.messageText = L10n.ttsSelectionUnavailableTitle
-            alert.informativeText = ttsSelectionPermissionDenied
-                ? L10n.ttsSelectionPermissionMessage
-                : L10n.ttsSelectionEmptyMessage
-            if ttsSelectionPermissionDenied {
-                alert.addButton(withTitle: L10n.translateOpenPrivacy)
-                alert.addButton(withTitle: L10n.actionCancel)
-                if alert.runModal() == .alertFirstButtonReturn {
-                    NSWorkspace.shared.open(
-                        URL(
-                            string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
-                        )!
-                    )
-                }
-            } else {
-                alert.addButton(withTitle: L10n.actionOK)
-                alert.runModal()
-            }
-            return
-        }
-
-        speechSynthesisService.synthesize(text: text, settings: viewModel.settings.tts)
-    }
-
-    private func speakSelectedTextViaHotkey() {
-        guard viewModel.settings.tts.enabled else { return }
-        selectedTextForTts = translationService.captureWithFallback(promptForPermission: true)
-        ttsSelectionPermissionDenied = translationService.axPermissionDenied
-        speakCapturedSelection()
-    }
-    #endif
 
     private func hideLauncher() {
         windowCoordinator.hideLauncher()

@@ -31,10 +31,6 @@ extension L10n {
         loc("action.menu.ask.ai")
     }
 
-    static var actionMenuSpeak: String {
-        loc("action.menu.speak")
-    }
-
     static var actionMenuPinImage: String { loc("action.menu.pin.image") }
     static var actionMenuRecognizeText: String { loc("action.menu.recognize.text") }
     static var actionMenuTranslateImage: String { loc("action.menu.translate.image") }

@@ -68,14 +68,9 @@ func textActionsHotkeySettingsRoundTrip() throws {
     #expect(decoded.textActionsHotkeyModifiers == 4096)
 }
 
-@Test("Text actions expose speech only in an enabled voice build")
+@Test("Text actions expose translation and Ask AI")
 func textActionsAvailability() {
-    #expect(TextAction.available(canSpeak: false) == [.translate, .askAI])
-    #if MEOW_VOICE
-    #expect(TextAction.available(canSpeak: true) == [.translate, .askAI, .speak])
-    #else
-    #expect(TextAction.available(canSpeak: true) == [.translate, .askAI])
-    #endif
+    #expect(TextAction.available() == [.translate, .askAI])
 }
 
 @MainActor
@@ -97,7 +92,6 @@ func textServiceLocalizationResources() throws {
         "text.actions.selection",
         "text.actions.translate",
         "text.actions.ask.ai",
-        "text.actions.speak",
         "text.actions.unavailable.title",
         "text.actions.accessibility.message",
         "text.actions.no.selection",

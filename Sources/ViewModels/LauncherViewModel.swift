@@ -42,8 +42,6 @@ final class LauncherViewModel: ObservableObject {
     var onRecordingCommand: ((RecordingCommand) -> Void)?
     var onWhiteboardCommand: ((WhiteboardCommand) -> Void)?
     var onKeepAwakeCommand: (() -> Void)?
-    var onSpeakText: ((String) -> Void)?
-    var onSpeakSelectedText: (() -> Void)?
     var onPinClipboardImage: ((ImageClipboardContent) -> Void)?
     var onRecognizeClipboardImage: ((ImageClipboardContent) -> Void)?
     var onTranslateClipboardImage: ((ImageClipboardContent) -> Void)?
@@ -328,27 +326,6 @@ final class LauncherViewModel: ObservableObject {
                 at: min(2, entries.count)
             )
         }
-        if BuildEdition.includesVoiceFeatures, settings.tts.enabled {
-            entries.insert(
-                contentsOf: [
-                    CommandEntry(
-                        id: "meow.tts.selection",
-                        title: L10n.cmdTtsSelectionTitle,
-                        subtitle: L10n.cmdTtsSelectionSubtitle,
-                        keywords: ["speak", "read", "tts", "selection", "selected text",
-                                   "朗读", "语音合成", "选中文本", "选择"]
-                    ),
-                    CommandEntry(
-                        id: "meow.tts.clipboard",
-                        title: L10n.cmdTtsClipboardTitle,
-                        subtitle: L10n.cmdTtsClipboardSubtitle,
-                        keywords: ["speak", "read", "tts", "clipboard", "voice",
-                                   "朗读", "语音合成", "剪贴板", "文字转语音"]
-                    ),
-                ],
-                at: min(2, entries.count)
-            )
-        }
         return entries
     }
 
@@ -487,19 +464,6 @@ final class LauncherViewModel: ObservableObject {
               case let .image(image) = entry.content
         else { return }
         onSendClipboardImageToWhiteboard?(image)
-    }
-
-    func speakClipboardText(_ item: SearchItem) {
-        guard BuildEdition.includesVoiceFeatures, settings.tts.enabled,
-              case let .clipboard(entry) = item,
-              case let .text(text) = entry.content
-        else { return }
-        onSpeakText?(text)
-    }
-
-    func speakLatestClipboardText() {
-        guard BuildEdition.includesVoiceFeatures, settings.tts.enabled, let text = latestClipboardText() else { return }
-        onSpeakText?(text)
     }
 
     func openAIChat(prompt: String?) {
@@ -642,10 +606,6 @@ final class LauncherViewModel: ObservableObject {
             onRecordingCommand?(.recordMobileDevice)
         case "meow.keepAwake":
             onKeepAwakeCommand?()
-        case "meow.tts.clipboard":
-            speakLatestClipboardText()
-        case "meow.tts.selection":
-            onSpeakSelectedText?()
         case "meow.quit":
             NSApp.terminate(nil)
         default:

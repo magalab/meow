@@ -10,7 +10,6 @@ enum ActionMenuAction: String, Hashable {
     case copy
     case pinHistory
     case unpinHistory
-    case speak
     case askAI
     case pin
     case recognizeText
@@ -26,7 +25,6 @@ struct ActionMenu: View {
     private static let maxVisibleHeight: CGFloat = 430
 
     let selectedItem: SearchItem
-    let showsSpeakAction: Bool
     let showsWhiteboardAction: Bool
     let highlightedAction: ActionMenuAction?
     let onAction: (ActionMenuAction) -> Void
@@ -100,9 +98,6 @@ struct ActionMenu: View {
                     menuRow(action: .recognizeText, title: L10n.actionMenuRecognizeText, systemImage: "text.viewfinder", shortcuts: [])
                     menuRow(action: .translateImageText, title: L10n.actionMenuTranslateImage, systemImage: "translate", shortcuts: [])
                     menuRow(action: .scanQRCode, title: L10n.actionMenuScanQRCode, systemImage: "qrcode.viewfinder", shortcuts: [])
-                }
-                if showsSpeakAction, case .text = entry.content {
-                    menuRow(action: .speak, title: L10n.actionMenuSpeak, systemImage: "speaker.wave.2", shortcuts: [])
                 }
                 menuRow(action: .askAI, title: L10n.actionMenuAskAI, systemImage: "sparkles", shortcuts: ["⌘", "A"])
                 menuRow(action: .delete, title: L10n.actionMenuDelete, systemImage: "trash", shortcuts: ["⌘", "⌫"], isDanger: true)

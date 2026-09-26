@@ -1,55 +1,7 @@
 import Foundation
 
 extension L10n {
-    // MARK: - Text to Speech
-
-    static var ttsEnabledTitle: String { loc("tts.enabled.title") }
-    static var ttsEnabledSubtitle: String { loc("tts.enabled.subtitle") }
-    static var ttsDisabled: String { loc("tts.disabled") }
-    static var ttsInputTitle: String { loc("tts.input.title") }
-    static var ttsInputPlaceholder: String { loc("tts.input.placeholder") }
-    static var ttsVoiceSystem: String { loc("tts.voice.system") }
-    static var ttsVoiceMoss: String { loc("tts.voice.moss") }
-    static var ttsGenerate: String { loc("tts.generate") }
-    static var ttsPlay: String { loc("tts.play") }
-    static var ttsPause: String { loc("tts.pause") }
-    static var ttsResume: String { loc("tts.resume") }
-    static var ttsStop: String { loc("tts.stop") }
-    static var ttsExport: String { loc("tts.export") }
-    static var ttsExportErrorTitle: String { loc("tts.export.error.title") }
-    static var ttsStatusIdle: String { loc("tts.status.idle") }
-    static var ttsStatusNeedsModel: String { loc("tts.status.needs.model") }
-    static var ttsStatusLoading: String { loc("tts.status.loading") }
-    static var ttsStatusSynthesizing: String { loc("tts.status.synthesizing") }
-    static var ttsStatusReady: String { loc("tts.status.ready") }
-    static var ttsStatusReadyDuration: String { loc("tts.status.ready.duration") }
-    static var ttsStatusPlaying: String { loc("tts.status.playing") }
-    static var ttsStatusPaused: String { loc("tts.status.paused") }
-    static var ttsModelSystemTitle: String { loc("tts.model.system.title") }
-    static var ttsModelSystemSubtitle: String { loc("tts.model.system.subtitle") }
-    static var ttsModelMossTitle: String { loc("tts.model.moss.title") }
-    static var ttsModelMossSubtitle: String { loc("tts.model.moss.subtitle") }
-    static var ttsModelMossLicense: String { loc("tts.model.moss.license") }
-    static var ttsModelLicense: String { loc("tts.model.license") }
-    static var ttsModelNotInstalled: String { loc("tts.model.not.installed") }
-    static var ttsModelInstalled: String { loc("tts.model.installed") }
-    static var ttsModelDownloading: String { loc("tts.model.downloading") }
-    static var ttsErrorIncompleteModel: String { loc("tts.error.incomplete.model") }
-    static var ttsErrorModelChecksum: String { loc("tts.error.model.checksum") }
-    static var ttsErrorLoadModel: String { loc("tts.error.load.model") }
-    static var ttsErrorGenerationFailed: String { loc("tts.error.generation.failed") }
-    static var ttsErrorEmptyAudio: String { loc("tts.error.empty.audio") }
-    static var ttsSelectionUnavailableTitle: String { loc("tts.selection.unavailable.title") }
-    static var ttsSelectionPermissionMessage: String { loc("tts.selection.permission.message") }
-    static var ttsSelectionEmptyMessage: String { loc("tts.selection.empty.message") }
-    static var ttsErrorEmptyText: String { loc("tts.error.empty.text") }
-    static var ttsErrorPlaybackFailed: String { loc("tts.error.playback.failed") }
-    static var ttsErrorNoAudio: String { loc("tts.error.no.audio") }
-    static var ttsErrorExportFailed: String { loc("tts.error.export.failed") }
-    static var cmdTtsClipboardTitle: String { loc("cmd.tts.clipboard.title") }
-    static var cmdTtsClipboardSubtitle: String { loc("cmd.tts.clipboard.subtitle") }
-    static var cmdTtsSelectionTitle: String { loc("cmd.tts.selection.title") }
-    static var cmdTtsSelectionSubtitle: String { loc("cmd.tts.selection.subtitle") }
+    // MARK: - Shared preference and feature labels
 
     static var prefsDockTitle: String {
         loc("prefs.dock.title")

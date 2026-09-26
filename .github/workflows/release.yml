@@ -150,7 +150,7 @@ jobs:
 
             url "https://github.com/${{ github.repository }}/releases/download/__TAG__/Miao_#{version}_arm64.dmg"
             name "Miao"
-            desc "Meow voice edition with offline speech recognition and speech synthesis"
+            desc "Meow voice edition with offline speech recognition"
             homepage "https://github.com/${{ github.repository }}"
 
             depends_on macos: :sequoia

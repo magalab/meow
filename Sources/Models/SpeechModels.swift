@@ -1,5 +1,7 @@
 import Foundation
+#if MEOW_VOICE
 import MeowSpeechCore
+#endif
 
 enum SpeechModelKind: String, Codable, CaseIterable, Identifiable, Sendable {
     case senseVoice = "senseVoice"
@@ -26,6 +28,7 @@ enum SpeechModelKind: String, Codable, CaseIterable, Identifiable, Sendable {
         "sensevoice-small-coreml-int8"
     }
 
+    #if MEOW_VOICE
     /// Pinned to the model repository revision used by the extracted
     /// MeowSpeech SenseVoice backend. The model files are intentionally kept
     /// out of the app bundle and downloaded into Application Support.
@@ -94,6 +97,7 @@ enum SpeechModelKind: String, Codable, CaseIterable, Identifiable, Sendable {
     var requiredRelativePaths: [String] {
         manifest.requiredRelativePaths
     }
+    #endif
 }
 
 struct SpeechSettings: Codable, Equatable, Sendable {

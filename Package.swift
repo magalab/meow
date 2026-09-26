@@ -10,27 +10,28 @@ let voiceSources = [
     "Services/SpeechModelStore.swift",
     "Services/SpeechRecognizerFactory.swift",
     "Services/SpeechRecognitionService.swift",
-    "Services/SpeechSynthesisService.swift",
-    "Services/SpeechSynthesizerFactory.swift",
-    "Services/SystemSpeechSynthesizer.swift",
-    "Services/TtsAudioPlayer.swift",
-    "Services/TtsModelStore.swift",
     "Views/Speech/SpeechOverlayView.swift",
     "Views/Preferences/SpeechPreferencesView.swift",
-    "Views/Preferences/TtsPreferencesView.swift",
 ]
 
 var executableDependencies: [Target.Dependency] = [
     .target(name: "WhiteboardFeature"),
-    .product(name: "MeowSpeechCore", package: "MeowSpeech"),
     .product(name: "GRDB", package: "GRDB.swift"),
     .product(name: "SotoS3", package: "soto"),
 ]
 if isVoiceEdition {
     executableDependencies += [
+        .product(name: "MeowSpeechCore", package: "MeowSpeech"),
         .product(name: "MeowSpeechSenseVoice", package: "MeowSpeech"),
-        .product(name: "MeowSpeechMossTTS", package: "MeowSpeech"),
     ]
+}
+
+var packageDependencies: [Package.Dependency] = [
+    .package(url: "https://github.com/groue/GRDB.swift.git", from: "7.8.0"),
+    .package(url: "https://github.com/soto-project/soto.git", from: "7.0.0"),
+]
+if isVoiceEdition {
+    packageDependencies.insert(.package(path: "Packages/MeowSpeech"), at: 0)
 }
 
 let testSwiftSettings: [SwiftSetting] = isVoiceEdition ? [.define("MEOW_VOICE")] : []
@@ -77,10 +78,6 @@ let package = Package(
     defaultLocalization: "en",
     platforms: [.macOS(.v15)],
     products: [.executable(name: executableName, targets: [executableName])],
-    dependencies: [
-        .package(path: "Packages/MeowSpeech"),
-        .package(url: "https://github.com/groue/GRDB.swift.git", from: "7.8.0"),
-        .package(url: "https://github.com/soto-project/soto.git", from: "7.0.0"),
-    ],
+    dependencies: packageDependencies,
     targets: targets
 )
