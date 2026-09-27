@@ -20,13 +20,13 @@ enum RecordingError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .permissionDenied: return "Screen Recording permission is required."
-        case .sourceUnavailable: return "The selected recording source is no longer available."
-        case .alreadyRecording: return "A recording is already in progress."
-        case .invalidConfiguration: return "The selected recording configuration is not supported."
+        case .permissionDenied: return L10n.recordingErrorPermissionDenied
+        case .sourceUnavailable: return L10n.recordingErrorSourceUnavailable
+        case .alreadyRecording: return L10n.recordingErrorAlreadyRecording
+        case .invalidConfiguration: return L10n.recordingErrorInvalidConfiguration
         case let .writerFailed(message): return message
-        case .microphoneDenied: return "Microphone permission is required for this recording."
-        case .insufficientDiskSpace: return "There is not enough free disk space to start recording."
+        case .microphoneDenied: return L10n.recordingErrorMicrophoneDenied
+        case .insufficientDiskSpace: return L10n.recordingErrorInsufficientDiskSpace
         }
     }
 }
@@ -150,7 +150,13 @@ final class RecordingService: NSObject, ObservableObject {
         countdownTask = nil
 
         if let stream {
-            try? await stream.stopCapture()
+            do {
+                try await stream.stopCapture()
+            } catch {
+                MeowLog.recording.error(
+                    "Stopping screen capture failed: \(error.localizedDescription, privacy: .public)"
+                )
+            }
         }
         self.stream = nil
         microphoneCapture?.stop()
@@ -320,7 +326,7 @@ final class RecordingService: NSObject, ObservableObject {
             onScreenWindowsOnly: false
         )
         let configuration = try makeConfiguration(for: source)
-        let filter = makeFilter(for: source, content: content)
+        let filter = try makeFilter(for: source, content: content)
         store.markRecordingStarted(fileURL: outputURL, source: source.kind)
         let writer = try RecordingWriter(
             outputURL: outputURL,
@@ -376,7 +382,7 @@ final class RecordingService: NSObject, ObservableObject {
     private func makeFilter(
         for source: RecordingSource,
         content: SCShareableContent
-    ) -> SCContentFilter {
+    ) throws -> SCContentFilter {
         switch source {
         case let .display(display), let .region(display, _, _), let .systemAudio(display):
             var excludedBundleIDs = Set(settings.excludedApplicationBundleIDs.map { $0.lowercased() })
@@ -425,7 +431,7 @@ final class RecordingService: NSObject, ObservableObject {
         case let .contentFilter(filter):
             return filter
         case .mobileDevice:
-            preconditionFailure("Mobile devices do not use ScreenCaptureKit")
+            throw RecordingError.sourceUnavailable
         }
     }
 
@@ -580,7 +586,13 @@ final class RecordingService: NSObject, ObservableObject {
         self.stream = nil
         if let stream {
             Task {
-                try? await stream.stopCapture()
+                do {
+                    try await stream.stopCapture()
+                } catch {
+                    MeowLog.recording.error(
+                        "Stopping failed screen capture failed: \(error.localizedDescription, privacy: .public)"
+                    )
+                }
             }
         }
         microphoneCapture?.stop()

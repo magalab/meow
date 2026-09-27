@@ -25,7 +25,16 @@ jobs:
         run: |
           xcodebuild -version
           xcrun swift --version
-      
+
+      - name: Test Meow
+        run: xcrun swift test --no-parallel
+
+      - name: Test Miao
+        run: MEOW_EDITION=voice xcrun swift test --no-parallel
+
+      - name: Test standalone MeowSpeech package
+        run: xcrun swift test --package-path Packages/MeowSpeech
+
       - name: Get version
         id: version
         run: |
@@ -43,7 +52,32 @@ jobs:
       - name: Build Miao DMG
         working-directory: .
         run: MEOW_EDITION=voice VERSION="${{ steps.version.outputs.version }}" bash scripts/build-dmg.sh
-      
+
+      - name: Verify DMG contents and signatures
+        run: |
+          set -euo pipefail
+          version="${{ steps.version.outputs.version }}"
+
+          for app_name in Meow Miao; do
+            dmg="dist/${app_name}_${version}_arm64.dmg"
+            mount_point="$(mktemp -d)"
+
+            cleanup() {
+              hdiutil detach "$mount_point" -quiet >/dev/null 2>&1 || true
+              rmdir "$mount_point"
+            }
+            trap cleanup EXIT
+
+            hdiutil imageinfo "$dmg" >/dev/null
+            hdiutil attach "$dmg" -nobrowse -readonly -mountpoint "$mount_point" >/dev/null
+            app_path="$mount_point/${app_name}.app"
+            test -x "$app_path/Contents/MacOS/${app_name}"
+            codesign --verify --deep --strict "$app_path"
+
+            trap - EXIT
+            cleanup
+          done
+
       - name: List artifacts
         working-directory: .
         run: ls -lh dist/

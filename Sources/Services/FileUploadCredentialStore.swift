@@ -29,11 +29,15 @@ struct SystemFileUploadSecurityClient: FileUploadSecurityClient {
         let query = baseQuery(service: service, account: account)
         let status = SecItemUpdate(
             query as CFDictionary,
-            [kSecValueData as String: data] as CFDictionary
+            [
+                kSecValueData as String: data,
+                kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlocked,
+            ] as CFDictionary
         )
         if status == errSecItemNotFound {
             var item = query
             item[kSecValueData as String] = data
+            item[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlocked
             guard SecItemAdd(item as CFDictionary, nil) == errSecSuccess else {
                 throw UploadError.credentialUnavailable
             }

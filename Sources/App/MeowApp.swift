@@ -293,6 +293,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var uploadNotificationAuthorizationRequested = false
 
     func applicationDidFinishLaunching(_: Notification) {
+        FileUploadService.cleanupTemporaryClipboardUploads()
         viewModel = LauncherViewModel(
             settingsStore: settingsStore,
             discoveryService: discoveryService,
@@ -371,7 +372,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.apply(settings: settings)
         }
         whiteboardFeatureController.onError = { [weak self] error in
-            NSLog("[Meow Whiteboard] %@", error.localizedDescription)
+            MeowLog.whiteboard.error(
+                "Whiteboard error: \(error.localizedDescription, privacy: .private(mask: .hash))"
+            )
             self?.presentWhiteboardError(error.localizedDescription)
         }
         keystrokeVisualizerService.onOverlayPlacementChanged = { [weak self] position, point in
@@ -1399,7 +1402,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hideLauncher()
         let homeDirectory = FileManager.default.homeDirectoryForCurrentUser
         guard NSWorkspace.shared.open(homeDirectory) else {
-            NSLog("[Meow] Failed to open Finder at %@", homeDirectory.path)
+            MeowLog.app.error(
+                "Failed to open Finder at \(homeDirectory.path, privacy: .private(mask: .hash))"
+            )
             return
         }
     }
@@ -1413,7 +1418,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard trusted else {
             // If not trusted, the system will show a prompt for permission
             // Try anyway - if the user approved in the prompt, it might work
-            NSLog("[Meow] Accessibility permission not granted, paste may not work")
+            MeowLog.app.warning("Accessibility permission not granted; paste may not work")
             return
         }
 
@@ -1654,6 +1659,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             )
             return AIChatInitialInput(text: input.text, imagePath: persistedPath)
         } catch {
+            MeowLog.ai.error(
+                "Unable to persist AI image attachment: \(error.localizedDescription, privacy: .public)"
+            )
             return input
         }
     }

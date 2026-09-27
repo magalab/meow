@@ -764,22 +764,21 @@ actor ClipboardHistoryStore {
                     to: recoveryDirectory.appendingPathComponent(source.lastPathComponent)
                 )
             }
-            NSLog("[Meow Clipboard] Preserved a corrupt history database for recovery")
+            MeowLog.clipboard.warning("Preserved a corrupt history database for recovery")
             return true
         } catch {
-            NSLog("[Meow Clipboard] Could not preserve the corrupt history database")
+            MeowLog.clipboard.error("Could not preserve the corrupt history database")
             return false
         }
     }
 
     private static func logDatabaseOpenFailure(_ error: Error) {
         if let databaseError = error as? DatabaseError {
-            NSLog(
-                "[Meow Clipboard] History database unavailable (SQLite code %d); existing files were preserved",
-                databaseError.resultCode.rawValue
+            MeowLog.clipboard.error(
+                "History database unavailable (SQLite code \(databaseError.resultCode.rawValue, privacy: .public)); existing files were preserved"
             )
         } else {
-            NSLog("[Meow Clipboard] History database unavailable; existing files were preserved")
+            MeowLog.clipboard.error("History database unavailable; existing files were preserved")
         }
     }
 

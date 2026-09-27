@@ -114,7 +114,7 @@ final class CalendarEventService: ObservableObject {
     }
 
     private var displayLocale: Locale {
-        LanguageManager.shared.currentLanguageCode.hasPrefix("zh")
+        LanguageManager.shared.isChinese
             ? Locale(identifier: "zh-Hans")
             : Locale(identifier: "en")
     }
@@ -192,7 +192,7 @@ final class CalendarService {
               let data = try? Data(contentsOf: url),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: [String]]
         else {
-            NSLog("[Meow Calendar] Could not load solar_terms.json")
+            MeowLog.calendar.error("Could not load solar_terms.json")
             return [:]
         }
         return json
@@ -363,7 +363,7 @@ final class CalendarService {
     // MARK: - Private
 
     private var isChineseLanguage: Bool {
-        LanguageManager.shared.currentLanguageCode.hasPrefix("zh")
+        LanguageManager.shared.isChinese
     }
 
     private var displayLocale: Locale {

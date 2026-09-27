@@ -84,7 +84,9 @@ final class AppRecordingCoordinator {
             do {
                 _ = try await recordingService.saveCurrentFrame()
             } catch {
-                NSLog("[Meow] Failed to save recording frame: %@", String(describing: error))
+                MeowLog.recording.error(
+                    "Failed to save recording frame: \(error.localizedDescription, privacy: .private(mask: .hash))"
+                )
                 actions.presentError(error)
             }
         }

@@ -163,7 +163,7 @@ final class KeystrokeVisualizerService: ObservableObject {
             userInfo: UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque())
         ) else {
             permissionState = .unavailable
-            NSLog("[Meow] Failed to create keystroke visualizer event tap")
+            MeowLog.system.error("Failed to create keystroke visualizer event tap")
             return
         }
 

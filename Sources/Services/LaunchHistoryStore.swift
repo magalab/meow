@@ -13,8 +13,12 @@ final class LaunchHistoryStore {
     /// Maximum number of launch history entries to keep in memory
     private static let maxHistoryEntries = 500
 
-    private let defaults = UserDefaults.standard
+    private let defaults: UserDefaults
     private var cachedMap: [String: LaunchStat]?
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+    }
 
     func recordLaunch(id: String) {
         var map = loadMap()

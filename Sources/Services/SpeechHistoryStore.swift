@@ -84,7 +84,9 @@ final class SpeechHistoryStore: ObservableObject {
             audioPlayer = try AVAudioPlayer(contentsOf: audioURL(for: entry))
             audioPlayer?.play()
         } catch {
-            NSLog("[Meow] Failed to play speech history audio: \(error.localizedDescription)")
+            MeowLog.speech.error(
+                "Failed to play speech history audio: \(error.localizedDescription, privacy: .private(mask: .hash))"
+            )
         }
     }
 

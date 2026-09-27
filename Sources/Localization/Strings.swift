@@ -1,14 +1,61 @@
 import Foundation
+import os.lock
 
 /// Manages the active language bundle for runtime language switching.
+private struct LocalizationSnapshot: @unchecked Sendable {
+    var bundle: Bundle
+    var languageCode: String
+}
+
+private enum LocalizationRuntime {
+    private static let snapshot = OSAllocatedUnfairLock(
+        initialState: initialSnapshot()
+    )
+
+    private static func initialSnapshot() -> LocalizationSnapshot {
+        let preferredLanguage = Locale.preferredLanguages.first ?? "en"
+        let languageCode = preferredLanguage.hasPrefix("zh") ? "zh-Hans" : "en"
+        if let path = Bundle.module.path(forResource: languageCode, ofType: "lproj"),
+           let bundle = Bundle(path: path)
+        {
+            return LocalizationSnapshot(bundle: bundle, languageCode: languageCode)
+        }
+        return LocalizationSnapshot(bundle: Bundle.module, languageCode: languageCode)
+    }
+
+    static var bundle: Bundle {
+        snapshot.withLock { $0.bundle }
+    }
+
+    static var languageCode: String {
+        snapshot.withLock { $0.languageCode }
+    }
+
+    static func update(bundle: Bundle, languageCode: String) {
+        snapshot.withLock {
+            $0 = LocalizationSnapshot(bundle: bundle, languageCode: languageCode)
+        }
+    }
+}
+
+@MainActor
 final class LanguageManager: ObservableObject {
-    nonisolated(unsafe) static let shared = LanguageManager()
+    static let shared = LanguageManager()
 
     /// Incrementing token forces SwiftUI views with `.id(refreshToken)` to rebuild.
     @Published private(set) var refreshToken: Int = 0
 
-    private(set) var bundle: Bundle = .main
-    private(set) var currentLanguageCode: String = "en"
+    var bundle: Bundle {
+        LocalizationRuntime.bundle
+    }
+
+    var currentLanguageCode: String {
+        LocalizationRuntime.languageCode
+    }
+
+    var isChinese: Bool {
+        currentLanguageCode.hasPrefix("zh")
+    }
 
     private init() {
         // Initialize to default language
@@ -84,16 +131,16 @@ final class LanguageManager: ObservableObject {
             langBundle = Bundle(path: path)
         }
 
-        currentLanguageCode = code
-
+        let resolvedBundle: Bundle
         if let langBundle = langBundle {
-            bundle = langBundle
-            NSLog("[Meow i18n] ✅ Loaded language bundle for: \(code)")
+            resolvedBundle = langBundle
+            MeowLog.localization.debug("Loaded language bundle for \(code, privacy: .public)")
         } else {
-            bundle = Bundle.main
-            NSLog("[Meow i18n] ⚠ Could not load language bundle for \(code), using fallback")
+            resolvedBundle = Bundle.main
+            MeowLog.localization.error("Could not load language bundle for \(code, privacy: .public); using fallback")
         }
 
+        LocalizationRuntime.update(bundle: resolvedBundle, languageCode: code)
         refreshToken += 1
     }
 
@@ -121,6 +168,6 @@ final class LanguageManager: ObservableObject {
 /// Properties are computed dynamically to support runtime language switching.
 enum L10n {
     static func loc(_ key: String) -> String {
-        NSLocalizedString(key, bundle: LanguageManager.shared.bundle, comment: "")
+        NSLocalizedString(key, bundle: LocalizationRuntime.bundle, comment: "")
     }
 }

@@ -146,6 +146,8 @@ struct AISettings: Codable, Equatable, Sendable {
 }
 
 extension AISettings {
+    // Decode the legacy apiKey field so SettingsStore can migrate existing users;
+    // encoding intentionally omits it because the runtime value lives in Keychain.
     private enum CodingKeys: String, CodingKey {
         case endpoint
         case apiKey
@@ -176,6 +178,17 @@ extension AISettings {
             Double.self,
             forKey: .imageJPEGQuality
         ) ?? Self.default.imageJPEGQuality
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(endpoint, forKey: .endpoint)
+        try container.encode(model, forKey: .model)
+        try container.encode(systemPrompt, forKey: .systemPrompt)
+        try container.encode(chatHistoryEnabled, forKey: .chatHistoryEnabled)
+        try container.encode(supportsVision, forKey: .supportsVision)
+        try container.encode(imageMaxDimension, forKey: .imageMaxDimension)
+        try container.encode(imageJPEGQuality, forKey: .imageJPEGQuality)
     }
 }
 

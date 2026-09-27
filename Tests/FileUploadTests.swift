@@ -14,6 +14,14 @@ func swiftPMNotificationFallback() {
     FileUploadNotifications.notifySuccess(filename: "test.txt")
 }
 
+@Test("S3 retries transient network failures only")
+func s3RetryClassification() {
+    #expect(S3Uploader.isRetryable(URLError(.timedOut)))
+    #expect(S3Uploader.isRetryable(URLError(.networkConnectionLost)))
+    #expect(!S3Uploader.isRetryable(URLError(.cancelled)))
+    #expect(!S3Uploader.isRetryable(UploadError.notConfigured))
+}
+
 private final class MemorySecurityClient: FileUploadSecurityClient, @unchecked Sendable {
     private let lock = NSLock()
     private var values: [String: Data] = [:]
@@ -667,6 +675,7 @@ func clipboardTemporaryFileCleanup() async throws {
         factory: TestUploaderFactory(uploader: FailingUploader()), notifySuccess: { _ in }
     )
     let pasteboard = NSPasteboard.general
+    defer { pasteboard.clearContents() }
     pasteboard.clearContents()
     let bitmap = NSBitmapImageRep(
         bitmapDataPlanes: nil, pixelsWide: 2, pixelsHigh: 2, bitsPerSample: 8,
@@ -681,6 +690,36 @@ func clipboardTemporaryFileCleanup() async throws {
     await #expect(throws: UploadError.networkError("offline")) { try await service.uploadFromClipboard() }
     let after = (try? FileManager.default.contentsOfDirectory(atPath: temporaryDirectory.path)) ?? []
     #expect(after == before)
+}
+
+@Test("Temporary clipboard cleanup keeps recent uploads")
+@MainActor
+func temporaryClipboardCleanupKeepsRecentUploads() throws {
+    let fileManager = FileManager.default
+    let directory = fileManager.temporaryDirectory.appendingPathComponent("MeowUploads", isDirectory: true)
+    try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+    let now = Date()
+    let oldFile = directory.appendingPathComponent("clipboard-old-\(UUID().uuidString).png")
+    let recentFile = directory.appendingPathComponent("clipboard-recent-\(UUID().uuidString).png")
+    defer {
+        try? fileManager.removeItem(at: oldFile)
+        try? fileManager.removeItem(at: recentFile)
+    }
+    try Data([0]).write(to: oldFile)
+    try Data([0]).write(to: recentFile)
+    try fileManager.setAttributes(
+        [.modificationDate: now.addingTimeInterval(-2 * 60 * 60)],
+        ofItemAtPath: oldFile.path
+    )
+    try fileManager.setAttributes(
+        [.modificationDate: now.addingTimeInterval(-5 * 60)],
+        ofItemAtPath: recentFile.path
+    )
+
+    FileUploadService.cleanupTemporaryClipboardUploads(fileManager: fileManager, now: now)
+
+    #expect(!fileManager.fileExists(atPath: oldFile.path))
+    #expect(fileManager.fileExists(atPath: recentFile.path))
 }
 
 @Test("History refreshes presigned links and rejects deleted configurations")

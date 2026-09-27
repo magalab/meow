@@ -188,7 +188,9 @@ final class SpeechModelStore: ObservableObject {
                     try? fileManager.removeItem(at: otherBackup)
                 }
             } catch {
-                NSLog("[Meow] Failed to restore the previous speech model: \(error.localizedDescription)")
+                MeowLog.speech.error(
+                    "Failed to restore the previous speech model: \(error.localizedDescription, privacy: .private(mask: .hash))"
+                )
             }
         }
     }
@@ -253,7 +255,9 @@ final class SpeechModelStore: ObservableObject {
                     do {
                         try fileManager.moveItem(at: backupDirectory, to: targetDirectory)
                     } catch {
-                        NSLog("[Meow] Failed to restore the previous speech model: \(error.localizedDescription)")
+                        MeowLog.speech.error(
+                            "Failed to restore the previous speech model: \(error.localizedDescription, privacy: .private(mask: .hash))"
+                        )
                     }
                 }
             }
@@ -348,7 +352,10 @@ private final class SpeechDownloadDelegate: NSObject, URLSessionDownloadDelegate
     func download(from url: URL) async throws -> URL {
         try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
-                let session = URLSession(configuration: .default, delegate: self, delegateQueue: nil)
+                let configuration = URLSessionConfiguration.default
+                configuration.timeoutIntervalForRequest = 60
+                configuration.timeoutIntervalForResource = 1_800
+                let session = URLSession(configuration: configuration, delegate: self, delegateQueue: nil)
                 lock.lock()
                 let isFinished = self.isFinished
                 if !isFinished {

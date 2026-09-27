@@ -8,8 +8,12 @@ final class HealthReminderStore {
         static let records = "meow.health.reminder.records"
     }
 
-    private let defaults = UserDefaults.standard
+    private let defaults: UserDefaults
     private let maxRecords = 90
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+    }
 
     func record(for date: String = HealthReminderStore.todayString()) -> HealthReminderDayRecord {
         records()[date] ?? HealthReminderDayRecord(date: date, completedBreaks: 0, skippedBreaks: 0)

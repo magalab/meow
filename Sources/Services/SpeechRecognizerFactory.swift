@@ -1,6 +1,8 @@
+#if MEOW_VOICE
 import Foundation
 import MeowSpeechCore
 import MeowSpeechSenseVoice
+#endif
 
 /// Voice-edition composition boundary for the current ASR backend.
 ///

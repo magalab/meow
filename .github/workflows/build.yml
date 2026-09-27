@@ -80,7 +80,11 @@ jobs:
           fi
 
       - name: Test (${{ matrix.product }})
-        run: ${{ matrix.env }} xcrun swift test
+        run: ${{ matrix.env }} xcrun swift test --no-parallel
+
+      - name: Test standalone MeowSpeech package
+        if: matrix.edition == 'voice'
+        run: xcrun swift test --package-path Packages/MeowSpeech
 
       - name: Build Release (${{ matrix.product }})
         run: ${{ matrix.env }} xcrun swift build -c release --product "${{ matrix.product }}"

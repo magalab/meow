@@ -482,7 +482,7 @@ struct AIChatPanelView: View {
     private func conversationDateText(_ date: Date) -> String {
         let calendar = Calendar.current
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: LanguageManager.shared.currentLanguageCode.hasPrefix("zh") ? "zh-Hans" : "en")
+        formatter.locale = Locale(identifier: LanguageManager.shared.isChinese ? "zh-Hans" : "en")
         if calendar.isDateInToday(date) {
             formatter.dateStyle = .none
             formatter.timeStyle = .short

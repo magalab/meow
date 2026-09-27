@@ -247,7 +247,9 @@ final class SpeechRecognitionService: ObservableObject {
                         retentionDays: settings.retentionDays
                     )
                 } catch {
-                    NSLog("[Meow] Failed to save speech history: \(error.localizedDescription)")
+                    MeowLog.speech.error(
+                        "Failed to save speech history: \(error.localizedDescription, privacy: .private(mask: .hash))"
+                    )
                 }
                 try Task.checkCancellation()
                 guard self.recognitionTaskID == recognitionTaskID else { return }

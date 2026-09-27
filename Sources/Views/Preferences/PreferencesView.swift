@@ -372,6 +372,23 @@ struct PreferencesView: View {
         }
         .frame(width: 840, height: 560)
         .id(lang.refreshToken)
+        .alert(
+            L10n.prefsSettingsSaveErrorTitle,
+            isPresented: Binding(
+                get: { viewModel.settingsPersistenceError != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        viewModel.settingsPersistenceError = nil
+                    }
+                }
+            )
+        ) {
+            Button(L10n.actionOK) {
+                viewModel.settingsPersistenceError = nil
+            }
+        } message: {
+            Text(viewModel.settingsPersistenceError ?? L10n.prefsSettingsSaveErrorMessage)
+        }
     }
 
     private var availableSections: [PreferenceSection] {
