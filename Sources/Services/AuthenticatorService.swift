@@ -75,7 +75,12 @@ enum AuthenticatorCodeGenerator {
     }
 }
 
-private struct AuthenticatorVaultStore {
+protocol AuthenticatorVaultStoring {
+    func load() throws -> [AuthenticatorToken]
+    func save(_ tokens: [AuthenticatorToken]) throws
+}
+
+private struct AuthenticatorVaultStore: AuthenticatorVaultStoring {
     private let account = "tokens"
 
     private var service: String {
@@ -173,9 +178,9 @@ final class AuthenticatorService: NSObject, ObservableObject {
     var onSensitiveTextUsed: ((String) -> Void)?
     var onICloudSyncPreferenceRejected: (() -> Void)?
 
-    private let vaultStore = AuthenticatorVaultStore()
+    private let vaultStore: any AuthenticatorVaultStoring
     private let syncProvider: AuthenticatorSyncProviding
-    private let defaults = UserDefaults.standard
+    private let defaults: UserDefaults
     private var statusItem: NSStatusItem?
     private var popover: NSPopover?
     private var copyResetWorkItem: DispatchWorkItem?
@@ -185,11 +190,24 @@ final class AuthenticatorService: NSObject, ObservableObject {
     }
 
     override convenience init() {
-        self.init(syncProvider: ICloudKeychainAuthenticatorSyncProvider())
+        self.init(
+            syncProvider: ICloudKeychainAuthenticatorSyncProvider(),
+            vaultStore: AuthenticatorVaultStore()
+        )
     }
 
-    init(syncProvider: AuthenticatorSyncProviding) {
+    convenience init(syncProvider: AuthenticatorSyncProviding) {
+        self.init(syncProvider: syncProvider, vaultStore: AuthenticatorVaultStore())
+    }
+
+    init(
+        syncProvider: AuthenticatorSyncProviding,
+        vaultStore: any AuthenticatorVaultStoring,
+        defaults: UserDefaults = .standard
+    ) {
+        self.vaultStore = vaultStore
         self.syncProvider = syncProvider
+        self.defaults = defaults
         super.init()
     }
 

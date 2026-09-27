@@ -1,5 +1,13 @@
 import Foundation
 
+enum AIChatHistoryError: LocalizedError, Sendable {
+    case attachmentStorageLimitExceeded
+
+    var errorDescription: String? {
+        L10n.aiErrorAttachmentStorageLimitExceeded
+    }
+}
+
 struct AIChatConversation: Identifiable, Codable, Hashable {
     let id: UUID
     var title: String
@@ -31,6 +39,7 @@ final class AIChatHistoryStore: ObservableObject {
     private static let maxConversations = 50
     private static let maxMessagesPerConversation = 80
     private static let maxMessageLength = 100_000
+    private static let maxAttachmentStorageBytes: Int64 = 256 * 1024 * 1024
 
     @Published private(set) var conversations: [AIChatConversation] = []
     @Published var selectedConversationID: UUID?
@@ -104,8 +113,10 @@ final class AIChatHistoryStore: ObservableObject {
 
         var conversation = conversations[index]
         conversation.messages.append(trimmedMessage(message))
+        var shouldCleanupAttachments = false
         if conversation.messages.count > Self.maxMessagesPerConversation {
             conversation.messages = Array(conversation.messages.suffix(Self.maxMessagesPerConversation))
+            shouldCleanupAttachments = true
         }
         if conversation.title.isEmpty,
            message.role == .user
@@ -117,8 +128,7 @@ final class AIChatHistoryStore: ObservableObject {
         conversations.remove(at: index)
         conversations.insert(conversation, at: 0)
         selectedConversationID = id
-        prune()
-        save()
+        save(cleanupAttachments: shouldCleanupAttachments)
     }
 
     func deleteConversation(_ id: UUID) {
@@ -127,7 +137,7 @@ final class AIChatHistoryStore: ObservableObject {
         if selectedConversationID == id {
             selectedConversationID = conversations.first?.id
         }
-        save()
+        save(cleanupAttachments: true)
     }
 
     func clearAll() {
@@ -151,6 +161,16 @@ final class AIChatHistoryStore: ObservableObject {
     func storeAttachment(at sourceURL: URL) throws -> String {
         guard persistenceEnabled else {
             return sourceURL.path
+        }
+        let sourceValues = try sourceURL.resourceValues(forKeys: [.fileSizeKey])
+        if let fileSize = sourceValues.fileSize {
+            let sourceBytes = Int64(fileSize)
+            let storedBytes = try attachmentStorageBytes()
+            guard sourceBytes <= Self.maxAttachmentStorageBytes,
+                  storedBytes <= Self.maxAttachmentStorageBytes - sourceBytes
+            else {
+                throw AIChatHistoryError.attachmentStorageLimitExceeded
+            }
         }
         try fileManager.createDirectory(at: attachmentsDirectoryURL, withIntermediateDirectories: true)
         let ext = sourceURL.pathExtension.isEmpty ? "png" : sourceURL.pathExtension.lowercased()
@@ -179,7 +199,12 @@ final class AIChatHistoryStore: ObservableObject {
 
         if let loaded = loadIndexedConversationsLightweight() {
             conversations = loaded.sorted { $0.updatedAt > $1.updatedAt }
-            prune()
+            let didPrune = prune()
+            if didPrune {
+                save(cleanupAttachments: true)
+            } else {
+                removeOrphanAttachmentFiles()
+            }
             return
         }
 
@@ -189,7 +214,7 @@ final class AIChatHistoryStore: ObservableObject {
                 loadedConversationIDs.insert(conversation.id)
             }
             prune()
-            save()
+            save(cleanupAttachments: true)
             try? fileManager.removeItem(at: legacyHistoryFileURL)
             return
         }
@@ -202,7 +227,7 @@ final class AIChatHistoryStore: ObservableObject {
                 loadedConversationIDs.insert(conversation.id)
             }
             prune()
-            save()
+            save(cleanupAttachments: true)
             UserDefaults.standard.removeObject(forKey: Storage.legacyDefaultsKey)
             return
         }
@@ -224,7 +249,9 @@ final class AIChatHistoryStore: ObservableObject {
             loadedConversationIDs.insert(id)
             return true
         } catch {
-            NSLog("[Meow AI] Failed to load chat conversation \(id.uuidString): \(error.localizedDescription)")
+            MeowLog.ai.error(
+                "Failed to load chat conversation \(id.uuidString, privacy: .public): \(error.localizedDescription, privacy: .private(mask: .hash))"
+            )
             return false
         }
     }
@@ -238,15 +265,19 @@ final class AIChatHistoryStore: ObservableObject {
             .appendingPathExtension("json")
         do {
             try fileManager.moveItem(at: fileURL, to: preservedURL)
-            NSLog("[Meow AI] Preserved unreadable chat conversation at \(preservedURL.path)")
+            MeowLog.ai.debug(
+                "Preserved unreadable chat conversation at \(preservedURL.path, privacy: .private(mask: .hash))"
+            )
         } catch {
-            NSLog("[Meow AI] Failed to preserve unreadable chat conversation \(id.uuidString): \(error.localizedDescription)")
+            MeowLog.ai.error(
+                "Failed to preserve unreadable chat conversation \(id.uuidString, privacy: .public): \(error.localizedDescription, privacy: .private(mask: .hash))"
+            )
         }
     }
 
-    private func save() {
+    private func save(cleanupAttachments: Bool = false) {
         guard persistenceEnabled else { return }
-        prune()
+        let didPrune = prune()
         do {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -262,10 +293,15 @@ final class AIChatHistoryStore: ObservableObject {
                 try data.write(to: conversationFileURL(for: conversation.id), options: .atomic)
             }
             removeOrphanConversationFiles(validFileNames: validFileNames)
+            if cleanupAttachments || didPrune {
+                removeOrphanAttachmentFiles()
+            }
             UserDefaults.standard.removeObject(forKey: Storage.legacyDefaultsKey)
             try? fileManager.removeItem(at: legacyHistoryFileURL)
         } catch {
-            NSLog("[Meow AI] Failed to save chat history: \(error.localizedDescription)")
+            MeowLog.ai.error(
+                "Failed to save chat history: \(error.localizedDescription, privacy: .private(mask: .hash))"
+            )
         }
     }
 
@@ -306,6 +342,19 @@ final class AIChatHistoryStore: ObservableObject {
 
     private func conversationFileURL(for id: UUID) -> URL {
         conversationsDirectoryURL.appendingPathComponent("\(id.uuidString.lowercased()).json")
+    }
+
+    private func attachmentStorageBytes() throws -> Int64 {
+        guard fileManager.fileExists(atPath: attachmentsDirectoryURL.path) else { return 0 }
+        let files = try fileManager.contentsOfDirectory(
+            at: attachmentsDirectoryURL,
+            includingPropertiesForKeys: [.fileSizeKey],
+            options: [.skipsHiddenFiles]
+        )
+        return try files.reduce(Int64.zero) { total, file in
+            let values = try file.resourceValues(forKeys: [.fileSizeKey])
+            return total + Int64(values.fileSize ?? 0)
+        }
     }
 
     private func loadIndexedConversationsLightweight() -> [AIChatConversation]? {
@@ -354,11 +403,76 @@ final class AIChatHistoryStore: ObservableObject {
         }
     }
 
-    private func prune() {
-        if conversations.count > Self.maxConversations {
-            conversations = Array(conversations.prefix(Self.maxConversations))
-            loadedConversationIDs.formIntersection(conversations.map(\.id))
+    private func removeOrphanAttachmentFiles() {
+        guard let files = try? fileManager.contentsOfDirectory(
+            at: attachmentsDirectoryURL,
+            includingPropertiesForKeys: [.isRegularFileKey],
+            options: [.skipsHiddenFiles]
+        ) else {
+            return
         }
+
+        guard let referencedPaths = referencedAttachmentPaths() else {
+            // Do not risk deleting an attachment when a retained conversation
+            // cannot be decoded and its references are therefore unknown.
+            return
+        }
+
+        let directoryPath = attachmentsDirectoryURL.standardizedFileURL.path
+        let directoryPrefix = directoryPath.hasSuffix("/") ? directoryPath : directoryPath + "/"
+        for file in files {
+            guard file.standardizedFileURL.path.hasPrefix(directoryPrefix),
+                  (try? file.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true,
+                  !referencedPaths.contains(file.standardizedFileURL.path)
+            else {
+                continue
+            }
+            do {
+                try fileManager.removeItem(at: file)
+            } catch {
+                MeowLog.ai.debug(
+                    "Unable to remove orphan chat attachment \(file.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)"
+                )
+            }
+        }
+    }
+
+    private func referencedAttachmentPaths() -> Set<String>? {
+        var paths = Set<String>()
+        for conversation in conversations {
+            let resolved: AIChatConversation?
+            if loadedConversationIDs.contains(conversation.id) {
+                resolved = conversation
+            } else {
+                let fileURL = conversationFileURL(for: conversation.id)
+                guard let data = try? Data(contentsOf: fileURL),
+                      let decoded = try? JSONDecoder().decode(AIChatConversation.self, from: data)
+                else {
+                    return nil
+                }
+                resolved = decoded
+            }
+
+            guard let resolved else { continue }
+            for message in resolved.messages {
+                guard let imagePath = message.imagePath else { continue }
+                let fileURL = URL(fileURLWithPath: imagePath).standardizedFileURL
+                let directoryPath = attachmentsDirectoryURL.standardizedFileURL.path
+                let directoryPrefix = directoryPath.hasSuffix("/") ? directoryPath : directoryPath + "/"
+                if fileURL.path.hasPrefix(directoryPrefix) {
+                    paths.insert(fileURL.path)
+                }
+            }
+        }
+        return paths
+    }
+
+    @discardableResult
+    private func prune() -> Bool {
+        guard conversations.count > Self.maxConversations else { return false }
+        conversations = Array(conversations.prefix(Self.maxConversations))
+        loadedConversationIDs.formIntersection(conversations.map(\.id))
+        return true
     }
 
     private func trimmedMessage(_ message: AIChatMessage) -> AIChatMessage {

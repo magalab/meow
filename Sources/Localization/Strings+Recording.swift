@@ -143,6 +143,12 @@ extension L10n {
     static var recordingChooseMobileSubtitle: String { loc("recording.choose.mobile.subtitle") }
     static var recordingStart: String { loc("recording.start") }
     static var recordingErrorTitle: String { loc("recording.error.title") }
+    static var recordingErrorPermissionDenied: String { loc("recording.error.permission.denied") }
+    static var recordingErrorSourceUnavailable: String { loc("recording.error.source.unavailable") }
+    static var recordingErrorAlreadyRecording: String { loc("recording.error.already.recording") }
+    static var recordingErrorInvalidConfiguration: String { loc("recording.error.invalid.configuration") }
+    static var recordingErrorMicrophoneDenied: String { loc("recording.error.microphone.denied") }
+    static var recordingErrorInsufficientDiskSpace: String { loc("recording.error.insufficient.disk.space") }
     static var recordingStatusIdle: String { loc("recording.status.idle") }
     static var recordingStatusActive: String { loc("recording.status.active") }
     static var recordingPause: String { loc("recording.pause") }

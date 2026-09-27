@@ -278,7 +278,7 @@ final class AppHotkeyCoordinator {
     ) -> Registration {
         switch kind {
         case .recordingDisplay:
-            Registration(
+            return Registration(
                 result: hotkeyService.registerRecordingDisplayHotkey(
                     keyCode: settings.displayHotkeyKeyCode,
                     modifiers: settings.displayHotkeyModifiers,
@@ -289,7 +289,7 @@ final class AppHotkeyCoordinator {
                 modifiers: settings.displayHotkeyModifiers
             )
         case .recordingFrame:
-            Registration(
+            return Registration(
                 result: hotkeyService.registerRecordingFrameHotkey(
                     keyCode: settings.frameHotkeyKeyCode,
                     modifiers: settings.frameHotkeyModifiers,
@@ -300,7 +300,7 @@ final class AppHotkeyCoordinator {
                 modifiers: settings.frameHotkeyModifiers
             )
         case .recordingMagnifier:
-            Registration(
+            return Registration(
                 result: hotkeyService.registerRecordingMagnifierHotkey(
                     keyCode: settings.magnifierHotkeyKeyCode,
                     modifiers: settings.magnifierHotkeyModifiers,
@@ -311,7 +311,7 @@ final class AppHotkeyCoordinator {
                 modifiers: settings.magnifierHotkeyModifiers
             )
         case .recordingRegion:
-            Registration(
+            return Registration(
                 result: hotkeyService.registerRecordingRegionHotkey(
                     keyCode: settings.regionHotkeyKeyCode,
                     modifiers: settings.regionHotkeyModifiers,
@@ -322,7 +322,7 @@ final class AppHotkeyCoordinator {
                 modifiers: settings.regionHotkeyModifiers
             )
         case .recordingWindow:
-            Registration(
+            return Registration(
                 result: hotkeyService.registerRecordingWindowHotkey(
                     keyCode: settings.windowHotkeyKeyCode,
                     modifiers: settings.windowHotkeyModifiers,
@@ -333,7 +333,7 @@ final class AppHotkeyCoordinator {
                 modifiers: settings.windowHotkeyModifiers
             )
         case .recordingPause:
-            Registration(
+            return Registration(
                 result: hotkeyService.registerRecordingPauseHotkey(
                     keyCode: settings.pauseHotkeyKeyCode,
                     modifiers: settings.pauseHotkeyModifiers,
@@ -344,7 +344,7 @@ final class AppHotkeyCoordinator {
                 modifiers: settings.pauseHotkeyModifiers
             )
         case .recordingStop:
-            Registration(
+            return Registration(
                 result: hotkeyService.registerRecordingStopHotkey(
                     keyCode: settings.stopHotkeyKeyCode,
                     modifiers: settings.stopHotkeyModifiers,
@@ -355,7 +355,13 @@ final class AppHotkeyCoordinator {
                 modifiers: settings.stopHotkeyModifiers
             )
         default:
-            preconditionFailure("Unexpected non-recording hotkey kind")
+            MeowLog.hotkey.fault("Unexpected non-recording hotkey kind in recording registration")
+            return Registration(
+                result: .failed(-50),
+                name: "unsupported recording",
+                keyCode: 0,
+                modifiers: 0
+            )
         }
     }
 
@@ -432,7 +438,9 @@ final class AppHotkeyCoordinator {
             lastRegistered[kind] = Shortcut(keyCode: keyCode, modifiers: modifiers)
             actions.registrationSucceeded(kind)
         case let .failed(status):
-            NSLog("[Meow] Failed to register \(name) hotkey: \(status)")
+            MeowLog.hotkey.error(
+                "Failed to register \(name, privacy: .public) hotkey: \(status, privacy: .public)"
+            )
             actions.registrationFailure(kind, status)
             guard let previous = lastRegistered[kind],
                   previous.keyCode != keyCode || previous.modifiers != modifiers

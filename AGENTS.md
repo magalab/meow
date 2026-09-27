@@ -13,7 +13,7 @@ The package builds two editions: the default `Meow` edition and the optional
 - `Modules/WhiteboardFeature/`: standalone whiteboard feature module, resources, and tests
 - `Packages/MeowSpeech/`: local voice-only package containing speech contracts and the extracted SenseVoice CoreML backend
 - `Sources/Resources/{en.lproj,zh-Hans.lproj}`: localization strings
-- `Tests/`: Swift Testing coverage for settings compatibility, whiteboard, capture, recording, uploads, AI chat, speech recognition, TOTP generation, OTPAuth parsing, JSON backup/import, health reminders, and sync merging
+- `Tests/`: Swift Testing coverage for settings compatibility, whiteboard, capture, recording, uploads, AI chat, speech recognition, TOTP generation, OTPAuth parsing, JSON backup/import, health reminder persistence, launch history scoring, and sync merging
 - `~/Library/Application Support/Meow/AIChats/`: runtime AI chat history storage (`index.json` plus per-conversation JSON files)
 - `~/Library/Application Support/Meow/Uploads/`: upload history index and generated image thumbnails
 - `~/Library/Application Support/Meow/Models/ASR/`: downloaded voice-edition SenseVoice model artifacts; model files are not committed
@@ -62,7 +62,7 @@ For voice changes, also test Miao speech permission states, model download/recov
 For UI/localization changes, test both English and Simplified Chinese resources.
 For translation changes, test on macOS 15+ with Accessibility permission granted and denied; verify selected text capture and pasteboard restoration.
 For AI changes, test configured and unconfigured states, Ask AI command, clipboard Ask AI action, Enter send vs Shift+Enter newline, model fetch/manual model entry, API key show/copy, AI settings deep-link, chat history toggle, clear-history confirmation, and opening the chat history folder.
-For AI persistence changes, verify history files under `~/Library/Application Support/Meow/AIChats/` and keep API keys in existing local settings storage unless explicitly requested otherwise.
+For AI persistence changes, verify history files under `~/Library/Application Support/Meow/AIChats/`. Keep AI API keys in Keychain; keep non-secret AI settings in the local settings blob. Never store API keys in `UserDefaults`, settings JSON, or upload history.
 For file upload changes, test AWS S3, Cloudflare R2, and MinIO configurations; custom-domain, public-bucket, and presigned links; small streaming and 64 MB+ multipart uploads; cancellation and network failures; clipboard temporary-file cleanup; status-item drag-and-drop; history refresh and optional remote deletion. Keep Secret Access Keys in Keychain, never settings or upload history JSON.
 For health reminder changes, test start/pause/resume, manual break start, skip, done, daily progress persistence, activity-paused countdown, gentle vs strict break window behavior, and menu bar calendar controls.
 For authenticator changes, test disabled/enabled states, manual secret and `otpauth://` import, unsupported algorithm rejection, code copying without clipboard-history retention, JSON import/export warnings, duplicate handling, deletion, and launcher presentation. Keep secrets in Keychain, never `UserDefaults`.

@@ -256,7 +256,13 @@ final class AppCaptureCoordinator {
             )
         } catch {
             if let externalURL {
-                try? FileManager.default.removeItem(at: externalURL)
+                do {
+                    try FileManager.default.removeItem(at: externalURL)
+                } catch {
+                    MeowLog.capture.debug(
+                        "Unable to clean up external capture \(externalURL.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)"
+                    )
+                }
             }
             throw error
         }

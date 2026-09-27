@@ -17,7 +17,9 @@ final class AutoLaunchService {
                 }
             }
         } catch {
-            NSLog("[Meow] Failed to update launch-at-login: \(error.localizedDescription)")
+            MeowLog.system.error(
+                "Failed to update launch-at-login: \(error.localizedDescription, privacy: .private(mask: .hash))"
+            )
         }
 
         return isEnabled

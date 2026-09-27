@@ -216,7 +216,11 @@ struct AuthenticatorPreferencesView: View {
                     Button {
                         do {
                             try service.refreshFromICloud()
-                        } catch {}
+                        } catch {
+                            MeowLog.authenticator.error(
+                                "Manual iCloud refresh failed: \(error.localizedDescription, privacy: .public)"
+                            )
+                        }
                     } label: {
                         Label(L10n.prefsAuthenticatorSyncNow, systemImage: "arrow.clockwise")
                             .frame(maxWidth: .infinity)

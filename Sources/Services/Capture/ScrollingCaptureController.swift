@@ -156,7 +156,9 @@ final class ScrollingCaptureController {
                 cancel()
                 return
             }
-            NSLog("[Meow] Scrolling capture could not start: %@", error.localizedDescription)
+            MeowLog.capture.error(
+                "Scrolling capture could not start: \(error.localizedDescription, privacy: .private(mask: .hash))"
+            )
             onIssue?(error.localizedDescription)
             isActive = false
             stopTasksAndMonitors()
@@ -252,7 +254,9 @@ final class ScrollingCaptureController {
         } catch is CancellationError {
             return
         } catch {
-            NSLog("[Meow] Scrolling capture frame failed: %@", error.localizedDescription)
+            MeowLog.capture.error(
+                "Scrolling capture frame failed: \(error.localizedDescription, privacy: .private(mask: .hash))"
+            )
             isPaused = true
             stopAutoScroll()
             removeScrollMonitors()

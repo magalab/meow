@@ -1,6 +1,29 @@
 import Foundation
 import SotoS3
 
+private struct S3RetryPolicy: RetryPolicy {
+    private let standardPolicy = RetryPolicyFactory.exponential(
+        base: .milliseconds(250),
+        maxRetries: 2
+    ).retryPolicy
+
+    func getRetryWaitTime(error: Error, attempt: Int) -> RetryStatus? {
+        if let urlError = error as? URLError {
+            guard attempt < 2 else { return .dontRetry }
+            switch urlError.code {
+            case .cannotConnectToHost, .networkConnectionLost, .notConnectedToInternet,
+                 .resourceUnavailable, .timedOut:
+                let delayMilliseconds = 250 * (1 << attempt)
+                return .retry(wait: .milliseconds(Int64(delayMilliseconds)))
+            default:
+                return .dontRetry
+            }
+        }
+
+        return standardPolicy.getRetryWaitTime(error: error, attempt: attempt)
+    }
+}
+
 final class S3Uploader: FileUploader, @unchecked Sendable {
     private static let multipartThreshold: Int64 = 64 * 1_024 * 1_024
     private static let partSize = 16 * 1_024 * 1_024
@@ -23,7 +46,8 @@ final class S3Uploader: FileUploader, @unchecked Sendable {
             credentialProvider: .static(
                 accessKeyId: config.accessKeyID,
                 secretAccessKey: secretAccessKey
-            )
+            ),
+            retryPolicy: RetryPolicyFactory(retryPolicy: S3RetryPolicy())
         )
         let options = Self.serviceOptions(for: normalizedConfig)
         s3 = S3(
@@ -158,6 +182,14 @@ final class S3Uploader: FileUploader, @unchecked Sendable {
             let sent = min(request.fileSize, Int64(Double(request.fileSize) * fraction))
             progress(.init(sentBytes: sent, totalBytes: request.fileSize))
         }
+    }
+
+    static func isRetryable(_ error: Error) -> Bool {
+        guard let status = S3RetryPolicy().getRetryWaitTime(error: error, attempt: 0) else {
+            return false
+        }
+        if case .retry = status { return true }
+        return false
     }
 
     private func apiURL(for objectKey: String) throws -> URL {

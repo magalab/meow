@@ -41,6 +41,9 @@
 /* Preferences window */
 "prefs.title" = "Meow Preferences";
 "prefs.subtitle" = "System behavior and launcher visibility";
+"prefs.settings.save.error.title" = "Some Settings Could Not Be Saved";
+"prefs.settings.save.error.message" = "The settings could not be saved. Please try again.";
+"prefs.settings.api.key.save.error.message" = "Other settings were saved, but the API key could not be updated securely.";
 "prefs.section.general" = "General";
 "prefs.section.clipboard" = "Clipboard";
 "prefs.general.page.basics" = "Basics";
@@ -558,7 +561,12 @@
 "ai.error.not.configured" = "AI is not configured.";
 "ai.error.invalid.endpoint" = "The AI endpoint is invalid.";
 "ai.error.empty.response" = "The model returned an empty response.";
+"ai.error.request.failed" = "The AI service request failed (HTTP %d).";
+"ai.error.request.authorization" = "The AI service rejected the API key or request permissions.";
+"ai.error.request.rate.limit" = "The AI service rate limit or quota was exceeded.";
+"ai.error.request.server" = "The AI service is temporarily unavailable.";
 "ai.error.image.unavailable" = "The image is no longer available or could not be prepared for the AI provider.";
+"ai.error.attachment.storage.limit.exceeded" = "AI chat attachments are limited to 256 MB of local storage.";
 "ai.error.vision.unsupported" = "Image input is disabled for the configured model. Enable it in AI settings only if the provider supports OpenAI-compatible image messages.";
 "ai.error.vision.unsupported.title" = "Image Input Is Disabled";
 "ai.image.privacy.title" = "Send This Image to AI?";
@@ -849,6 +857,12 @@
 "recording.choose.mobile.subtitle" = "Connect and trust an iPhone or iPad, then select it here.";
 "recording.start" = "Start Recording";
 "recording.error.title" = "Recording Failed";
+"recording.error.permission.denied" = "Screen Recording permission is required.";
+"recording.error.source.unavailable" = "The selected recording source is no longer available.";
+"recording.error.already.recording" = "A recording is already in progress.";
+"recording.error.invalid.configuration" = "The selected recording configuration is not supported.";
+"recording.error.microphone.denied" = "Microphone permission is required for this recording.";
+"recording.error.insufficient.disk.space" = "There is not enough free disk space to start recording.";
 "recording.status.idle" = "Screen Recording";
 "recording.status.active" = "Recording · %@";
 "recording.pause" = "Pause Recording";

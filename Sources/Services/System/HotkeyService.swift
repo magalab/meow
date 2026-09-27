@@ -1,6 +1,8 @@
 import Carbon
 import Foundation
 
+// Event-handler callbacks dispatch registry access to the main thread; the
+// unchecked conformance only crosses the C callback boundary.
 final class HotkeyService: @unchecked Sendable {
     enum RegistrationResult: Equatable {
         case registered
@@ -272,7 +274,7 @@ final class HotkeyService: @unchecked Sendable {
                 &eventHandlerRef
             )
             guard status == noErr else {
-                NSLog("[Meow] Failed to install hotkey event handler: \(status)")
+                MeowLog.hotkey.error("Failed to install hotkey event handler: \(status, privacy: .public)")
                 return .failed(status)
             }
         }
@@ -323,7 +325,9 @@ final class HotkeyService: @unchecked Sendable {
             restorePreviousHotkey(previous, id: id)
         }
 
-        NSLog("[Meow] Failed to register hotkey id=\(id): \(registerStatus)")
+        MeowLog.hotkey.error(
+            "Failed to register hotkey id=\(id, privacy: .public): \(registerStatus, privacy: .public)"
+        )
         return .failed(registerStatus)
     }
 
@@ -348,7 +352,9 @@ final class HotkeyService: @unchecked Sendable {
                 releasedAction: previous.releasedAction
             )
         } else {
-            NSLog("[Meow] Failed to restore previous hotkey id=\(id): \(restoreStatus)")
+            MeowLog.hotkey.error(
+                "Failed to restore previous hotkey id=\(id, privacy: .public): \(restoreStatus, privacy: .public)"
+            )
         }
     }
 

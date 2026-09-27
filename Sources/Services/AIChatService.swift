@@ -37,7 +37,7 @@ enum AIChatError: LocalizedError, Sendable {
     case emptyResponse
     case imageUnavailable
     case visionUnsupported
-    case requestFailed(String)
+    case requestFailed(statusCode: Int)
 
     var errorDescription: String? {
         switch self {
@@ -51,8 +51,8 @@ enum AIChatError: LocalizedError, Sendable {
             return L10n.aiErrorImageUnavailable
         case .visionUnsupported:
             return L10n.aiErrorVisionUnsupported
-        case let .requestFailed(message):
-            return message
+        case let .requestFailed(statusCode):
+            return L10n.aiErrorRequestFailed(statusCode: statusCode)
         }
     }
 }
@@ -75,7 +75,8 @@ struct AIChatService: Sendable {
         if let httpResponse = response as? HTTPURLResponse,
            !(200 ... 299).contains(httpResponse.statusCode)
         {
-            throw AIChatError.requestFailed(errorMessage(from: data) ?? "HTTP \(httpResponse.statusCode)")
+            logHTTPFailure(operation: "Model fetch", data: data, statusCode: httpResponse.statusCode)
+            throw AIChatError.requestFailed(statusCode: httpResponse.statusCode)
         }
 
         let decoded = try JSONDecoder().decode(ModelsResponse.self, from: data)
@@ -105,7 +106,8 @@ struct AIChatService: Sendable {
         if let httpResponse = response as? HTTPURLResponse,
            !(200 ... 299).contains(httpResponse.statusCode)
         {
-            throw AIChatError.requestFailed(errorMessage(from: data) ?? "HTTP \(httpResponse.statusCode)")
+            logHTTPFailure(operation: "Chat request", data: data, statusCode: httpResponse.statusCode)
+            throw AIChatError.requestFailed(statusCode: httpResponse.statusCode)
         }
 
         let decoded = try JSONDecoder().decode(ChatCompletionResponse.self, from: data)
@@ -131,11 +133,8 @@ struct AIChatService: Sendable {
         )
     }
 
-    private func normalizedEndpoint(_ rawValue: String) throws -> URL {
-        let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, var components = URLComponents(string: trimmed) else {
-            throw AIChatError.invalidEndpoint
-        }
+    func normalizedEndpoint(_ rawValue: String) throws -> URL {
+        var components = try validatedComponents(rawValue)
 
         let path = components.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         if path == "v1" {
@@ -151,10 +150,7 @@ struct AIChatService: Sendable {
     }
 
     private func modelsEndpoint(_ rawValue: String) throws -> URL {
-        let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, var components = URLComponents(string: trimmed) else {
-            throw AIChatError.invalidEndpoint
-        }
+        var components = try validatedComponents(rawValue)
 
         let path = components.path
         if path.hasSuffix("/chat/completions") {
@@ -171,6 +167,32 @@ struct AIChatService: Sendable {
             throw AIChatError.invalidEndpoint
         }
         return url
+    }
+
+    private func validatedComponents(_ rawValue: String) throws -> URLComponents {
+        let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty,
+              let components = URLComponents(string: trimmed),
+              let scheme = components.scheme?.lowercased(),
+              let host = components.host,
+              !host.isEmpty,
+              components.user == nil,
+              components.password == nil,
+              components.fragment == nil,
+              scheme == "https" || (scheme == "http" && Self.isLoopback(host))
+        else {
+            throw AIChatError.invalidEndpoint
+        }
+        return components
+    }
+
+    private static func isLoopback(_ host: String) -> Bool {
+        switch host.lowercased() {
+        case "localhost", "127.0.0.1", "::1", "[::1]":
+            return true
+        default:
+            return false
+        }
     }
 
     private func makePayloadMessages(
@@ -228,6 +250,13 @@ struct AIChatService: Sendable {
             throw AIChatError.imageUnavailable
         }
         return "data:image/jpeg;base64,\(data.base64EncodedString())"
+    }
+
+    private func logHTTPFailure(operation: String, data: Data, statusCode: Int) {
+        let detail = errorMessage(from: data) ?? "HTTP \(statusCode)"
+        MeowLog.ai.error(
+            "\(operation, privacy: .public) failed with status \(statusCode, privacy: .public): \(detail, privacy: .private(mask: .hash))"
+        )
     }
 
     private func errorMessage(from data: Data) -> String? {

@@ -138,7 +138,8 @@ private final class CaptureOverlayView: NSView {
 
     @available(*, unavailable)
     required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
+        MeowLog.capture.error("Capture overlay view cannot be decoded from a storyboard")
+        return nil
     }
 
     override func updateTrackingAreas() {

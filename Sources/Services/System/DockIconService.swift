@@ -46,7 +46,7 @@ final class DockIconService {
         let cal = Calendar(identifier: .gregorian)
         let day = cal.component(.day, from: now)
         let month = cal.component(.month, from: now)
-        let isChinese = LanguageManager.shared.currentLanguageCode.hasPrefix("zh")
+        let isChinese = LanguageManager.shared.isChinese
 
         let rect = NSRect(x: 0, y: 0, width: size, height: size)
         let cornerRadius: CGFloat = size * 0.225
@@ -119,7 +119,7 @@ final class DockIconService {
         let now = Date()
         let cal = Calendar(identifier: .gregorian)
         let day = cal.component(.day, from: now)
-        let isChinese = LanguageManager.shared.currentLanguageCode.hasPrefix("zh")
+        let isChinese = LanguageManager.shared.isChinese
 
         let rect = NSRect(x: 0, y: 0, width: size, height: size)
         let cornerRadius: CGFloat = size * 0.225

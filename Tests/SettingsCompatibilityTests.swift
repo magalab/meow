@@ -46,12 +46,176 @@ func finderShortcutLocalizationIsComplete() throws {
     }
 }
 
+@Test("AI API keys are excluded from the settings payload")
+func aiAPIKeysAreNotEncodedInSettings() throws {
+    var settings = AppSettings.default
+    settings.ai.apiKey = "test-secret"
+
+    let root = try #require(
+        JSONSerialization.jsonObject(with: JSONEncoder().encode(settings)) as? [String: Any]
+    )
+    let ai = try #require(root["ai"] as? [String: Any])
+    #expect(ai["apiKey"] == nil)
+}
+
+@Test("Settings store migrates legacy AI API keys to Keychain")
+func settingsStoreMigratesLegacyAIAPIKey() throws {
+    let suiteName = "Meow-SettingsTests-\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+
+    var object = try #require(
+        JSONSerialization.jsonObject(with: JSONEncoder().encode(AppSettings.default)) as? [String: Any]
+    )
+    var ai = try #require(object["ai"] as? [String: Any])
+    ai["apiKey"] = "legacy-secret"
+    object["ai"] = ai
+    defaults.set(
+        try JSONSerialization.data(withJSONObject: object),
+        forKey: "meow.settings"
+    )
+
+    let keychain = MemoryAIKeychain()
+    let store = SettingsStore(defaults: defaults, aiKeychain: keychain)
+    let loaded = store.load()
+
+    #expect(loaded.ai.apiKey == "legacy-secret")
+    #expect(keychain.value == "legacy-secret")
+
+    let sanitizedData = try #require(defaults.data(forKey: "meow.settings"))
+    let sanitized = try #require(
+        JSONSerialization.jsonObject(with: sanitizedData) as? [String: Any]
+    )
+    let sanitizedAI = try #require(sanitized["ai"] as? [String: Any])
+    #expect(sanitizedAI["apiKey"] == nil)
+}
+
+@Test("Settings store round trips UserDefaults settings and Keychain API keys")
+func settingsStoreRoundTrip() throws {
+    let suiteName = "Meow-SettingsRoundTripTests-\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+
+    var settings = AppSettings.default
+    settings.finderHotkeyKeyCode = 12
+    settings.ai.endpoint = "https://example.com/v1"
+    settings.ai.apiKey = "round-trip-secret"
+
+    let keychain = MemoryAIKeychain()
+    let store = SettingsStore(defaults: defaults, aiKeychain: keychain)
+    store.save(settings)
+    let loaded = store.load()
+
+    #expect(loaded.finderHotkeyKeyCode == 12)
+    #expect(loaded.ai.endpoint == "https://example.com/v1")
+    #expect(loaded.ai.apiKey == "round-trip-secret")
+    #expect(keychain.value == "round-trip-secret")
+}
+
+@Test("Settings store replaces a corrupt persisted blob with defaults")
+func settingsStoreRecoversFromCorruptData() throws {
+    let suiteName = "Meow-SettingsCorruptTests-\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+    defaults.set(Data("not-json".utf8), forKey: "meow.settings")
+
+    let store = SettingsStore(defaults: defaults, aiKeychain: MemoryAIKeychain())
+    let loaded = store.load()
+
+    #expect(loaded.finderHotkeyKeyCode == AppSettings.default.finderHotkeyKeyCode)
+    #expect(loaded.finderHotkeyModifiers == AppSettings.default.finderHotkeyModifiers)
+    #expect(loaded.ai.endpoint == AppSettings.default.ai.endpoint)
+    let recoveredData = try #require(defaults.data(forKey: "meow.settings"))
+    let recovered = try JSONDecoder().decode(AppSettings.self, from: recoveredData)
+    #expect(recovered.finderHotkeyKeyCode == AppSettings.default.finderHotkeyKeyCode)
+    #expect(recovered.finderHotkeyModifiers == AppSettings.default.finderHotkeyModifiers)
+    #expect(recovered.ai.endpoint == AppSettings.default.ai.endpoint)
+}
+
+@Test("Settings store keeps a legacy API key when Keychain is unavailable")
+func settingsStoreKeepsLegacyAPIKeyOnKeychainFailure() throws {
+    let suiteName = "Meow-SettingsKeychainFailureTests-\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+
+    var object = try #require(
+        JSONSerialization.jsonObject(with: JSONEncoder().encode(AppSettings.default)) as? [String: Any]
+    )
+    var ai = try #require(object["ai"] as? [String: Any])
+    ai["apiKey"] = "legacy-secret"
+    object["ai"] = ai
+    defaults.set(try JSONSerialization.data(withJSONObject: object), forKey: "meow.settings")
+
+    let store = SettingsStore(
+        defaults: defaults,
+        aiKeychain: UnavailableAIKeychain()
+    )
+    let loaded = store.load()
+
+    #expect(loaded.ai.apiKey == "legacy-secret")
+    let persistedData = try #require(defaults.data(forKey: "meow.settings"))
+    let persisted = try #require(JSONSerialization.jsonObject(with: persistedData) as? [String: Any])
+    let persistedAI = try #require(persisted["ai"] as? [String: Any])
+    #expect(persistedAI["apiKey"] as? String == "legacy-secret")
+}
+
+@Test("Settings store persists ordinary changes when Keychain deletion fails")
+func settingsStorePersistsOrdinaryChangesAfterKeychainDeleteFailure() throws {
+    let suiteName = "Meow-SettingsDeleteFailureTests-\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+
+    var original = AppSettings.default
+    original.finderHotkeyKeyCode = 12
+    defaults.set(try JSONEncoder().encode(original), forKey: "meow.settings")
+
+    var changed = original
+    changed.finderHotkeyKeyCode = 13
+    changed.ai.apiKey = ""
+    let store = SettingsStore(defaults: defaults, aiKeychain: DeleteFailingAIKeychain())
+
+    #expect(store.save(changed) == .savedWithoutAPIKey)
+    let persistedData = try #require(defaults.data(forKey: "meow.settings"))
+    let persisted = try JSONDecoder().decode(AppSettings.self, from: persistedData)
+    #expect(persisted.finderHotkeyKeyCode == changed.finderHotkeyKeyCode)
+}
+
 @Test("Empty settings default the Finder hotkey to Option-E")
 func emptySettingsDefaultFinderHotkey() throws {
     let settings = try JSONDecoder().decode(AppSettings.self, from: Data("{}".utf8))
 
     #expect(settings.finderHotkeyKeyCode == 14)
     #expect(settings.finderHotkeyModifiers == 2048)
+}
+
+private final class MemoryAIKeychain: AIKeychainStoring {
+    var value: String?
+
+    func read() throws -> String? { value }
+
+    func save(_ value: String) throws {
+        self.value = value
+    }
+
+    func delete() throws {
+        value = nil
+    }
+}
+
+private final class UnavailableAIKeychain: AIKeychainStoring {
+    func read() throws -> String? { throw SettingsTestKeychainError.unavailable }
+    func save(_: String) throws { throw SettingsTestKeychainError.unavailable }
+    func delete() throws { throw SettingsTestKeychainError.unavailable }
+}
+
+private final class DeleteFailingAIKeychain: AIKeychainStoring {
+    func read() throws -> String? { "existing-secret" }
+    func save(_: String) throws {}
+    func delete() throws { throw SettingsTestKeychainError.unavailable }
+}
+
+private enum SettingsTestKeychainError: Error {
+    case unavailable
 }
 
 @Test("Finder hotkey settings round trip")

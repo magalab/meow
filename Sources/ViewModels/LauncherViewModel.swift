@@ -23,10 +23,18 @@ final class LauncherViewModel: ObservableObject {
     @Published private(set) var results: [SearchItem] = []
     @Published private(set) var finderHotkeyRegistrationError: String?
     @Published private(set) var whiteboardHotkeyRegistrationError: String?
+    @Published var settingsPersistenceError: String?
     @Published private(set) var keepAwakeState: KeepAwakeState = .idle
     @Published var settings: AppSettings {
         didSet {
-            settingsStore.save(settings)
+            switch settingsStore.save(settings) {
+            case .saved:
+                settingsPersistenceError = nil
+            case .savedWithoutAPIKey:
+                settingsPersistenceError = L10n.prefsSettingsAPIKeySaveErrorMessage
+            case .failed:
+                settingsPersistenceError = L10n.prefsSettingsSaveErrorMessage
+            }
             onSettingsChanged?(settings)
         }
     }

@@ -68,6 +68,29 @@ func visionAIRejectsDisabledImageInput() throws {
     }
 }
 
+@Test("AI requests reject insecure non-loopback endpoints")
+func aiRequestsRejectInsecureEndpoint() async {
+    var settings = AISettings.default
+    settings.endpoint = "http://example.com/v1"
+
+    do {
+        _ = try await AIChatService().send(messages: [], settings: settings)
+        Issue.record("Expected the insecure endpoint to be rejected")
+    } catch AIChatError.invalidEndpoint {
+        return
+    } catch {
+        Issue.record("Unexpected error: \(error)")
+    }
+}
+
+@Test("AI request errors expose actionable status categories")
+func aiRequestErrorsExposeStatusCategories() {
+    #expect(AIChatError.requestFailed(statusCode: 401).errorDescription == L10n.aiErrorRequestAuthorization)
+    #expect(AIChatError.requestFailed(statusCode: 429).errorDescription == L10n.aiErrorRequestRateLimit)
+    #expect(AIChatError.requestFailed(statusCode: 503).errorDescription == L10n.aiErrorRequestServer)
+    #expect(AIChatError.requestFailed(statusCode: 418).errorDescription?.contains("418") == true)
+}
+
 @Test("AI chat startup preserves attachments for indexed conversations")
 @MainActor
 func aiChatStartupPreservesIndexedAttachments() throws {
@@ -115,6 +138,33 @@ func aiChatAppendPreservesUnloadedConversationAttachments() throws {
     #expect(store!.messages(for: imageConversationID).first?.imagePath == attachmentPath)
 }
 
+@Test("AI chat message trimming removes discarded attachments")
+@MainActor
+func aiChatMessageTrimRemovesDiscardedAttachments() throws {
+    let root = aiChatTestRoot()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let sourceImage = try makeAIChatTestImage()
+    defer { try? FileManager.default.removeItem(at: sourceImage) }
+
+    let store = AIChatHistoryStore(appSupportMeowURL: root)
+    let conversationID = store.createConversation()
+    let attachmentPath = try store.storeAttachment(at: sourceImage)
+    store.append(
+        AIChatMessage(role: .user, content: "Old image", imagePath: attachmentPath),
+        to: conversationID
+    )
+
+    for index in 0..<80 {
+        store.append(
+            AIChatMessage(role: .user, content: "Message \(index)"),
+            to: conversationID
+        )
+    }
+
+    #expect(store.messages(for: conversationID).count == 80)
+    #expect(!FileManager.default.fileExists(atPath: attachmentPath))
+}
+
 @Test("AI chat append preserves unreadable body and saves the new message")
 @MainActor
 func aiChatAppendAfterUnreadableBodyPersistsNewMessage() throws {
@@ -141,6 +191,91 @@ func aiChatAppendAfterUnreadableBodyPersistsNewMessage() throws {
         file.lastPathComponent.hasPrefix("\(conversationID.uuidString.lowercased()).invalid-")
             && file.lastPathComponent.hasSuffix(".json")
     })
+}
+
+@Test("Deleting an AI chat removes its owned attachments")
+@MainActor
+func aiChatDeleteRemovesOwnedAttachments() throws {
+    let root = aiChatTestRoot()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let sourceImage = try makeAIChatTestImage()
+    defer { try? FileManager.default.removeItem(at: sourceImage) }
+
+    let store = AIChatHistoryStore(appSupportMeowURL: root)
+    let conversationID = store.createConversation()
+    let attachmentPath = try store.storeAttachment(at: sourceImage)
+    store.append(
+        AIChatMessage(role: .user, content: "Analyze this image", imagePath: attachmentPath),
+        to: conversationID
+    )
+    #expect(FileManager.default.fileExists(atPath: attachmentPath))
+
+    store.deleteConversation(conversationID)
+
+    #expect(!FileManager.default.fileExists(atPath: attachmentPath))
+}
+
+@Test("Pruning AI chats removes attachments from discarded conversations")
+@MainActor
+func aiChatPruneRemovesDiscardedAttachments() throws {
+    let root = aiChatTestRoot()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let sourceImage = try makeAIChatTestImage()
+    defer { try? FileManager.default.removeItem(at: sourceImage) }
+
+    let store = AIChatHistoryStore(appSupportMeowURL: root)
+    let oldestConversationID = store.createConversation()
+    let attachmentPath = try store.storeAttachment(at: sourceImage)
+    store.append(
+        AIChatMessage(role: .user, content: "Old image", imagePath: attachmentPath),
+        to: oldestConversationID
+    )
+
+    for _ in 0..<50 {
+        _ = store.createConversation(select: false)
+    }
+
+    #expect(!store.conversations.contains { $0.id == oldestConversationID })
+    #expect(!FileManager.default.fileExists(atPath: attachmentPath))
+}
+
+@Test("AI endpoints preserve query parameters")
+func aiChatEndpointPreservesQueryParameters() throws {
+    let endpoint = try AIChatService().normalizedEndpoint(
+        "https://api.example.com/v1?api-version=2024-02-01"
+    )
+
+    #expect(endpoint.path == "/v1/chat/completions")
+    #expect(endpoint.query == "api-version=2024-02-01")
+}
+
+@Test("AI chat attachment storage enforces its local size limit")
+@MainActor
+func aiChatAttachmentStorageLimit() throws {
+    let root = aiChatTestRoot()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let sourceImage = try makeAIChatTestImage()
+    defer { try? FileManager.default.removeItem(at: sourceImage) }
+
+    let attachmentsDirectory = root
+        .appendingPathComponent("AIChats", isDirectory: true)
+        .appendingPathComponent("attachments", isDirectory: true)
+    try FileManager.default.createDirectory(at: attachmentsDirectory, withIntermediateDirectories: true)
+    let existingAttachment = attachmentsDirectory.appendingPathComponent("existing.png")
+    try Data([0]).write(to: existingAttachment)
+    let handle = try FileHandle(forWritingTo: existingAttachment)
+    try handle.truncate(atOffset: 256 * 1024 * 1024)
+    try handle.close()
+
+    let store = AIChatHistoryStore(appSupportMeowURL: root)
+    do {
+        _ = try store.storeAttachment(at: sourceImage)
+        Issue.record("Expected the attachment storage limit to be enforced")
+    } catch AIChatHistoryError.attachmentStorageLimitExceeded {
+        return
+    } catch {
+        Issue.record("Unexpected error: \(error)")
+    }
 }
 
 private func aiChatTestRoot() -> URL {

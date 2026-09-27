@@ -11,6 +11,18 @@ extension L10n {
         loc("prefs.subtitle")
     }
 
+    static var prefsSettingsSaveErrorTitle: String {
+        loc("prefs.settings.save.error.title")
+    }
+
+    static var prefsSettingsSaveErrorMessage: String {
+        loc("prefs.settings.save.error.message")
+    }
+
+    static var prefsSettingsAPIKeySaveErrorMessage: String {
+        loc("prefs.settings.api.key.save.error.message")
+    }
+
     static var prefsSectionGeneral: String {
         loc("prefs.section.general")
     }

@@ -324,7 +324,8 @@ private final class CaptureEditorCanvasNSView: NSView {
 
     @available(*, unavailable)
     required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
+        MeowLog.capture.error("Capture editor view cannot be decoded from a storyboard")
+        return nil
     }
 
     override func draw(_ dirtyRect: NSRect) {

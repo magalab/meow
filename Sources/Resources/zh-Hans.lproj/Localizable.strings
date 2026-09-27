@@ -41,6 +41,9 @@
 /* 偏好设置窗口 */
 "prefs.title" = "Meow 偏好设置";
 "prefs.subtitle" = "系统行为与启动器显示";
+"prefs.settings.save.error.title" = "部分设置无法保存";
+"prefs.settings.save.error.message" = "设置无法保存，请稍后重试。";
+"prefs.settings.api.key.save.error.message" = "其他设置已保存，但无法安全更新 API Key。";
 "prefs.section.general" = "通用";
 "prefs.section.clipboard" = "剪贴板";
 "prefs.general.page.basics" = "基础";
@@ -558,7 +561,12 @@
 "ai.error.not.configured" = "AI 尚未配置。";
 "ai.error.invalid.endpoint" = "AI 接口地址无效。";
 "ai.error.empty.response" = "模型返回了空回复。";
+"ai.error.request.failed" = "AI 服务请求失败（HTTP %d）。";
+"ai.error.request.authorization" = "AI 服务拒绝了 API Key 或请求权限。";
+"ai.error.request.rate.limit" = "AI 服务请求过于频繁或额度已用尽。";
+"ai.error.request.server" = "AI 服务暂时不可用。";
 "ai.error.image.unavailable" = "图片已不可用，或无法为 AI 服务商准备图片数据。";
+"ai.error.attachment.storage.limit.exceeded" = "AI 聊天附件的本地存储上限为 256 MB。";
 "ai.error.vision.unsupported" = "当前模型的图片输入已关闭。仅当服务商支持 OpenAI 兼容图片消息时，才应在 AI 设置中启用。";
 "ai.error.vision.unsupported.title" = "图片输入未启用";
 "ai.image.privacy.title" = "将此图片发送给 AI？";
@@ -849,6 +857,12 @@
 "recording.choose.mobile.subtitle" = "连接并信任 iPhone 或 iPad，然后在此选择。";
 "recording.start" = "开始录制";
 "recording.error.title" = "录屏失败";
+"recording.error.permission.denied" = "需要屏幕录制权限。";
+"recording.error.source.unavailable" = "所选录制来源已不可用。";
+"recording.error.already.recording" = "录制已经在进行中。";
+"recording.error.invalid.configuration" = "所选录制配置不受支持。";
+"recording.error.microphone.denied" = "此录制需要麦克风权限。";
+"recording.error.insufficient.disk.space" = "可用磁盘空间不足，无法开始录制。";
 "recording.status.idle" = "屏幕录制";
 "recording.status.active" = "正在录制 · %@";
 "recording.pause" = "暂停录制";

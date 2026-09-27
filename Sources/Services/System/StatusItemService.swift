@@ -244,7 +244,7 @@ final class StatusItemService {
         let month = cal.component(.month, from: now)
         let weekday = cal.component(.weekday, from: now)
 
-        let isChinese = LanguageManager.shared.currentLanguageCode.hasPrefix("zh")
+        let isChinese = LanguageManager.shared.isChinese
 
         let dayStr = "\(day)"
 

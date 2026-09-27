@@ -103,8 +103,37 @@ extension L10n {
         loc("ai.error.empty.response")
     }
 
+    static func aiErrorRequestFailed(statusCode: Int) -> String {
+        switch statusCode {
+        case 401, 403:
+            return aiErrorRequestAuthorization
+        case 429:
+            return aiErrorRequestRateLimit
+        case 500 ... 599:
+            return aiErrorRequestServer
+        default:
+            return String(format: loc("ai.error.request.failed"), statusCode)
+        }
+    }
+
+    static var aiErrorRequestAuthorization: String {
+        loc("ai.error.request.authorization")
+    }
+
+    static var aiErrorRequestRateLimit: String {
+        loc("ai.error.request.rate.limit")
+    }
+
+    static var aiErrorRequestServer: String {
+        loc("ai.error.request.server")
+    }
+
     static var aiErrorImageUnavailable: String {
         loc("ai.error.image.unavailable")
+    }
+
+    static var aiErrorAttachmentStorageLimitExceeded: String {
+        loc("ai.error.attachment.storage.limit.exceeded")
     }
 
     static var aiErrorVisionUnsupported: String { loc("ai.error.vision.unsupported") }

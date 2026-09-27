@@ -65,6 +65,34 @@ final class FileUploadService: ObservableObject {
         self.verifyShareURL = verifyShareURL
     }
 
+    static func cleanupTemporaryClipboardUploads(
+        fileManager: FileManager = .default,
+        now: Date = Date()
+    ) {
+        let directory = fileManager.temporaryDirectory
+            .appendingPathComponent("MeowUploads", isDirectory: true)
+        guard let files = try? fileManager.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: [.contentModificationDateKey],
+            options: [.skipsHiddenFiles]
+        ) else { return }
+
+        for file in files where file.lastPathComponent.hasPrefix("clipboard-") && file.pathExtension.lowercased() == "png" {
+            guard let modifiedAt = try? file.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate,
+                  now.timeIntervalSince(modifiedAt) >= 60 * 60
+            else {
+                continue
+            }
+            do {
+                try fileManager.removeItem(at: file)
+            } catch {
+                MeowLog.upload.debug(
+                    "Unable to remove stale clipboard upload \(file.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)"
+                )
+            }
+        }
+    }
+
     @discardableResult
     func upload(fileURL: URL) async throws -> String {
         let completed = try await executeUpload(fileURL: fileURL)
