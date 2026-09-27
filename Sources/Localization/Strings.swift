@@ -15,12 +15,82 @@ private enum LocalizationRuntime {
     private static func initialSnapshot() -> LocalizationSnapshot {
         let preferredLanguage = Locale.preferredLanguages.first ?? "en"
         let languageCode = preferredLanguage.hasPrefix("zh") ? "zh-Hans" : "en"
-        if let path = Bundle.module.path(forResource: languageCode, ofType: "lproj"),
-           let bundle = Bundle(path: path)
-        {
+        if let bundle = localizedBundle(for: languageCode) {
             return LocalizationSnapshot(bundle: bundle, languageCode: languageCode)
         }
-        return LocalizationSnapshot(bundle: Bundle.module, languageCode: languageCode)
+        return LocalizationSnapshot(bundle: Bundle.main, languageCode: languageCode)
+    }
+
+    /// Finds localized resources without touching SwiftPM's `Bundle.module`
+    /// accessor. The generated accessor assumes the resource bundle sits next
+    /// to the app bundle, while our DMG packaging keeps it in Contents/Resources.
+    static func localizedBundle(for languageCode: String) -> Bundle? {
+        let fileManager = FileManager.default
+        let executableURL = URL(fileURLWithPath: CommandLine.arguments.first ?? "")
+        let executableDirectory = executableURL.deletingLastPathComponent()
+        let bundleNames = [
+            "Meow_\(BuildEdition.productName).bundle",
+            "Meow_Meow.bundle",
+        ]
+        let languageNames = [languageCode, languageCode.lowercased()]
+
+        var containers: [URL] = []
+        if let resourceURL = Bundle.main.resourceURL {
+            containers.append(resourceURL)
+        }
+        containers.append(Bundle.main.bundleURL)
+        containers.append(executableDirectory)
+        let workingDirectory = URL(fileURLWithPath: fileManager.currentDirectoryPath)
+        containers.append(workingDirectory)
+        var ancestor = executableDirectory
+        for _ in 0 ..< 6 {
+            ancestor.deleteLastPathComponent()
+            containers.append(ancestor)
+        }
+
+        let buildDirectory = workingDirectory.appendingPathComponent(".build", isDirectory: true)
+        if let enumerator = fileManager.enumerator(
+            at: buildDirectory,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsPackageDescendants]
+        ) {
+            for case let url as URL in enumerator {
+                guard bundleNames.contains(url.lastPathComponent),
+                      (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
+                else { continue }
+                containers.append(url.deletingLastPathComponent())
+            }
+        }
+
+        var visited = Set<String>()
+        for container in containers {
+            let containerPath = container.standardizedFileURL.path
+            guard visited.insert(containerPath).inserted else { continue }
+
+            for bundleName in bundleNames {
+                let resourceBundleURL = container.appendingPathComponent(bundleName)
+                guard let resourceBundle = Bundle(url: resourceBundleURL) else { continue }
+                let hasLocalization = languageNames.contains {
+                    resourceBundle.path(forResource: $0, ofType: "lproj") != nil
+                }
+                guard hasLocalization else { continue }
+                return resourceBundle
+            }
+
+            let localizedPath = languageNames
+                .map { container.appendingPathComponent("\($0).lproj") }
+                .first { fileManager.fileExists(atPath: $0.path) }
+            if localizedPath != nil {
+                if containerPath == Bundle.main.resourceURL?.standardizedFileURL.path ||
+                    containerPath == Bundle.main.bundleURL.standardizedFileURL.path
+                {
+                    return Bundle.main
+                }
+                return Bundle(url: container)
+            }
+        }
+
+        return nil
     }
 
     static var bundle: Bundle {
@@ -74,62 +144,7 @@ final class LanguageManager: ObservableObject {
             code = "zh-Hans"
         }
 
-        var langBundle: Bundle? = nil
-
-        // Find the app bundle and access its Resources directory
-        let exePath = CommandLine.arguments[0]
-        var searchPath = (exePath as NSString).deletingLastPathComponent
-
-        // Walk up to find .app bundle (e.g., MyApp.app/Contents/MacOS/Meow)
-        let fileManager = FileManager.default
-        repeat {
-            let appBundleDir = (searchPath as NSString).lastPathComponent
-            if appBundleDir.hasSuffix(".app") {
-                // Found app bundle, look in Contents/Resources
-                let resourcesPath = (searchPath as NSString).appendingPathComponent("Contents/Resources")
-                if fileManager.fileExists(atPath: resourcesPath) {
-                    // Try to load from app bundle resources
-                    if let path = findLprojPath(in: resourcesPath, for: code) {
-                        langBundle = Bundle(path: path)
-                    }
-                }
-                break
-            }
-
-            let parent = (searchPath as NSString).deletingLastPathComponent
-            if parent == searchPath { break } // reached root
-            searchPath = parent
-        } while langBundle == nil
-
-        // Fallback: look for resource bundle in executable directory (swift run case)
-        if langBundle == nil {
-            let exeDir = (exePath as NSString).deletingLastPathComponent
-            let bundleNames = ["Meow_\(BuildEdition.productName).bundle", "Meow_Meow.bundle"]
-            for bundleName in bundleNames {
-                let resourceBundlePath = (exeDir as NSString).appendingPathComponent(bundleName)
-                if fileManager.fileExists(atPath: resourceBundlePath),
-                   let path = findLprojPath(in: resourceBundlePath, for: code)
-                {
-                    langBundle = Bundle(path: path)
-                    break
-                }
-            }
-        }
-
-        // Fallback: try Bundle.main
-        if langBundle == nil, let path = Bundle.main.path(forResource: code, ofType: "lproj") {
-            langBundle = Bundle(path: path)
-        }
-
-        // SwiftPM test and `swift run` processes do not have an app bundle as
-        // Bundle.main. Bundle.module points to the executable target's
-        // processed resources in those environments.
-        if langBundle == nil,
-           let resourcesPath = Bundle.module.resourceURL?.path,
-           let path = findLprojPath(in: resourcesPath, for: code)
-        {
-            langBundle = Bundle(path: path)
-        }
+        let langBundle = LocalizationRuntime.localizedBundle(for: code)
 
         let resolvedBundle: Bundle
         if let langBundle = langBundle {
@@ -144,24 +159,6 @@ final class LanguageManager: ObservableObject {
         refreshToken += 1
     }
 
-    private func findLprojPath(in containerPath: String, for code: String) -> String? {
-        let fileManager = FileManager.default
-
-        // Try exact code (e.g., zh-Hans)
-        let exactPath = (containerPath as NSString).appendingPathComponent("\(code).lproj")
-        if fileManager.fileExists(atPath: exactPath) {
-            return exactPath
-        }
-
-        // Try lowercase variant (e.g., zh-hans)
-        let lowercaseCode = code.lowercased()
-        let lowercasePath = (containerPath as NSString).appendingPathComponent("\(lowercaseCode).lproj")
-        if fileManager.fileExists(atPath: lowercasePath) {
-            return lowercasePath
-        }
-
-        return nil
-    }
 }
 
 /// Type-safe localized string lookup. All keys are defined in Localizable.strings.
