@@ -71,7 +71,7 @@ enum RecordingCanvasComposition {
         asset: AVAsset,
         sourceSize: CGSize,
         settings: RecordingCanvasSettings
-    ) -> AVVideoComposition {
+    ) async throws -> AVVideoComposition {
         let layout = RecordingCanvasLayout(sourceSize: sourceSize, settings: settings)
         let canvasRect = CGRect(origin: .zero, size: layout.renderSize)
         let contentRect = layout.contentRect
@@ -79,44 +79,53 @@ enum RecordingCanvasComposition {
         let red = settings.red
         let green = settings.green
         let blue = settings.blue
-        let composition = AVMutableVideoComposition(asset: asset) { request in
-            let source = request.sourceImage
-            let extent = source.extent
-            guard extent.width > 0, extent.height > 0 else {
-                request.finish(with: NSError(domain: "Meow.RecordingCanvas", code: 1))
-                return
-            }
-            let scale = min(contentRect.width / extent.width, contentRect.height / extent.height)
-            let target = CGRect(
-                x: (canvasRect.width - extent.width * scale) / 2,
-                y: (canvasRect.height - extent.height * scale) / 2,
-                width: extent.width * scale,
-                height: extent.height * scale
-            )
-            let image = source
-                .transformed(by: CGAffineTransform(translationX: -extent.minX, y: -extent.minY))
-                .transformed(by: CGAffineTransform(scaleX: scale, y: scale))
-                .transformed(by: CGAffineTransform(translationX: target.minX, y: target.minY))
-            let background = CIImage(color: CIColor(
-                red: CGFloat(red),
-                green: CGFloat(green),
-                blue: CGFloat(blue)
-            )).cropped(to: canvasRect)
-            let output: CIImage
-            if cornerRadius > 0 {
-                let mask = CIFilter.roundedRectangleGenerator()
-                mask.extent = target
-                mask.radius = Float(cornerRadius)
-                mask.color = .white
-                let blend = CIFilter.blendWithMask()
-                blend.inputImage = image
-                blend.backgroundImage = background
-                blend.maskImage = mask.outputImage
-                output = blend.outputImage ?? background
-            } else {
-                output = image.composited(over: background)
-            }
-            request.finish(with: output.cropped(to: canvasRect), context: nil)
+        let composition = try await withCheckedThrowingContinuation {
+            (continuation: CheckedContinuation<AVMutableVideoComposition, Error>) in
+            AVMutableVideoComposition.videoComposition(with: asset, applyingCIFiltersWithHandler: { request in
+                let source = request.sourceImage
+                let extent = source.extent
+                guard extent.width > 0, extent.height > 0 else {
+                    request.finish(with: source, context: nil)
+                    return
+                }
+                let scale = min(contentRect.width / extent.width, contentRect.height / extent.height)
+                let target = CGRect(
+                    x: (canvasRect.width - extent.width * scale) / 2,
+                    y: (canvasRect.height - extent.height * scale) / 2,
+                    width: extent.width * scale,
+                    height: extent.height * scale
+                )
+                let image = source
+                    .transformed(by: CGAffineTransform(translationX: -extent.minX, y: -extent.minY))
+                    .transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+                    .transformed(by: CGAffineTransform(translationX: target.minX, y: target.minY))
+                let background = CIImage(color: CIColor(
+                    red: CGFloat(red),
+                    green: CGFloat(green),
+                    blue: CGFloat(blue)
+                )).cropped(to: canvasRect)
+                let output: CIImage
+                if cornerRadius > 0 {
+                    let mask = CIFilter.roundedRectangleGenerator()
+                    mask.extent = target
+                    mask.radius = Float(cornerRadius)
+                    mask.color = .white
+                    let blend = CIFilter.blendWithMask()
+                    blend.inputImage = image
+                    blend.backgroundImage = background
+                    blend.maskImage = mask.outputImage
+                    output = blend.outputImage ?? background
+                } else {
+                    output = image.composited(over: background)
+                }
+                request.finish(with: output.cropped(to: canvasRect), context: nil)
+            }, completionHandler: { composition, error in
+                if let composition {
+                    continuation.resume(returning: composition)
+                } else {
+                    continuation.resume(throwing: error ?? NSError(domain: "Meow.RecordingCanvas", code: 1))
+                }
+            })
         }
         composition.renderSize = layout.renderSize
         return composition

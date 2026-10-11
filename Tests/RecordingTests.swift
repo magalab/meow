@@ -159,7 +159,7 @@ func recordingCanvasExport(aspect: RecordingCanvasAspect) async throws {
         .appendingPathComponent("meow-canvas-\(UUID().uuidString).mov")
     defer { try? FileManager.default.removeItem(at: outputURL) }
     let session = try #require(AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetHighestQuality))
-    session.videoComposition = RecordingCanvasComposition.make(
+    session.videoComposition = try await RecordingCanvasComposition.make(
         asset: asset, sourceSize: size, settings: settings
     )
     session.timeRange = CMTimeRange(
