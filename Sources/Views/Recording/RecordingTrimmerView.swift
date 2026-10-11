@@ -23,6 +23,7 @@ struct RecordingTrimmerView: View {
     @State private var canvasColor = Color(red: 0.12, green: 0.12, blue: 0.14)
     @State private var canvasSourceSize: CGSize?
     @State private var canvasUnavailable = false
+    @State private var canvasPreviewTask: Task<Void, Never>?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -97,6 +98,7 @@ struct RecordingTrimmerView: View {
             updatePlayhead()
         }
         .onDisappear {
+            canvasPreviewTask?.cancel()
             pausePlayback()
             player.replaceCurrentItem(with: nil)
         }
@@ -297,6 +299,9 @@ struct RecordingTrimmerView: View {
         Task {
             do {
                 let asset = AVURLAsset(url: sourceURL)
+                _ = try await asset.load(.duration)
+                _ = try await asset.loadTracks(withMediaType: .video)
+                _ = try await asset.loadTracks(withMediaType: .audio)
                 guard let session = AVAssetExportSession(
                     asset: asset,
                     presetName: selectedCanvas
@@ -306,7 +311,7 @@ struct RecordingTrimmerView: View {
                     throw RecordingError.invalidConfiguration
                 }
                 if selectedCanvas, let selectedSourceSize {
-                    session.videoComposition = RecordingCanvasComposition.make(
+                    session.videoComposition = try await RecordingCanvasComposition.make(
                         asset: asset,
                         sourceSize: selectedSourceSize,
                         settings: selectedCanvasSettings
@@ -349,6 +354,7 @@ struct RecordingTrimmerView: View {
     }
 
     private func loadRecording() async {
+        canvasPreviewTask?.cancel()
         pausePlayback()
         player.replaceCurrentItem(with: nil)
         duration = 0
@@ -437,17 +443,30 @@ struct RecordingTrimmerView: View {
 
     private func updateCanvasPreview() {
         guard let item = player.currentItem else { return }
+        canvasPreviewTask?.cancel()
         pausePlayback()
         if canvasEnabled, !canvasUnavailable, let canvasSourceSize {
-            item.videoComposition = RecordingCanvasComposition.make(
-                asset: item.asset,
-                sourceSize: canvasSourceSize,
-                settings: canvasSettings
-            )
+            let settings = canvasSettings
+            canvasPreviewTask = Task {
+                do {
+                    let composition = try await RecordingCanvasComposition.make(
+                        asset: item.asset,
+                        sourceSize: canvasSourceSize,
+                        settings: settings
+                    )
+                    guard !Task.isCancelled, player.currentItem === item,
+                          canvasEnabled, canvasSettings == settings else { return }
+                    item.videoComposition = composition
+                    seek(to: playheadTime)
+                } catch {
+                    guard !Task.isCancelled else { return }
+                    errorMessage = error.localizedDescription
+                }
+            }
         } else {
             item.videoComposition = nil
+            seek(to: playheadTime)
         }
-        seek(to: playheadTime)
     }
 
     private func canvasAspectName(_ aspect: RecordingCanvasAspect) -> String {
