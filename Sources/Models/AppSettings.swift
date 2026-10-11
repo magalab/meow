@@ -97,7 +97,7 @@ enum AppLanguage: String, Codable, CaseIterable, Identifiable {
     }
 }
 
-enum AppTheme: String, Codable, CaseIterable, Identifiable {
+enum AppTheme: String, Codable, CaseIterable, Identifiable, Sendable {
     case gingerCat = "ginger-cat"
     case mistBlue = "mist-blue"
     case graphiteAmber = "graphite-amber"

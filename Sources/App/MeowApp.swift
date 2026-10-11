@@ -568,6 +568,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         if recordingServiceLoaded {
             recordingService.apply(settings: settings)
+            recordingCoordinator.cameraOverlaySettingsDidChange(settings.recording)
+            recordingCoordinator.magnifierSettingsDidChange(settings.recording)
         }
         if recordingStateShowsControls {
             if settings.recording.showFloatingControls {
@@ -1283,12 +1285,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         alert.addButton(withTitle: L10n.actionOK)
         if case .permissionDenied? = error as? RecordingError {
             alert.addButton(withTitle: L10n.screenshotOpenSettings)
+        } else if case .cameraDenied? = error as? RecordingError {
+            alert.addButton(withTitle: L10n.screenshotOpenSettings)
         }
         let response = alert.runModal()
-        if response == .alertSecondButtonReturn,
-           let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")
-        {
-            NSWorkspace.shared.open(url)
+        if response == .alertSecondButtonReturn {
+            let pane = if case .cameraDenied? = error as? RecordingError {
+                "Privacy_Camera"
+            } else {
+                "Privacy_ScreenCapture"
+            }
+            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?\(pane)") {
+                NSWorkspace.shared.open(url)
+            }
         }
     }
 

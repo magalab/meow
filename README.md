@@ -217,7 +217,7 @@ independent global shortcuts.
 - Saves to `~/Movies/Meow/` by default and indexes metadata and thumbnails under
   `~/Library/Application Support/Meow/Recordings/`
 - Provides searchable history with grid/list layouts, Finder reveal, deletion, and count/age/storage retention policies
-- Opens a floating completion preview with playback and non-destructive start/end trimming
+- Opens a floating completion preview with playback, non-destructive start/end trimming, and optional canvas framing
 - Preserves recovery metadata for interrupted recordings and scans it on the next launch
 
 Screen, region, window, application, and system-audio capture require Screen Recording

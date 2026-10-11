@@ -446,12 +446,13 @@ final class AppWindowCoordinator {
         }
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 760, height: 540),
+            contentRect: NSRect(x: 0, y: 0, width: 820, height: 620),
             styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
             defer: false
         )
         window.title = url.lastPathComponent
+        window.minSize = NSSize(width: 720, height: 540)
         window.contentViewController = contentViewController
         window.isReleasedWhenClosed = false
         let delegate = WindowCloseDelegate { [weak self] in

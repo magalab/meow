@@ -12,6 +12,7 @@ final class CaptureOverlayController {
     private var panels: [CaptureOverlayPanel] = []
     private var continuation: CheckedContinuation<CaptureSelection?, Never>?
     private var isFinishing = false
+    private var appResignObserver: NSObjectProtocol?
 
     func present(session: CaptureSession, mode: ScreenshotCaptureMode) async -> CaptureSelection? {
         cancel()
@@ -19,6 +20,13 @@ final class CaptureOverlayController {
 
         return await withCheckedContinuation { continuation in
             self.continuation = continuation
+            appResignObserver = NotificationCenter.default.addObserver(
+                forName: NSApplication.didResignActiveNotification,
+                object: NSApp,
+                queue: .main
+            ) { [weak self] _ in
+                Task { @MainActor in self?.cancel() }
+            }
             self.panels = session.displays.map { frozen in
                 makePanel(frozen: frozen, windows: session.windows, mode: mode)
             }
@@ -86,6 +94,10 @@ final class CaptureOverlayController {
         guard !isFinishing else { return }
         guard continuation != nil || !panels.isEmpty else { return }
         isFinishing = true
+        if let appResignObserver {
+            NotificationCenter.default.removeObserver(appResignObserver)
+            self.appResignObserver = nil
+        }
 
         for panel in panels {
             panel.orderOut(nil)
@@ -105,6 +117,42 @@ private struct CaptureWindowCandidate {
     let rect: CGRect
 }
 
+enum CapturePixelMagnifierGeometry {
+    static func sampleRect(
+        at point: CGPoint,
+        in bounds: CGRect,
+        imageWidth: Int,
+        imageHeight: Int,
+        scale: CGFloat
+    ) -> CGRect {
+        let pixelX = min(max(0, Int((point.x * scale).rounded(.down))), imageWidth - 1)
+        let pixelY = min(max(0, Int(((bounds.height - point.y) * scale).rounded(.down))), imageHeight - 1)
+        let width = min(13, imageWidth)
+        let height = min(13, imageHeight)
+        return CGRect(
+            x: min(max(0, pixelX - width / 2), imageWidth - width),
+            y: min(max(0, pixelY - height / 2), imageHeight - height),
+            width: width,
+            height: height
+        )
+    }
+
+    static func frame(near point: CGPoint, in bounds: CGRect) -> CGRect {
+        let size = CGSize(width: 140, height: 140)
+        let margin: CGFloat = 22
+        let x = point.x + margin + size.width <= bounds.maxX
+            ? point.x + margin : point.x - margin - size.width
+        let y = point.y - margin - size.height >= bounds.minY
+            ? point.y - margin - size.height : point.y + margin
+        return CGRect(
+            x: min(max(bounds.minX, x), max(bounds.minX, bounds.maxX - size.width)),
+            y: min(max(bounds.minY, y), max(bounds.minY, bounds.maxY - size.height)),
+            width: size.width,
+            height: size.height
+        )
+    }
+}
+
 private final class CaptureOverlayView: NSView {
     private let frozen: FrozenDisplay
     private let candidates: [CaptureWindowCandidate]
@@ -114,6 +162,7 @@ private final class CaptureOverlayView: NSView {
 
     private var dragStart: CGPoint?
     private var selectionRect: CGRect?
+    private var selectionPointer: CGPoint?
     private var hoveredWindow: CaptureWindowCandidate?
     private var trackingAreaRef: NSTrackingArea?
 
@@ -180,9 +229,14 @@ private final class CaptureOverlayView: NSView {
             drawFocusBorder(focusRect)
             if mode == .region {
                 drawSizeLabel(for: focusRect)
+            } else if mode == .window, let hoveredWindow {
+                drawWindowLabel(for: hoveredWindow)
             }
         } else {
             drawInstruction()
+        }
+        if mode == .region, dragStart != nil, let selectionPointer {
+            drawPixelMagnifier(at: selectionPointer)
         }
     }
 
@@ -197,6 +251,7 @@ private final class CaptureOverlayView: NSView {
         case .region:
             dragStart = point
             selectionRect = CGRect(origin: point, size: .zero)
+            selectionPointer = point
             needsDisplay = true
         case .window:
             updateHoveredWindow(at: point)
@@ -212,6 +267,7 @@ private final class CaptureOverlayView: NSView {
         guard mode == .region, let dragStart else { return }
         let point = convert(event.locationInWindow, from: nil)
         selectionRect = normalizedRect(from: dragStart, to: point).intersection(bounds)
+        selectionPointer = point
         needsDisplay = true
     }
 
@@ -220,6 +276,7 @@ private final class CaptureOverlayView: NSView {
         let point = convert(event.locationInWindow, from: nil)
         let rect = normalizedRect(from: dragStart, to: point).intersection(bounds).integral
         self.dragStart = nil
+        selectionPointer = nil
         guard rect.width >= 2, rect.height >= 2 else {
             selectionRect = nil
             needsDisplay = true
@@ -323,4 +380,84 @@ private final class CaptureOverlayView: NSView {
             withAttributes: attributes
         )
     }
+
+    private func drawWindowLabel(for candidate: CaptureWindowCandidate) {
+        let applicationName = candidate.window.owningApplication?.applicationName ?? ""
+        let title = candidate.window.title ?? ""
+        let dimensions = "\(Int(candidate.window.frame.width * frozen.scale)) × \(Int(candidate.window.frame.height * frozen.scale))"
+        let label = ([applicationName, title].filter { !$0.isEmpty } + [dimensions])
+            .joined(separator: " · ") as NSString
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.lineBreakMode = .byTruncatingTail
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 12, weight: .semibold),
+            .foregroundColor: NSColor.white,
+            .paragraphStyle: paragraphStyle,
+        ]
+        let width = min(bounds.width - 16, label.size(withAttributes: attributes).width + 16)
+        let height: CGFloat = 24
+        let x = min(max(8, candidate.rect.minX), bounds.maxX - width - 8)
+        let above = candidate.rect.maxY + 8
+        let y = above + height <= bounds.maxY ? above : max(8, candidate.rect.minY - height - 8)
+        let background = CGRect(x: x, y: y, width: width, height: height)
+        NSColor.black.withAlphaComponent(0.78).setFill()
+        NSBezierPath(roundedRect: background, xRadius: 6, yRadius: 6).fill()
+        label.draw(in: background.insetBy(dx: 8, dy: 4), withAttributes: attributes)
+    }
+
+    private func drawPixelMagnifier(at point: CGPoint) {
+        let image = frozen.image
+        let scale = frozen.scale
+        let pixelX = min(max(0, Int((point.x * scale).rounded(.down))), image.width - 1)
+        let pixelY = min(max(0, Int(((bounds.height - point.y) * scale).rounded(.down))), image.height - 1)
+        let pixelRect = CapturePixelMagnifierGeometry.sampleRect(
+            at: point,
+            in: bounds,
+            imageWidth: image.width,
+            imageHeight: image.height,
+            scale: scale
+        )
+        guard let cropped = image.cropping(to: pixelRect) else { return }
+
+        let lens = CapturePixelMagnifierGeometry.frame(near: point, in: bounds)
+        let imageRect = lens.insetBy(dx: 5, dy: 5)
+        NSColor.black.withAlphaComponent(0.86).setFill()
+        NSBezierPath(roundedRect: lens, xRadius: 8, yRadius: 8).fill()
+
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current?.imageInterpolation = .none
+        NSImage(cgImage: cropped, size: imageRect.size).draw(in: imageRect)
+        NSGraphicsContext.restoreGraphicsState()
+
+        let cellWidth = imageRect.width / pixelRect.width
+        let cellHeight = imageRect.height / pixelRect.height
+        let grid = NSBezierPath()
+        for index in 1..<Int(pixelRect.width) {
+            let x = imageRect.minX + CGFloat(index) * cellWidth
+            grid.move(to: CGPoint(x: x, y: imageRect.minY))
+            grid.line(to: CGPoint(x: x, y: imageRect.maxY))
+        }
+        for index in 1..<Int(pixelRect.height) {
+            let y = imageRect.minY + CGFloat(index) * cellHeight
+            grid.move(to: CGPoint(x: imageRect.minX, y: y))
+            grid.line(to: CGPoint(x: imageRect.maxX, y: y))
+        }
+        grid.lineWidth = 0.5
+        NSColor.black.withAlphaComponent(0.4).setStroke()
+        grid.stroke()
+
+        let markerX = imageRect.minX + (CGFloat(pixelX) - pixelRect.minX + 0.5) * cellWidth
+        let markerY = imageRect.maxY - (CGFloat(pixelY) - pixelRect.minY + 0.5) * cellHeight
+        let crosshair = NSBezierPath()
+        crosshair.move(to: CGPoint(x: markerX - cellWidth, y: markerY))
+        crosshair.line(to: CGPoint(x: markerX + cellWidth, y: markerY))
+        crosshair.move(to: CGPoint(x: markerX, y: markerY - cellHeight))
+        crosshair.line(to: CGPoint(x: markerX, y: markerY + cellHeight))
+        crosshair.lineWidth = 2
+        NSColor.systemYellow.setStroke()
+        crosshair.stroke()
+
+        NSBezierPath(roundedRect: lens, xRadius: 8, yRadius: 8).stroke()
+    }
+
 }
