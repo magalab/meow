@@ -14,6 +14,16 @@ func screenshotOverlayRouting() {
     #expect(!ScreenshotCaptureMode.window.includesApplicationOverlays)
 }
 
+@Test("Window picker uses frontmost window order and keeps unknown windows stable")
+func captureWindowOrdering() {
+    let ordered = CaptureWindowOrdering.order(
+        [12, 10, 30, 20],
+        frontToBack: [20, 10, 12]
+    )
+    #expect(ordered == [20, 10, 12, 30])
+    #expect(CaptureWindowOrdering.order([12, 10], frontToBack: []) == [12, 10])
+}
+
 @Test("Screenshot file name template expands date tokens and sanitizes separators")
 @MainActor
 func screenshotFileNameTemplateExpansion() {
@@ -322,28 +332,48 @@ func scrollingCaptureResourceIntensiveActionLimits() {
     #expect(!large.supportsFullResolutionEditing)
 }
 
-@Test("Screen magnifier uses display-local point coordinates")
+@Test("Screen magnifier panel fits a small visible display area")
 @MainActor
-func screenMagnifierSourceRectCentersOnPointer() {
-    let rect = ScreenMagnifierController.sourceRect(
-        centeredAt: CGPoint(x: 500, y: 500),
-        in: CGRect(x: 100, y: 100, width: 1000, height: 700),
-        captureSize: CGSize(width: 120, height: 90)
+func screenMagnifierPanelFitsVisibleArea() {
+    let visible = CGRect(x: -400, y: 80, width: 400, height: 260)
+    let frame = ScreenMagnifierController.panelFrame(
+        near: CGPoint(x: -2, y: 338),
+        visibleFrame: visible,
+        preferredSize: CGSize(width: 540, height: 360)
     )
-
-    #expect(rect == CGRect(x: 340, y: 255, width: 120, height: 90))
+    #expect(visible.contains(frame))
+    #expect(frame.width < 540)
+    #expect(abs(frame.width / frame.height - 1.5) < 0.001)
 }
 
-@Test("Screen magnifier source rect clamps to display edges")
-@MainActor
-func screenMagnifierSourceRectClampsToDisplay() {
-    let rect = ScreenMagnifierController.sourceRect(
-        centeredAt: CGPoint(x: 110, y: 790),
-        in: CGRect(x: 100, y: 100, width: 1000, height: 700),
-        captureSize: CGSize(width: 120, height: 90)
+@Test("Pixel magnifier maps local points using each display scale")
+func pixelMagnifierUsesDisplayScale() {
+    let bounds = CGRect(x: 0, y: 0, width: 100, height: 80)
+    let standard = CapturePixelMagnifierGeometry.sampleRect(
+        at: CGPoint(x: 50, y: 40), in: bounds,
+        imageWidth: 100, imageHeight: 80, scale: 1
     )
+    let retina = CapturePixelMagnifierGeometry.sampleRect(
+        at: CGPoint(x: 50, y: 40), in: bounds,
+        imageWidth: 200, imageHeight: 160, scale: 2
+    )
+    #expect(standard == CGRect(x: 44, y: 34, width: 13, height: 13))
+    #expect(retina == CGRect(x: 94, y: 74, width: 13, height: 13))
+}
 
-    #expect(rect == CGRect(x: 0, y: 0, width: 120, height: 90))
+@Test("Pixel magnifier remains within image and screen edges")
+func pixelMagnifierClampsAtEdges() {
+    let bounds = CGRect(x: 0, y: 0, width: 100, height: 80)
+    let sample = CapturePixelMagnifierGeometry.sampleRect(
+        at: CGPoint(x: 100, y: 0), in: bounds,
+        imageWidth: 200, imageHeight: 160, scale: 2
+    )
+    let frame = CapturePixelMagnifierGeometry.frame(
+        near: CGPoint(x: 98, y: 2), in: CGRect(x: 0, y: 0, width: 300, height: 200)
+    )
+    #expect(sample == CGRect(x: 187, y: 147, width: 13, height: 13))
+    #expect(frame.minX >= 0 && frame.maxX <= 300)
+    #expect(frame.minY >= 0 && frame.maxY <= 200)
 }
 
 @Test("Capture editor command stack supports undo and redo")

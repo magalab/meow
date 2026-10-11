@@ -130,6 +130,9 @@ struct RecordingSettings: Codable, Equatable, Sendable {
     var frameHotkeyModifiers: UInt32
     var magnifierHotkeyKeyCode: UInt32
     var magnifierHotkeyModifiers: UInt32
+    var magnifierZoom: Int
+    var magnifierWindowWidth: Int
+    var magnifierCircular: Bool
 
     init(
         enabled: Bool,
@@ -177,7 +180,10 @@ struct RecordingSettings: Codable, Equatable, Sendable {
         frameHotkeyKeyCode: UInt32,
         frameHotkeyModifiers: UInt32,
         magnifierHotkeyKeyCode: UInt32,
-        magnifierHotkeyModifiers: UInt32
+        magnifierHotkeyModifiers: UInt32,
+        magnifierZoom: Int,
+        magnifierWindowWidth: Int,
+        magnifierCircular: Bool
     ) {
         self.enabled = enabled
         self.videoFormat = videoFormat
@@ -225,6 +231,9 @@ struct RecordingSettings: Codable, Equatable, Sendable {
         self.frameHotkeyModifiers = frameHotkeyModifiers
         self.magnifierHotkeyKeyCode = magnifierHotkeyKeyCode
         self.magnifierHotkeyModifiers = magnifierHotkeyModifiers
+        self.magnifierZoom = magnifierZoom
+        self.magnifierWindowWidth = magnifierWindowWidth
+        self.magnifierCircular = magnifierCircular
     }
 
     static let `default` = RecordingSettings(
@@ -273,7 +282,10 @@ struct RecordingSettings: Codable, Equatable, Sendable {
         frameHotkeyKeyCode: 8,
         frameHotkeyModifiers: 2560,
         magnifierHotkeyKeyCode: 46,
-        magnifierHotkeyModifiers: 2560
+        magnifierHotkeyModifiers: 2560,
+        magnifierZoom: 2,
+        magnifierWindowWidth: 420,
+        magnifierCircular: false
     )
 
     private enum CodingKeys: String, CodingKey {
@@ -289,6 +301,7 @@ struct RecordingSettings: Codable, Equatable, Sendable {
         case stopHotkeyKeyCode, stopHotkeyModifiers
         case frameHotkeyKeyCode, frameHotkeyModifiers
         case magnifierHotkeyKeyCode, magnifierHotkeyModifiers
+        case magnifierZoom, magnifierWindowWidth, magnifierCircular
     }
 
     init(from decoder: Decoder) throws {
@@ -358,6 +371,9 @@ struct RecordingSettings: Codable, Equatable, Sendable {
         frameHotkeyModifiers = try container.decodeIfPresent(UInt32.self, forKey: .frameHotkeyModifiers) ?? defaults.frameHotkeyModifiers
         magnifierHotkeyKeyCode = try container.decodeIfPresent(UInt32.self, forKey: .magnifierHotkeyKeyCode) ?? defaults.magnifierHotkeyKeyCode
         magnifierHotkeyModifiers = try container.decodeIfPresent(UInt32.self, forKey: .magnifierHotkeyModifiers) ?? defaults.magnifierHotkeyModifiers
+        magnifierZoom = try container.decodeIfPresent(Int.self, forKey: .magnifierZoom) ?? defaults.magnifierZoom
+        magnifierWindowWidth = try container.decodeIfPresent(Int.self, forKey: .magnifierWindowWidth) ?? defaults.magnifierWindowWidth
+        magnifierCircular = try container.decodeIfPresent(Bool.self, forKey: .magnifierCircular) ?? defaults.magnifierCircular
     }
 
     func normalized(for source: RecordingSourceKind? = nil) -> RecordingSettings {
@@ -367,6 +383,9 @@ struct RecordingSettings: Codable, Equatable, Sendable {
         value.historyLimit = max(0, historyLimit)
         value.retentionDays = max(0, retentionDays)
         value.maxStorageMB = max(0, maxStorageMB)
+        value.magnifierZoom = [2, 3, 4].contains(magnifierZoom) ? magnifierZoom : Self.default.magnifierZoom
+        value.magnifierWindowWidth = [300, 420, 540].contains(magnifierWindowWidth)
+            ? magnifierWindowWidth : Self.default.magnifierWindowWidth
         value.excludedApplicationBundleIDs = Array(Set(
             excludedApplicationBundleIDs
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }

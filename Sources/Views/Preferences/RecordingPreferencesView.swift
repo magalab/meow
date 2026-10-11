@@ -194,6 +194,26 @@ struct RecordingPreferencesView: View {
             toggle(L10n.prefsRecordingRetinaTitle, L10n.prefsRecordingRetinaSubtitle, "4k.tv", $settings.captureRetinaResolution)
             toggle(L10n.prefsRecordingCursorTitle, L10n.prefsRecordingCursorSubtitle, "cursorarrow", $settings.showCursor)
             toggle(L10n.prefsRecordingMouseHighlightTitle, L10n.prefsRecordingMouseHighlightSubtitle, "cursorarrow.click.2", $settings.highlightMouseClicks)
+            pickerRow(
+                title: L10n.prefsRecordingMagnifierZoomTitle,
+                subtitle: L10n.prefsRecordingMagnifierZoomSubtitle,
+                symbol: "plus.magnifyingglass",
+                selection: $settings.magnifierZoom,
+                options: [2, 3, 4]
+            ) { "\($0)×" }
+            pickerRow(
+                title: L10n.prefsRecordingMagnifierSizeTitle,
+                subtitle: L10n.prefsRecordingMagnifierSizeSubtitle,
+                symbol: "rectangle.expand.vertical",
+                selection: $settings.magnifierWindowWidth,
+                options: [300, 420, 540]
+            ) { String(format: L10n.prefsRecordingMagnifierSizeValue, $0) }
+            toggle(
+                L10n.prefsRecordingMagnifierCircleTitle,
+                L10n.prefsRecordingMagnifierCircleSubtitle,
+                "circle",
+                $settings.magnifierCircular
+            )
             toggle(L10n.prefsRecordingMenuBarTitle, L10n.prefsRecordingMenuBarSubtitle, "menubar.rectangle", $settings.includeMenuBar)
             toggle(L10n.prefsRecordingExcludeTitle, L10n.prefsRecordingExcludeSubtitle, "eye.slash", $settings.excludeMeow)
             excludedApplicationsRow

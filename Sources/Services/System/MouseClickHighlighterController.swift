@@ -1,47 +1,31 @@
 import AppKit
+import CoreGraphics
 import QuartzCore
 
 @MainActor
 final class MouseClickHighlighterController {
     static let windowTitle = "Meow Mouse Click Highlighter"
+    var onClick: ((NSPoint) -> Void)?
 
     private var globalMonitor: Any?
     private var localMonitor: Any?
-    private var panels: [NSPanel] = []
+    private var panel: NSPanel?
+    private var ringLayer: CAShapeLayer?
     private var theme: AppTheme = .gingerCat
+    private var generation: UInt64 = 0
+
+    var windowID: CGWindowID? { panel.map { CGWindowID($0.windowNumber) } }
 
     func apply(settings: AppSettings) {
         theme = settings.theme
+        updateRingColor()
     }
 
-    func start() {
-        guard globalMonitor == nil, localMonitor == nil else { return }
-        let mask: NSEvent.EventTypeMask = [.leftMouseDown, .rightMouseDown, .otherMouseDown]
-        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: mask) { [weak self] _ in
-            Task { @MainActor in self?.show(at: NSEvent.mouseLocation) }
-        }
-        localMonitor = NSEvent.addLocalMonitorForEvents(matching: mask) { [weak self] event in
-            Task { @MainActor in self?.show(at: NSEvent.mouseLocation) }
-            return event
-        }
-    }
-
-    func stop() {
-        if let globalMonitor {
-            NSEvent.removeMonitor(globalMonitor)
-            self.globalMonitor = nil
-        }
-        if let localMonitor {
-            NSEvent.removeMonitor(localMonitor)
-            self.localMonitor = nil
-        }
-        panels.forEach { $0.orderOut(nil) }
-        panels.removeAll()
-    }
-
-    private func show(at point: NSPoint) {
+    func prepareForRecording() {
+        guard panel == nil else { return }
         let panelSize = CGSize(width: 96, height: 96)
         let ringSize = CGSize(width: 38, height: 38)
+        let point = NSEvent.mouseLocation
         let panel = NSPanel(
             contentRect: NSRect(
                 x: point.x - panelSize.width / 2,
@@ -67,28 +51,79 @@ final class MouseClickHighlighterController {
         view.layer?.backgroundColor = NSColor.clear.cgColor
         view.layer?.masksToBounds = false
 
-        let ringFrame = CGRect(
+        let ringLayer = CAShapeLayer()
+        ringLayer.frame = CGRect(
             x: (panelSize.width - ringSize.width) / 2,
             y: (panelSize.height - ringSize.height) / 2,
             width: ringSize.width,
             height: ringSize.height
         )
-        let ringLayer = CAShapeLayer()
-        let color = Self.accentColor(for: theme)
-        ringLayer.frame = ringFrame
         ringLayer.path = CGPath(ellipseIn: CGRect(origin: .zero, size: ringSize), transform: nil)
-        ringLayer.fillColor = color.withAlphaComponent(0.14).cgColor
-        ringLayer.strokeColor = color.withAlphaComponent(0.95).cgColor
         ringLayer.lineWidth = 3
+        ringLayer.opacity = 0
         view.layer?.addSublayer(ringLayer)
         panel.contentView = view
 
-        panels.append(panel)
+        self.panel = panel
+        self.ringLayer = ringLayer
+        updateRingColor()
         panel.orderFrontRegardless()
-        animate(panel: panel, layer: ringLayer)
     }
 
-    private func animate(panel: NSPanel, layer: CALayer?) {
+    func start() {
+        guard globalMonitor == nil, localMonitor == nil else { return }
+        prepareForRecording()
+        generation &+= 1
+        let currentGeneration = generation
+        let mask: NSEvent.EventTypeMask = [.leftMouseDown, .rightMouseDown, .otherMouseDown]
+        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: mask) { [weak self] _ in
+            Task { @MainActor in
+                guard let self, self.generation == currentGeneration else { return }
+                self.show(at: NSEvent.mouseLocation)
+            }
+        }
+        localMonitor = NSEvent.addLocalMonitorForEvents(matching: mask) { [weak self] event in
+            Task { @MainActor in
+                guard let self, self.generation == currentGeneration else { return }
+                self.show(at: NSEvent.mouseLocation)
+            }
+            return event
+        }
+    }
+
+    func pause() {
+        generation &+= 1
+        if let globalMonitor {
+            NSEvent.removeMonitor(globalMonitor)
+            self.globalMonitor = nil
+        }
+        if let localMonitor {
+            NSEvent.removeMonitor(localMonitor)
+            self.localMonitor = nil
+        }
+        ringLayer?.removeAllAnimations()
+        ringLayer?.opacity = 0
+    }
+
+    func stop() {
+        pause()
+        panel?.orderOut(nil)
+        panel = nil
+        ringLayer = nil
+    }
+
+    private func show(at point: NSPoint) {
+        guard let panel, let ringLayer else { return }
+        onClick?(point)
+        panel.setFrameOrigin(NSPoint(
+            x: point.x - panel.frame.width / 2,
+            y: point.y - panel.frame.height / 2
+        ))
+        ringLayer.removeAllAnimations()
+        animate(layer: ringLayer)
+    }
+
+    private func animate(layer: CAShapeLayer) {
         let duration: CFTimeInterval = 0.42
         let scale = CABasicAnimation(keyPath: "transform.scale")
         scale.fromValue = 0.7
@@ -102,16 +137,15 @@ final class MouseClickHighlighterController {
         opacity.duration = duration
         opacity.timingFunction = CAMediaTimingFunction(name: .easeOut)
 
-        layer?.add(scale, forKey: "click-scale")
-        layer?.add(opacity, forKey: "click-opacity")
-        layer?.opacity = 0
+        layer.add(scale, forKey: "click-scale")
+        layer.add(opacity, forKey: "click-opacity")
+        layer.opacity = 0
+    }
 
-        Task { @MainActor [weak self, weak panel] in
-            try? await Task.sleep(for: .milliseconds(Int(duration * 1000)))
-            guard let panel else { return }
-            panel.orderOut(nil)
-            self?.panels.removeAll { $0 === panel }
-        }
+    private func updateRingColor() {
+        let color = Self.accentColor(for: theme)
+        ringLayer?.fillColor = color.withAlphaComponent(0.14).cgColor
+        ringLayer?.strokeColor = color.withAlphaComponent(0.95).cgColor
     }
 
     private static func accentColor(for theme: AppTheme) -> NSColor {

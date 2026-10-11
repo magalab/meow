@@ -16,7 +16,11 @@ enum RecordingError: LocalizedError {
     case invalidConfiguration
     case writerFailed(String)
     case microphoneDenied
+    case microphoneUnavailable
+    case cameraDenied
+    case cameraUnavailable
     case insufficientDiskSpace
+    case magnifierUnavailable
 
     var errorDescription: String? {
         switch self {
@@ -26,13 +30,21 @@ enum RecordingError: LocalizedError {
         case .invalidConfiguration: return L10n.recordingErrorInvalidConfiguration
         case let .writerFailed(message): return message
         case .microphoneDenied: return L10n.recordingErrorMicrophoneDenied
+        case .microphoneUnavailable: return L10n.recordingErrorMicrophoneUnavailable
+        case .cameraDenied: return L10n.recordingErrorCameraDenied
+        case .cameraUnavailable: return L10n.recordingErrorCameraUnavailable
         case .insufficientDiskSpace: return L10n.recordingErrorInsufficientDiskSpace
+        case .magnifierUnavailable: return L10n.recordingErrorMagnifierUnavailable
         }
     }
 }
 
 @MainActor
 final class RecordingService: NSObject, ObservableObject {
+    private static let capturedOverlayTitles: Set<String> = [
+        CameraOverlayController.windowTitle,
+    ]
+
     @Published private(set) var state: RecordingState = .idle {
         didSet { onStateChanged?(state, elapsed) }
     }
@@ -40,6 +52,29 @@ final class RecordingService: NSObject, ObservableObject {
         didSet { onStateChanged?(state, elapsed) }
     }
     @Published private(set) var lastArtifact: RecordingArtifact?
+    @Published private(set) var isCameraOverlayVisible = false
+    @Published private(set) var isCameraOverlayChanging = false
+    @Published private(set) var isMicrophoneCapturing = false
+    @Published private(set) var microphoneLevel: Float = 0
+    @Published private(set) var isMicrophoneInterrupted = false
+    private(set) var canSafelyShowMagnifier = false
+
+    var cameraOverlaySource: RecordingSource? {
+        switch state {
+        case .recording, .paused:
+            guard let preparedSource,
+                  preparedSource.kind == .display || preparedSource.kind == .region
+            else { return nil }
+            return preparedSource
+        default:
+            return nil
+        }
+    }
+
+    func setCameraOverlayState(visible: Bool, changing: Bool = false) {
+        isCameraOverlayVisible = visible
+        isCameraOverlayChanging = changing
+    }
 
     var onCompleted: ((RecordingArtifact) -> Void)?
     var onError: ((Error) -> Void)?
@@ -47,16 +82,21 @@ final class RecordingService: NSObject, ObservableObject {
 
     private let store: RecordingStore
     private var settings = RecordingSettings.default
+    private var theme: AppTheme = .gingerCat
     private var preparedSource: RecordingSource?
     private var stream: SCStream?
     private var writer: RecordingWriter?
     private var microphoneCapture: RecordingMicrophoneCapture?
+    private var microphoneCaptureID: UUID?
     private var mobileCapture: RecordingMobileDeviceCapture?
     private let mouseClickHighlighter = MouseClickHighlighterController()
     private var countdownTask: Task<Void, Never>?
     private var elapsedTimer: Timer?
     private var sleepAssertionID: IOPMAssertionID = 0
     private var includedApplicationWindowIDs: Set<CGWindowID> = []
+    private var displayFilterExceptionWindowIDs: Set<CGWindowID> = []
+    private var displayFilterRefreshTask: Task<Void, Never>?
+    private var isRefreshingDisplayFilter = false
 
     init(store: RecordingStore) {
         self.store = store
@@ -64,9 +104,39 @@ final class RecordingService: NSObject, ObservableObject {
     }
 
     func apply(settings: AppSettings) {
+        let previousSettings = self.settings
         self.settings = settings.recording.normalized()
+        theme = settings.theme
         mouseClickHighlighter.apply(settings: settings)
         reconcileMouseClickHighlighter()
+        writer?.setMouseClickHighlight(enabled: self.settings.highlightMouseClicks, theme: settings.theme)
+        if previousSettings.preventSleep != self.settings.preventSleep {
+            switch state {
+            case .recording, .paused:
+                if self.settings.preventSleep {
+                    preventSleep()
+                } else {
+                    allowSleep()
+                }
+            default:
+                break
+            }
+        }
+        reconcileDisplayFilterRefreshTask()
+        if stream != nil,
+           (previousSettings.excludeMeow != self.settings.excludeMeow
+            || previousSettings.excludedApplicationBundleIDs != self.settings.excludedApplicationBundleIDs
+            || previousSettings.excludeDesktopIcons != self.settings.excludeDesktopIcons
+            || previousSettings.excludeSystemOverlays != self.settings.excludeSystemOverlays
+            || previousSettings.includeMenuBar != self.settings.includeMenuBar) {
+            Task { [weak self] in
+                guard let self else { return }
+                for _ in 0..<3 {
+                    if await self.refreshDisplayFilterForNewWindows(force: true) { return }
+                    try? await Task.sleep(for: .milliseconds(75))
+                }
+            }
+        }
         store.applyRetentionPolicy(
             historyLimit: settings.recording.historyLimit,
             retentionDays: settings.recording.retentionDays,
@@ -74,8 +144,69 @@ final class RecordingService: NSObject, ObservableObject {
         )
     }
 
+    func setMagnifierFrame(
+        _ image: CGImage?, frame: CGRect, marker: CGPoint, zoom: Int, circular: Bool
+    ) {
+        writer?.setMagnifierFrame(
+            image, frame: frame, marker: marker, zoom: zoom, circular: circular
+        )
+    }
+
+    func setMagnifierPosition(_ frame: CGRect) {
+        writer?.setMagnifierPosition(frame)
+    }
+
     func setIncludedApplicationWindowIDs(_ windowIDs: Set<CGWindowID>) {
         includedApplicationWindowIDs = windowIDs
+    }
+
+    @discardableResult
+    func refreshDisplayFilterForNewWindows(
+        force: Bool = false,
+        requiredWindowID: CGWindowID? = nil
+    ) async -> Bool {
+        switch state {
+        case .recording, .paused:
+            break
+        default:
+            return false
+        }
+        guard (force || !settings.excludeMeow || settings.excludeDesktopIcons),
+              !isRefreshingDisplayFilter,
+              let stream,
+              let source = preparedSource,
+              source.kind == .display || source.kind == .region
+        else { return false }
+        isRefreshingDisplayFilter = true
+        defer { isRefreshingDisplayFilter = false }
+        do {
+            let content = try await SCShareableContent.excludingDesktopWindows(
+                false,
+                onScreenWindowsOnly: false
+            )
+            guard self.stream === stream else { return false }
+            switch state {
+            case .recording, .paused:
+                break
+            default:
+                return false
+            }
+            let exceptionIDs = displayFilterExceptionIDs(in: content)
+            if let requiredWindowID, !exceptionIDs.contains(requiredWindowID) { return false }
+            // A caller waiting for a specific overlay needs a successful filter
+            // update, even if the cached exception IDs have not changed.
+            guard force || requiredWindowID != nil
+                    || exceptionIDs != displayFilterExceptionWindowIDs else { return true }
+            let filter = try makeFilter(for: source, content: content)
+            try await stream.updateContentFilter(filter)
+            displayFilterExceptionWindowIDs = exceptionIDs
+            return true
+        } catch {
+            MeowLog.recording.error(
+                "Updating recording window filter failed: \(error.localizedDescription, privacy: .public)"
+            )
+            return false
+        }
     }
 
     func prepare(source: RecordingSource) throws {
@@ -95,6 +226,9 @@ final class RecordingService: NSObject, ObservableObject {
         if settings.audioMode.capturesMicrophone {
             let granted = await requestMicrophonePermission()
             guard granted else { throw RecordingError.microphoneDenied }
+            guard Self.microphoneDevice(for: settings.microphoneDeviceID) != nil else {
+                throw RecordingError.microphoneUnavailable
+            }
         }
 
         if settings.countdownSeconds > 0 {
@@ -119,7 +253,8 @@ final class RecordingService: NSObject, ObservableObject {
     func pause() {
         guard case .recording = state else { return }
         writer?.setPaused(true)
-        mouseClickHighlighter.stop()
+        mouseClickHighlighter.pause()
+        microphoneLevel = 0
         stopElapsedTimer()
         state = .paused(elapsed: elapsed)
     }
@@ -144,10 +279,20 @@ final class RecordingService: NSObject, ObservableObject {
 
     func stop() async {
         guard state.isActive else { return }
+        isMicrophoneCapturing = false
+        microphoneCaptureID = nil
+        microphoneLevel = 0
+        isMicrophoneInterrupted = false
+        canSafelyShowMagnifier = false
+        isCameraOverlayChanging = false
+        displayFilterRefreshTask?.cancel()
+        displayFilterRefreshTask = nil
         state = .finishing
         stopElapsedTimer()
         countdownTask?.cancel()
         countdownTask = nil
+        mouseClickHighlighter.onClick = nil
+        mouseClickHighlighter.stop()
 
         if let stream {
             do {
@@ -161,7 +306,6 @@ final class RecordingService: NSObject, ObservableObject {
         self.stream = nil
         microphoneCapture?.stop()
         microphoneCapture = nil
-        mouseClickHighlighter.stop()
         allowSleep()
 
         if let mobileCapture {
@@ -298,6 +442,13 @@ final class RecordingService: NSObject, ObservableObject {
         ).devices
     }
 
+    nonisolated static func microphoneDevice(for deviceID: String) -> AVCaptureDevice? {
+        if deviceID.isEmpty {
+            return AVCaptureDevice.default(for: .audio)
+        }
+        return microphones().first { $0.uniqueID == deviceID }
+    }
+
     private func beginCapture(source: RecordingSource) async throws {
         let outputURL = try RecordingStore.outputURL(settings: settings, source: source.kind)
         if let available = RecordingStore.availableCapacity(at: outputURL.deletingLastPathComponent()),
@@ -321,17 +472,40 @@ final class RecordingService: NSObject, ObservableObject {
             startElapsedTimer()
             return
         }
+        if source.kind != .systemAudio {
+            // The preview stays on screen, while RecordingWriter draws the
+            // click ring into video frames independently of window filtering.
+            mouseClickHighlighter.prepareForRecording()
+        }
         let content = try await SCShareableContent.excludingDesktopWindows(
             false,
             onScreenWindowsOnly: false
         )
-        let configuration = try makeConfiguration(for: source)
-        let filter = try makeFilter(for: source, content: content)
+        let currentSource: RecordingSource
+        if case let .window(window) = source {
+            guard let currentWindow = content.windows.first(where: { $0.windowID == window.windowID }) else {
+                throw RecordingError.sourceUnavailable
+            }
+            currentSource = .window(currentWindow)
+        } else {
+            currentSource = source
+        }
+        canSafelyShowMagnifier = (source.kind == .display || source.kind == .region)
+            && content.applications.contains {
+                $0.processID == ProcessInfo.processInfo.processIdentifier
+            }
+        let configuration = try makeConfiguration(for: currentSource)
+        let filter = try makeFilter(for: currentSource, content: content)
+        if source.kind == .display || source.kind == .region {
+            displayFilterExceptionWindowIDs = displayFilterExceptionIDs(in: content)
+        }
         store.markRecordingStarted(fileURL: outputURL, source: source.kind)
         let writer = try RecordingWriter(
             outputURL: outputURL,
             source: source.kind,
             configuration: configuration,
+            captureRect: Self.captureRect(for: currentSource),
+            theme: theme,
             settings: settings,
             onStreamStopped: { [weak self] error in
                 Task { @MainActor in
@@ -340,6 +514,9 @@ final class RecordingService: NSObject, ObservableObject {
             }
         )
         self.writer = writer
+        mouseClickHighlighter.onClick = { [weak writer] point in
+            writer?.recordMouseClick(at: point)
+        }
 
         let stream = SCStream(filter: filter, configuration: configuration, delegate: writer)
         try stream.addStreamOutput(
@@ -357,14 +534,32 @@ final class RecordingService: NSObject, ObservableObject {
         self.stream = stream
 
         if settings.audioMode.capturesMicrophone {
+            let captureID = UUID()
             let microphone = RecordingMicrophoneCapture(
                 deviceID: settings.microphoneDeviceID,
                 queue: writer.queue
-            ) { [weak writer] sampleBuffer in
+            ) { [weak self, weak writer] sampleBuffer, level in
                 writer?.appendMicrophone(sampleBuffer)
+                guard let level else { return }
+                Task { @MainActor [weak self] in
+                    guard let self, self.microphoneCaptureID == captureID,
+                          self.isMicrophoneCapturing,
+                          case .recording = self.state else { return }
+                    self.microphoneLevel = level
+                    self.isMicrophoneInterrupted = false
+                }
+            } onIssue: { [weak self] in
+                Task { @MainActor [weak self] in
+                    guard let self, self.microphoneCaptureID == captureID,
+                          self.isMicrophoneCapturing else { return }
+                    self.microphoneLevel = 0
+                    self.isMicrophoneInterrupted = true
+                }
             }
             try microphone.start()
             microphoneCapture = microphone
+            microphoneCaptureID = captureID
+            isMicrophoneCapturing = true
         }
 
         try await stream.startCapture()
@@ -377,6 +572,31 @@ final class RecordingService: NSObject, ObservableObject {
         state = .recording(startedAt: Date())
         elapsed = 0
         startElapsedTimer()
+        reconcileDisplayFilterRefreshTask()
+    }
+
+    private func reconcileDisplayFilterRefreshTask() {
+        let shouldRefresh: Bool
+        switch state {
+        case .recording, .paused:
+            shouldRefresh = (preparedSource?.kind == .display || preparedSource?.kind == .region)
+                && (!settings.excludeMeow || settings.excludeDesktopIcons)
+        default:
+            shouldRefresh = false
+        }
+        if shouldRefresh {
+            guard displayFilterRefreshTask == nil else { return }
+            displayFilterRefreshTask = Task { [weak self] in
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(2))
+                    guard !Task.isCancelled else { return }
+                    await self?.refreshDisplayFilterForNewWindows()
+                }
+            }
+        } else {
+            displayFilterRefreshTask?.cancel()
+            displayFilterRefreshTask = nil
+        }
     }
 
     private func makeFilter(
@@ -386,53 +606,116 @@ final class RecordingService: NSObject, ObservableObject {
         switch source {
         case let .display(display), let .region(display, _, _), let .systemAudio(display):
             var excludedBundleIDs = Set(settings.excludedApplicationBundleIDs.map { $0.lowercased() })
-            if settings.excludeMeow, let bundleID = Bundle.main.bundleIdentifier {
-                excludedBundleIDs.insert(bundleID.lowercased())
-            }
-            let overlayTitles = Set([
-                CameraOverlayController.windowTitle,
-                MouseClickHighlighterController.windowTitle,
-                ScreenMagnifierController.windowTitle,
-            ])
             let systemOverlayBundleIDs: Set<String> = [
                 "com.apple.controlcenter",
                 "com.apple.notificationcenterui",
                 "com.apple.dock",
                 "com.apple.systemuiserver",
             ]
-            let excludedWindows = content.windows.filter { window in
-                if includedApplicationWindowIDs.contains(window.windowID) {
-                    return false
+            if settings.excludeSystemOverlays {
+                excludedBundleIDs.formUnion(systemOverlayBundleIDs)
+            }
+            if settings.excludeDesktopIcons {
+                excludedBundleIDs.insert("com.apple.finder")
+            }
+
+            // Excluding our process keeps windows created after the stream starts,
+            // including the magnifier, out of the recording. Explicit exceptions
+            // preserve overlays intentionally meant to appear in the movie.
+            let ownProcessID = ProcessInfo.processInfo.processIdentifier
+            if !content.applications.contains(where: { $0.processID == ownProcessID }) {
+                // ScreenCaptureKit can omit this process from its application
+                // list. Exclude the already visible border by window ID, and
+                // keep the magnifier disabled for this stream.
+                let excludedWindows = content.windows.filter { window in
+                    if window.title == ScreenMagnifierController.windowTitle
+                        || window.title == RecordingRegionBorderController.windowTitle {
+                        return true
+                    }
+                    if let clickWindowID = mouseClickHighlighter.windowID,
+                       window.windowID == clickWindowID { return true }
+                    if includedApplicationWindowIDs.contains(window.windowID) { return false }
+                    if Self.capturedOverlayTitles.contains(window.title ?? "") { return false }
+                    guard let application = window.owningApplication else { return false }
+                    if application.processID == ownProcessID { return settings.excludeMeow }
+                    let bundleID = application.bundleIdentifier.lowercased()
+                    if settings.excludeDesktopIcons && bundleID == "com.apple.finder" {
+                        return window.title?.isEmpty ?? true
+                    }
+                    return excludedBundleIDs.contains(bundleID)
                 }
-                let bundleID = window.owningApplication?.bundleIdentifier.lowercased() ?? ""
-                if overlayTitles.contains(window.title ?? "") {
-                    return false
-                }
-                if excludedBundleIDs.contains(bundleID) {
-                    return true
-                }
-                if settings.excludeSystemOverlays, systemOverlayBundleIDs.contains(bundleID) {
-                    return true
-                }
-                return settings.excludeDesktopIcons
-                    && bundleID == "com.apple.finder"
-                    && (window.title?.isEmpty ?? true)
+                let filter = SCContentFilter(display: display, excludingWindows: excludedWindows)
+                filter.includeMenuBar = settings.includeMenuBar
+                return filter
+            }
+            let excludedApplications = content.applications.filter { application in
+                application.processID == ownProcessID
+                    || excludedBundleIDs.contains(application.bundleIdentifier.lowercased())
+            }
+            let exceptingWindows = content.windows.filter { window in
+                shouldExceptWindow(
+                    window,
+                    ownProcessID: ownProcessID,
+                    capturedOverlayTitles: Self.capturedOverlayTitles
+                )
             }
             let filter = SCContentFilter(
                 display: display,
-                excludingWindows: excludedWindows
+                excludingApplications: excludedApplications,
+                exceptingWindows: exceptingWindows
             )
             filter.includeMenuBar = settings.includeMenuBar
             return filter
         case let .window(window):
             return SCContentFilter(desktopIndependentWindow: window)
         case let .application(application, display):
-            return SCContentFilter(display: display, including: [application], exceptingWindows: [])
+            let clickWindows = application.processID == ProcessInfo.processInfo.processIdentifier
+                ? content.windows.filter { $0.windowID == mouseClickHighlighter.windowID }
+                : []
+            return SCContentFilter(
+                display: display,
+                including: [application],
+                exceptingWindows: clickWindows
+            )
         case let .contentFilter(filter):
             return filter
         case .mobileDevice:
             throw RecordingError.sourceUnavailable
         }
+    }
+
+    private func displayFilterExceptionIDs(in content: SCShareableContent) -> Set<CGWindowID> {
+        let ownProcessID = ProcessInfo.processInfo.processIdentifier
+        return Set(content.windows.compactMap { window in
+            shouldExceptWindow(
+                window,
+                ownProcessID: ownProcessID,
+                capturedOverlayTitles: Self.capturedOverlayTitles
+            ) ? window.windowID : nil
+        })
+    }
+
+    private func shouldExceptWindow(
+        _ window: SCWindow,
+        ownProcessID: pid_t,
+        capturedOverlayTitles: Set<String>
+    ) -> Bool {
+        if window.title == ScreenMagnifierController.windowTitle
+            || window.title == RecordingRegionBorderController.windowTitle {
+            return false
+        }
+        if let clickWindowID = mouseClickHighlighter.windowID,
+           window.windowID == clickWindowID { return false }
+        if includedApplicationWindowIDs.contains(window.windowID) {
+            return true
+        }
+        guard let application = window.owningApplication else { return false }
+        if application.processID == ownProcessID {
+            return capturedOverlayTitles.contains(window.title ?? "") || !settings.excludeMeow
+        }
+        return settings.excludeDesktopIcons
+            && application.bundleIdentifier.lowercased() == "com.apple.finder"
+            && !(window.title?.isEmpty ?? true)
     }
 
     private func makeConfiguration(for source: RecordingSource) throws -> SCStreamConfiguration {
@@ -474,8 +757,7 @@ final class RecordingService: NSObject, ObservableObject {
         configuration.queueDepth = 6
         configuration.presenterOverlayPrivacyAlertSetting = .system
         configuration.showsCursor = settings.showCursor
-        configuration.showMouseClicks = settings.highlightMouseClicks
-            && !Self.supportsCustomMouseClickHighlight(for: source.kind)
+        configuration.showMouseClicks = false
         if settings.videoCodec == .hevcWithAlpha || settings.backgroundStyle == .transparent {
             configuration.pixelFormat = kCVPixelFormatType_32BGRA
             configuration.backgroundColor = NSColor.clear.cgColor
@@ -488,6 +770,24 @@ final class RecordingService: NSObject, ObservableObject {
         configuration.sampleRate = 48_000
         configuration.channelCount = 2
         return configuration
+    }
+
+    private static func captureRect(for source: RecordingSource) -> CGRect? {
+        switch source {
+        case let .display(display), let .application(_, display):
+            return ScreenCaptureService.screen(for: display.displayID)?.frame
+                ?? ScreenCaptureService.appKitRect(fromCoreGraphics: display.frame)
+        case let .region(display, rect, _):
+            let frame = ScreenCaptureService.screen(for: display.displayID)?.frame
+                ?? ScreenCaptureService.appKitRect(fromCoreGraphics: display.frame)
+            return rect.offsetBy(dx: frame.minX, dy: frame.minY)
+        case let .window(window):
+            return ScreenCaptureService.appKitRect(fromCoreGraphics: window.frame)
+        case let .contentFilter(filter):
+            return ScreenCaptureService.appKitRect(fromCoreGraphics: filter.contentRect)
+        case .systemAudio, .mobileDevice:
+            return nil
+        }
     }
 
     private func requestMicrophonePermission() async -> Bool {
@@ -579,6 +879,19 @@ final class RecordingService: NSObject, ObservableObject {
     }
 
     private func fail(_ error: Error) {
+        isMicrophoneCapturing = false
+        microphoneCaptureID = nil
+        microphoneLevel = 0
+        isMicrophoneInterrupted = false
+        MeowLog.recording.error(
+            "Recording failed: \(error.localizedDescription, privacy: .public)"
+        )
+        mouseClickHighlighter.onClick = nil
+        canSafelyShowMagnifier = false
+        setCameraOverlayState(visible: false)
+        displayFilterRefreshTask?.cancel()
+        displayFilterRefreshTask = nil
+        displayFilterExceptionWindowIDs = []
         stopElapsedTimer()
         countdownTask?.cancel()
         countdownTask = nil
@@ -607,6 +920,16 @@ final class RecordingService: NSObject, ObservableObject {
     }
 
     private func reset() {
+        isMicrophoneCapturing = false
+        microphoneCaptureID = nil
+        microphoneLevel = 0
+        isMicrophoneInterrupted = false
+        mouseClickHighlighter.onClick = nil
+        canSafelyShowMagnifier = false
+        setCameraOverlayState(visible: false)
+        displayFilterRefreshTask?.cancel()
+        displayFilterRefreshTask = nil
+        displayFilterExceptionWindowIDs = []
         mouseClickHighlighter.stop()
         state = .idle
         preparedSource = nil
@@ -614,22 +937,24 @@ final class RecordingService: NSObject, ObservableObject {
     }
 
     private func reconcileMouseClickHighlighter() {
-        guard case .recording = state,
-              settings.highlightMouseClicks,
-              let preparedSource,
+        guard let preparedSource,
               Self.supportsCustomMouseClickHighlight(for: preparedSource.kind)
         else {
             mouseClickHighlighter.stop()
             return
         }
-        mouseClickHighlighter.start()
+        if case .recording = state, settings.highlightMouseClicks {
+            mouseClickHighlighter.start()
+        } else {
+            mouseClickHighlighter.pause()
+        }
     }
 
     private static func supportsCustomMouseClickHighlight(for source: RecordingSourceKind) -> Bool {
         switch source {
-        case .display, .region:
+        case .display, .region, .application, .window:
             return true
-        case .window, .application, .systemAudio, .mobileDevice:
+        case .systemAudio, .mobileDevice:
             return false
         }
     }
@@ -724,8 +1049,13 @@ private final class RecordingWriter: NSObject, SCStreamOutput, SCStreamDelegate,
     private var pausedAt: CMTime?
     private var timeOffset = CMTime.zero
     private var isPaused = false
+    private var hasLoggedAppendFailure = false
+    private var hasLoggedMagnifierSnapshot = false
+    private var hasLoggedMagnifierOutput = false
     private let ciContext = CIContext()
-    private var latestFrameStorage: CGImage?
+    private let mouseClickCompositor: RecordingMouseClickCompositor
+    private let magnifierCompositor: RecordingMagnifierCompositor
+    private var latestFrameStorage: CVPixelBuffer?
 
     var duration: TimeInterval {
         queue.sync {
@@ -735,7 +1065,16 @@ private final class RecordingWriter: NSObject, SCStreamOutput, SCStreamDelegate,
 
     var latestFrame: CGImage? {
         queue.sync {
-            latestFrameStorage
+            guard let pixelBuffer = latestFrameStorage else { return nil }
+            return ciContext.createCGImage(
+                CIImage(cvPixelBuffer: pixelBuffer),
+                from: CGRect(
+                    x: 0,
+                    y: 0,
+                    width: CVPixelBufferGetWidth(pixelBuffer),
+                    height: CVPixelBufferGetHeight(pixelBuffer)
+                )
+            )
         }
     }
 
@@ -743,6 +1082,8 @@ private final class RecordingWriter: NSObject, SCStreamOutput, SCStreamDelegate,
         outputURL: URL,
         source: RecordingSourceKind,
         configuration: SCStreamConfiguration,
+        captureRect: CGRect?,
+        theme: AppTheme,
         settings: RecordingSettings,
         onStreamStopped: @escaping @Sendable (Error) -> Void
     ) throws {
@@ -750,6 +1091,12 @@ private final class RecordingWriter: NSObject, SCStreamOutput, SCStreamDelegate,
         self.source = source
         self.settings = settings
         self.onStreamStopped = onStreamStopped
+        mouseClickCompositor = RecordingMouseClickCompositor(
+            captureRect: captureRect,
+            enabled: settings.highlightMouseClicks,
+            theme: theme
+        )
+        magnifierCompositor = RecordingMagnifierCompositor(captureRect: captureRect)
         let outputFileType: AVFileType
         if source == .systemAudio {
             outputFileType = settings.audioFormat == .aac || settings.audioFormat == .alac
@@ -844,6 +1191,40 @@ private final class RecordingWriter: NSObject, SCStreamOutput, SCStreamDelegate,
         }
     }
 
+    func setMouseClickHighlight(enabled: Bool, theme: AppTheme) {
+        queue.async {
+            self.mouseClickCompositor.apply(enabled: enabled, theme: theme)
+        }
+    }
+
+    func recordMouseClick(at point: CGPoint) {
+        queue.async {
+            self.mouseClickCompositor.recordClick(at: point)
+        }
+    }
+
+    func setMagnifierFrame(
+        _ image: CGImage?, frame: CGRect, marker: CGPoint, zoom: Int, circular: Bool
+    ) {
+        queue.async {
+            self.magnifierCompositor.setSnapshot(
+                image, frame: frame, marker: marker, zoom: zoom, circular: circular
+            )
+            if image != nil && !self.hasLoggedMagnifierSnapshot {
+                self.hasLoggedMagnifierSnapshot = true
+                MeowLog.recording.notice(
+                    "Magnifier snapshot received by writer; renderSucceeded=\(self.magnifierCompositor.isActive, privacy: .public), frame=\(String(describing: frame), privacy: .public)"
+                )
+            }
+        }
+    }
+
+    func setMagnifierPosition(_ frame: CGRect) {
+        queue.async {
+            self.magnifierCompositor.setFrame(frame)
+        }
+    }
+
     func appendMicrophone(_ sampleBuffer: CMSampleBuffer) {
         append(sampleBuffer, to: microphoneInput, source: .microphone, establishesSession: videoInput == nil)
     }
@@ -891,13 +1272,22 @@ private final class RecordingWriter: NSObject, SCStreamOutput, SCStreamDelegate,
         switch outputType {
         case .screen:
             guard isCompleteScreenFrame(sampleBuffer) else { return }
-            if let imageBuffer = sampleBuffer.imageBuffer {
-                latestFrameStorage = ciContext.createCGImage(
-                    CIImage(cvPixelBuffer: imageBuffer),
-                    from: CGRect(x: 0, y: 0, width: CVPixelBufferGetWidth(imageBuffer), height: CVPixelBufferGetHeight(imageBuffer))
+            latestFrameStorage = sampleBuffer.imageBuffer
+            let clickedSample = mouseClickCompositor.composite(sampleBuffer)
+            let renderedSample = magnifierCompositor.composite(clickedSample)
+            if magnifierCompositor.isActive && !hasLoggedMagnifierOutput {
+                hasLoggedMagnifierOutput = true
+                let pixelFormat = sampleBuffer.imageBuffer.map(CVPixelBufferGetPixelFormatType) ?? 0
+                MeowLog.recording.notice(
+                    "Magnifier video composition; applied=\(renderedSample !== clickedSample, privacy: .public), pixelFormat=\(pixelFormat, privacy: .public), overlayFrame=\(String(describing: self.magnifierCompositor.overlayFrame), privacy: .public), captureRect=\(String(describing: self.magnifierCompositor.captureRect), privacy: .public), failure=\(self.magnifierCompositor.lastFailureReason ?? "none", privacy: .public)"
                 )
             }
-            append(sampleBuffer, to: videoInput, source: .video, establishesSession: true)
+            append(
+                renderedSample,
+                to: videoInput,
+                source: .video,
+                establishesSession: true
+            )
         case .audio:
             append(sampleBuffer, to: systemAudioInput, source: .systemAudio, establishesSession: videoInput == nil)
         case .microphone:
@@ -951,6 +1341,11 @@ private final class RecordingWriter: NSObject, SCStreamOutput, SCStreamDelegate,
                     lastMicrophonePTS = max(lastMicrophonePTS ?? .zero, adjustedPTS)
                 }
             }
+        } else if !hasLoggedAppendFailure {
+            hasLoggedAppendFailure = true
+            MeowLog.recording.error(
+                "Recording writer rejected a \(String(describing: source), privacy: .public) sample: \(self.assetWriter.error?.localizedDescription ?? "unknown error", privacy: .public)"
+            )
         }
     }
 
@@ -1140,23 +1535,28 @@ private enum RecordingAudioMixer {
 private final class RecordingMicrophoneCapture: NSObject, AVCaptureAudioDataOutputSampleBufferDelegate {
     private let deviceID: String
     private let queue: DispatchQueue
-    private let handler: (CMSampleBuffer) -> Void
+    private let handler: (CMSampleBuffer, Float?) -> Void
+    private let onIssue: @Sendable () -> Void
     private let session = AVCaptureSession()
+    private var lastLevelUpdate = Date.distantPast
+    private var observers: [NSObjectProtocol] = []
 
-    init(deviceID: String, queue: DispatchQueue, handler: @escaping (CMSampleBuffer) -> Void) {
+    init(
+        deviceID: String,
+        queue: DispatchQueue,
+        handler: @escaping (CMSampleBuffer, Float?) -> Void,
+        onIssue: @escaping @Sendable () -> Void
+    ) {
         self.deviceID = deviceID
         self.queue = queue
         self.handler = handler
+        self.onIssue = onIssue
     }
 
     func start() throws {
-        let device: AVCaptureDevice?
-        if deviceID.isEmpty {
-            device = AVCaptureDevice.default(for: .audio)
-        } else {
-            device = RecordingService.microphones().first { $0.uniqueID == deviceID }
+        guard let device = RecordingService.microphoneDevice(for: deviceID) else {
+            throw RecordingError.microphoneUnavailable
         }
-        guard let device else { throw RecordingError.sourceUnavailable }
         let input = try AVCaptureDeviceInput(device: device)
         guard session.canAddInput(input) else { throw RecordingError.invalidConfiguration }
         session.addInput(input)
@@ -1165,9 +1565,31 @@ private final class RecordingMicrophoneCapture: NSObject, AVCaptureAudioDataOutp
         guard session.canAddOutput(output) else { throw RecordingError.invalidConfiguration }
         session.addOutput(output)
         session.startRunning()
+        guard session.isRunning else { throw RecordingError.microphoneUnavailable }
+        observers = [
+            NotificationCenter.default.addObserver(
+                forName: AVCaptureSession.wasInterruptedNotification,
+                object: session,
+                queue: .main
+            ) { [onIssue] _ in onIssue() },
+            NotificationCenter.default.addObserver(
+                forName: AVCaptureSession.runtimeErrorNotification,
+                object: session,
+                queue: .main
+            ) { [onIssue] notification in
+                if let error = notification.userInfo?[AVCaptureSessionErrorKey] as? Error {
+                    MeowLog.recording.error(
+                        "Microphone capture interrupted: \(error.localizedDescription, privacy: .public)"
+                    )
+                }
+                onIssue()
+            },
+        ]
     }
 
     func stop() {
+        observers.forEach(NotificationCenter.default.removeObserver)
+        observers.removeAll()
         if session.isRunning {
             session.stopRunning()
         }
@@ -1178,7 +1600,15 @@ private final class RecordingMicrophoneCapture: NSObject, AVCaptureAudioDataOutp
         didOutput sampleBuffer: CMSampleBuffer,
         from connection: AVCaptureConnection
     ) {
-        handler(sampleBuffer)
+        let now = Date()
+        guard now.timeIntervalSince(lastLevelUpdate) >= 0.1 else {
+            handler(sampleBuffer, nil)
+            return
+        }
+        lastLevelUpdate = now
+        let decibels = connection.audioChannels.map(\.averagePowerLevel).max() ?? -60
+        let level = decibels.isFinite ? min(1, max(0, (decibels + 60) / 60)) : 0
+        handler(sampleBuffer, level)
     }
 }
 

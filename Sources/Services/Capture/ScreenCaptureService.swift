@@ -78,12 +78,25 @@ final class ScreenCaptureService {
             throw ScreenCaptureError.displayUnavailable
         }
 
-        let windows = content.windows.filter { window in
+        let candidateWindows = content.windows.filter { window in
             guard window.isOnScreen, window.windowLayer == 0 else { return false }
             guard window.frame.width >= 40, window.frame.height >= 40 else { return false }
             return window.owningApplication?.bundleIdentifier != Bundle.main.bundleIdentifier
                 || includingApplicationWindowIDs.contains(window.windowID)
         }
+        let windowInfo = CGWindowListCopyWindowInfo(
+            [.optionOnScreenOnly, .excludeDesktopElements],
+            kCGNullWindowID
+        ) as? [[String: Any]] ?? []
+        let frontToBackIDs = windowInfo.compactMap {
+            ($0[kCGWindowNumber as String] as? NSNumber).map { CGWindowID($0.uint32Value) }
+        }
+        let orderedIDs = CaptureWindowOrdering.order(
+            candidateWindows.map(\.windowID),
+            frontToBack: frontToBackIDs
+        )
+        let windowsByID = Dictionary(uniqueKeysWithValues: candidateWindows.map { ($0.windowID, $0) })
+        let windows = orderedIDs.compactMap { windowsByID[$0] }
 
         return CaptureSession(
             content: content,
@@ -245,5 +258,16 @@ final class ScreenCaptureService {
         configuration.ignoreShadowsSingleWindow = ignoreWindowShadow
         configuration.captureResolution = .best
         return configuration
+    }
+}
+
+enum CaptureWindowOrdering {
+    static func order(_ windowIDs: [CGWindowID], frontToBack: [CGWindowID]) -> [CGWindowID] {
+        let rank = Dictionary(uniqueKeysWithValues: frontToBack.enumerated().map { ($0.element, $0.offset) })
+        return windowIDs.enumerated().sorted { left, right in
+            let leftRank = rank[left.element] ?? Int.max
+            let rightRank = rank[right.element] ?? Int.max
+            return leftRank == rightRank ? left.offset < right.offset : leftRank < rightRank
+        }.map(\.element)
     }
 }

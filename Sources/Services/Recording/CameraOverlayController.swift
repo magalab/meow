@@ -6,11 +6,14 @@ final class CameraOverlayController {
     static let windowTitle = "Meow Camera Overlay"
 
     private var panel: NSPanel?
-    private var session: AVCaptureSession?
+    private var sessionRunner: CameraSessionRunner?
     private var previewLayer: AVCaptureVideoPreviewLayer?
     private var contentView: CameraOverlayContentView?
     private var frameObserver: NSObjectProtocol?
     private var shape: RecordingCameraOverlayShape = .rounded
+    private var startGeneration: UInt64 = 0
+
+    var windowID: CGWindowID? { panel.map { CGWindowID($0.windowNumber) } }
 
     static func devices() -> [AVCaptureDevice] {
         AVCaptureDevice.DiscoverySession(
@@ -20,7 +23,16 @@ final class CameraOverlayController {
         ).devices
     }
 
-    func start(deviceID: String, shape: RecordingCameraOverlayShape, on screen: NSScreen?) async throws {
+    func start(
+        deviceID: String,
+        shape: RecordingCameraOverlayShape,
+        on screen: NSScreen?,
+        within recordingFrame: CGRect? = nil
+    ) async throws {
+        startGeneration &+= 1
+        let requestGeneration = startGeneration
+        let previousFrame = panel?.frame
+        let previousShape = self.shape
         let granted: Bool
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
@@ -30,13 +42,16 @@ final class CameraOverlayController {
         default:
             granted = false
         }
-        guard granted else { throw RecordingError.permissionDenied }
+        guard requestGeneration == startGeneration else { throw CancellationError() }
+        guard granted else { throw RecordingError.cameraDenied }
 
-        let device = Self.devices().first { $0.uniqueID == deviceID }
-            ?? AVCaptureDevice.default(for: .video)
-        guard let device else { throw RecordingError.sourceUnavailable }
+        let device = deviceID.isEmpty
+            ? AVCaptureDevice.default(for: .video)
+            : Self.devices().first { $0.uniqueID == deviceID }
+        guard let device else { throw RecordingError.cameraUnavailable }
 
         stop()
+        let sessionGeneration = startGeneration
         let session = AVCaptureSession()
         session.sessionPreset = .high
         let input = try AVCaptureDeviceInput(device: device)
@@ -62,6 +77,9 @@ final class CameraOverlayController {
         panel.maxSize = Self.maxSize(for: shape)
         if shape == .circle {
             panel.contentAspectRatio = NSSize(width: 1, height: 1)
+        }
+        if previousShape == shape, let previousFrame {
+            panel.setContentSize(previousFrame.size)
         }
 
         let view = CameraOverlayContentView(frame: panel.contentView?.bounds ?? .zero)
@@ -94,25 +112,59 @@ final class CameraOverlayController {
             }
         }
 
-        if let frame = screen?.visibleFrame {
-            panel.setFrameOrigin(NSPoint(
+        let placementFrame: CGRect?
+        if let recordingFrame, let visibleFrame = screen?.visibleFrame {
+            let intersection = recordingFrame.intersection(visibleFrame)
+            placementFrame = intersection.isNull || intersection.isEmpty ? visibleFrame : intersection
+        } else {
+            placementFrame = recordingFrame ?? screen?.visibleFrame
+        }
+        if let frame = placementFrame {
+            if recordingFrame != nil {
+                let scale = min(
+                    1,
+                    max(1, frame.width - 16) / panel.frame.width,
+                    max(1, frame.height - 16) / panel.frame.height
+                )
+                if scale < 1 {
+                    let fittedSize = NSSize(
+                        width: panel.frame.width * scale,
+                        height: panel.frame.height * scale
+                    )
+                    panel.minSize = fittedSize
+                    panel.setContentSize(fittedSize)
+                }
+            }
+            let origin = previousFrame?.origin ?? NSPoint(
                 x: frame.maxX - panel.frame.width - 24,
                 y: frame.minY + 24
+            )
+            panel.setFrameOrigin(NSPoint(
+                x: min(max(frame.minX, origin.x), frame.maxX - panel.frame.width),
+                y: min(max(frame.minY, origin.y), frame.maxY - panel.frame.height)
             ))
         } else {
             panel.center()
         }
 
-        self.session = session
+        let runner = CameraSessionRunner(session: session)
+        sessionRunner = runner
         self.panel = panel
         self.contentView = view
         self.shape = shape
         previewLayer = layer
-        session.startRunning()
+        let started = await runner.start()
+        guard sessionGeneration == startGeneration,
+              sessionRunner === runner
+        else { throw CancellationError() }
+        guard started else {
+            stop()
+            throw RecordingError.cameraUnavailable
+        }
         panel.orderFrontRegardless()
     }
 
-    private func apply(shape: RecordingCameraOverlayShape) {
+    func apply(shape: RecordingCameraOverlayShape) {
         guard let panel, let contentView else { return }
         self.shape = shape
         contentView.selectedShape = shape
@@ -162,16 +214,41 @@ final class CameraOverlayController {
     }
 
     func stop() {
+        startGeneration &+= 1
         if let frameObserver {
             NotificationCenter.default.removeObserver(frameObserver)
         }
         frameObserver = nil
-        session?.stopRunning()
-        session = nil
+        sessionRunner?.stop()
+        sessionRunner = nil
         previewLayer = nil
         contentView = nil
         panel?.orderOut(nil)
         panel = nil
+    }
+}
+
+private final class CameraSessionRunner: @unchecked Sendable {
+    private static let queue = DispatchQueue(label: "tech.lury.meow.camera-session")
+    private let session: AVCaptureSession
+
+    init(session: AVCaptureSession) {
+        self.session = session
+    }
+
+    func start() async -> Bool {
+        await withCheckedContinuation { continuation in
+            Self.queue.async {
+                self.session.startRunning()
+                continuation.resume(returning: self.session.isRunning)
+            }
+        }
+    }
+
+    func stop() {
+        Self.queue.async {
+            if self.session.isRunning { self.session.stopRunning() }
+        }
     }
 }
 

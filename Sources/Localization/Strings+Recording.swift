@@ -45,6 +45,8 @@ extension L10n {
     static var prefsRecordingMicrophoneTitle: String { loc("prefs.recording.microphone.title") }
     static var prefsRecordingMicrophoneSubtitle: String { loc("prefs.recording.microphone.subtitle") }
     static var recordingMicrophoneDefault: String { loc("recording.microphone.default") }
+    static var recordingMicrophoneLevel: String { loc("recording.microphone.level") }
+    static var recordingMicrophoneInterrupted: String { loc("recording.microphone.interrupted") }
     static var prefsRecordingSeparateTracksTitle: String { loc("prefs.recording.separate.tracks.title") }
     static var prefsRecordingSeparateTracksSubtitle: String { loc("prefs.recording.separate.tracks.subtitle") }
     static var prefsRecordingCountdownTitle: String { loc("prefs.recording.countdown.title") }
@@ -110,6 +112,13 @@ extension L10n {
     static var prefsRecordingFrameHotkeySubtitle: String { loc("prefs.recording.frame.hotkey.subtitle") }
     static var prefsRecordingMagnifierHotkeyTitle: String { loc("prefs.recording.magnifier.hotkey.title") }
     static var prefsRecordingMagnifierHotkeySubtitle: String { loc("prefs.recording.magnifier.hotkey.subtitle") }
+    static var prefsRecordingMagnifierZoomTitle: String { loc("prefs.recording.magnifier.zoom.title") }
+    static var prefsRecordingMagnifierZoomSubtitle: String { loc("prefs.recording.magnifier.zoom.subtitle") }
+    static var prefsRecordingMagnifierSizeTitle: String { loc("prefs.recording.magnifier.size.title") }
+    static var prefsRecordingMagnifierSizeSubtitle: String { loc("prefs.recording.magnifier.size.subtitle") }
+    static var prefsRecordingMagnifierSizeValue: String { loc("prefs.recording.magnifier.size.value") }
+    static var prefsRecordingMagnifierCircleTitle: String { loc("prefs.recording.magnifier.circle.title") }
+    static var prefsRecordingMagnifierCircleSubtitle: String { loc("prefs.recording.magnifier.circle.subtitle") }
     static var prefsRecordingHistoryLimitTitle: String { loc("prefs.recording.history.limit.title") }
     static var prefsRecordingHistoryLimitSubtitle: String { loc("prefs.recording.history.limit.subtitle") }
     static var prefsRecordingRetentionTitle: String { loc("prefs.recording.retention.title") }
@@ -148,18 +157,38 @@ extension L10n {
     static var recordingErrorAlreadyRecording: String { loc("recording.error.already.recording") }
     static var recordingErrorInvalidConfiguration: String { loc("recording.error.invalid.configuration") }
     static var recordingErrorMicrophoneDenied: String { loc("recording.error.microphone.denied") }
+    static var recordingErrorMicrophoneUnavailable: String { loc("recording.error.microphone.unavailable") }
+    static var recordingErrorCameraDenied: String { loc("recording.error.camera.denied") }
+    static var recordingErrorCameraUnavailable: String { loc("recording.error.camera.unavailable") }
     static var recordingErrorInsufficientDiskSpace: String { loc("recording.error.insufficient.disk.space") }
+    static var recordingErrorMagnifierUnavailable: String { loc("recording.error.magnifier.unavailable") }
     static var recordingStatusIdle: String { loc("recording.status.idle") }
     static var recordingStatusActive: String { loc("recording.status.active") }
     static var recordingPause: String { loc("recording.pause") }
     static var recordingResume: String { loc("recording.resume") }
     static var recordingStop: String { loc("recording.stop") }
+    static var recordingMagnifierToggle: String { loc("recording.magnifier.toggle") }
+    static var recordingCameraShow: String { loc("recording.camera.show") }
+    static var recordingCameraHide: String { loc("recording.camera.hide") }
+    static var recordingSaveFrame: String { loc("recording.frame.save") }
     static var recordingTrimStart: String { loc("recording.trim.start") }
     static var recordingTrimEnd: String { loc("recording.trim.end") }
     static var recordingTrimDuration: String { loc("recording.trim.duration") }
     static var recordingTrimPreview: String { loc("recording.trim.preview") }
+    static var recordingTrimPause: String { loc("recording.trim.pause") }
+    static var recordingTrimPlayhead: String { loc("recording.trim.playhead") }
     static var recordingTrimExport: String { loc("recording.trim.export") }
-    static var recordingTrimStaticPreview: String { loc("recording.trim.static.preview") }
+    static var recordingTrimLoadingPreview: String { loc("recording.trim.loading.preview") }
+    static var recordingTrimTooShort: String { loc("recording.trim.too.short") }
+    static var recordingTrimPreviewUnavailable: String { loc("recording.trim.preview.unavailable") }
+    static var recordingTrimCannotOverwriteSource: String { loc("recording.trim.cannot.overwrite.source") }
+    static var recordingCanvasEnabled: String { loc("recording.canvas.enabled") }
+    static var recordingCanvasUnavailable: String { loc("recording.canvas.unavailable") }
+    static var recordingCanvasAspect: String { loc("recording.canvas.aspect") }
+    static var recordingCanvasOriginal: String { loc("recording.canvas.original") }
+    static var recordingCanvasMargin: String { loc("recording.canvas.margin") }
+    static var recordingCanvasBackground: String { loc("recording.canvas.background") }
+    static var recordingCanvasCorners: String { loc("recording.canvas.corners") }
     static var recordingPreviewTitle: String { loc("recording.preview.title") }
     static var recordingPreviewFinder: String { loc("recording.preview.finder") }
     static var recordingPreviewOpen: String { loc("recording.preview.open") }

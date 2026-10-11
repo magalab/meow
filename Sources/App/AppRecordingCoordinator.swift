@@ -23,11 +23,17 @@ final class AppRecordingCoordinator {
     private let recordingStore: RecordingStore
     private let cameraOverlayController: CameraOverlayController
     private let screenMagnifierController: ScreenMagnifierController
+    private let regionBorderController = RecordingRegionBorderController()
     private let windowCoordinator: AppWindowCoordinator
     private let actions: Actions
 
     private var recordingTask: Task<Void, Never>?
     private var allowsVisualOverlays = false
+    private var lastCameraPreferenceEnabled: Bool
+    private var lastCameraDeviceID: String
+    private var lastCameraShape: RecordingCameraOverlayShape
+    private var cameraChangeTask: Task<Void, Never>?
+    private var cameraChangeGeneration: UInt64 = 0
 
     var isBusy: Bool {
         recordingTask != nil
@@ -53,14 +59,121 @@ final class AppRecordingCoordinator {
         self.screenMagnifierController = screenMagnifierController
         self.windowCoordinator = windowCoordinator
         self.actions = actions
+        lastCameraPreferenceEnabled = actions.settings().recording.cameraOverlayEnabled
+        lastCameraDeviceID = actions.settings().recording.cameraDeviceID
+        lastCameraShape = actions.settings().recording.cameraOverlayShape
+        screenMagnifierController.onError = actions.presentError
+        screenMagnifierController.onFrame = { [weak recordingService] image, frame, marker, zoom, circular in
+            recordingService?.setMagnifierFrame(
+                image, frame: frame, marker: marker, zoom: zoom, circular: circular
+            )
+        }
+        screenMagnifierController.onPosition = { [weak recordingService] frame in
+            recordingService?.setMagnifierPosition(frame)
+        }
     }
 
     func cancel() {
         recordingTask?.cancel()
+        regionBorderController.stop()
     }
 
     func resetVisualOverlays() {
         allowsVisualOverlays = false
+        cameraChangeGeneration &+= 1
+        cameraChangeTask?.cancel()
+        cameraChangeTask = nil
+        recordingService.setCameraOverlayState(visible: false)
+        regionBorderController.stop()
+    }
+
+    func cameraOverlaySettingsDidChange(_ settings: RecordingSettings) {
+        let enabled = settings.cameraOverlayEnabled
+        let enabledChanged = enabled != lastCameraPreferenceEnabled
+        let deviceChanged = settings.cameraDeviceID != lastCameraDeviceID
+        let shapeChanged = settings.cameraOverlayShape != lastCameraShape
+        guard recordingService.cameraOverlaySource != nil else { return }
+        lastCameraPreferenceEnabled = enabled
+        lastCameraDeviceID = settings.cameraDeviceID
+        lastCameraShape = settings.cameraOverlayShape
+        if enabledChanged {
+            setCameraOverlayEnabled(enabled)
+        } else if deviceChanged || (shapeChanged && recordingService.isCameraOverlayChanging) {
+            guard recordingService.isCameraOverlayVisible || recordingService.isCameraOverlayChanging else { return }
+            setCameraOverlayEnabled(true, restart: true)
+        } else if shapeChanged, recordingService.isCameraOverlayVisible {
+            cameraOverlayController.apply(shape: settings.cameraOverlayShape)
+        }
+    }
+
+    func magnifierSettingsDidChange(_ settings: RecordingSettings) {
+        screenMagnifierController.apply(settings: settings)
+    }
+
+    func toggleCameraOverlay() {
+        guard recordingService.cameraOverlaySource != nil else { return }
+        setCameraOverlayEnabled(!recordingService.isCameraOverlayVisible)
+    }
+
+    private func setCameraOverlayEnabled(_ enabled: Bool, restart: Bool = false) {
+        if enabled, recordingService.isCameraOverlayVisible,
+           !recordingService.isCameraOverlayChanging, !restart { return }
+        cameraChangeGeneration &+= 1
+        let generation = cameraChangeGeneration
+        cameraChangeTask?.cancel()
+        cameraChangeTask = nil
+        guard enabled, let source = recordingService.cameraOverlaySource else {
+            cameraOverlayController.stop()
+            recordingService.setCameraOverlayState(visible: false)
+            MeowLog.recording.notice("Camera overlay disabled during recording")
+            Task { await recordingService.refreshDisplayFilterForNewWindows(force: true) }
+            return
+        }
+        recordingService.setCameraOverlayState(visible: false, changing: true)
+        let settings = actions.settings().recording
+        cameraChangeTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                let screen = Self.cameraScreen(for: source) ?? actions.activeScreen()
+                try await cameraOverlayController.start(
+                    deviceID: settings.cameraDeviceID,
+                    shape: settings.cameraOverlayShape,
+                    on: screen,
+                    within: Self.cameraRecordingFrame(for: source, on: screen)
+                )
+                guard generation == cameraChangeGeneration,
+                      recordingService.cameraOverlaySource != nil,
+                      let windowID = cameraOverlayController.windowID
+                else { return }
+                var included = false
+                for _ in 0..<8 {
+                    included = await recordingService.refreshDisplayFilterForNewWindows(
+                        force: true,
+                        requiredWindowID: windowID
+                    )
+                    if included { break }
+                    try await Task.sleep(for: .milliseconds(75))
+                }
+                guard included else { throw RecordingError.cameraUnavailable }
+                guard generation == cameraChangeGeneration,
+                      recordingService.cameraOverlaySource != nil
+                else { return }
+                recordingService.setCameraOverlayState(visible: true)
+                MeowLog.recording.notice(
+                    "Camera overlay enabled during recording; windowID=\(windowID, privacy: .public)"
+                )
+            } catch {
+                guard generation == cameraChangeGeneration else { return }
+                cameraOverlayController.stop()
+                recordingService.setCameraOverlayState(visible: false)
+                await recordingService.refreshDisplayFilterForNewWindows(force: true)
+                if !(error is CancellationError) { actions.presentError(error) }
+            }
+        }
+    }
+
+    func stopRegionBorder() {
+        regionBorderController.stop()
     }
 
     func pauseOrResume() {
@@ -76,7 +189,18 @@ final class AppRecordingCoordinator {
             screenMagnifierController.stop()
             return
         }
-        Task { await screenMagnifierController.toggle() }
+        guard recordingService.canSafelyShowMagnifier else {
+            actions.presentError(RecordingError.magnifierUnavailable)
+            return
+        }
+        screenMagnifierController.apply(settings: actions.settings().recording)
+        Task {
+            do {
+                try await screenMagnifierController.toggle()
+            } catch {
+                actions.presentError(error)
+            }
+        }
     }
 
     func saveCurrentFrame() {
@@ -120,10 +244,17 @@ final class AppRecordingCoordinator {
                     },
                     onSaveFrame: { [weak self] in
                         self?.saveCurrentFrame()
+                    },
+                    onToggleMagnifier: { [weak self] in
+                        self?.toggleMagnifier()
+                    },
+                    onToggleCamera: { [weak self] in
+                        self?.toggleCameraOverlay()
                     }
                 )
             )
         )
+        Task { await recordingService.refreshDisplayFilterForNewWindows() }
     }
 
     func hideRecordingControl() {
@@ -213,13 +344,31 @@ final class AppRecordingCoordinator {
                 }
                 allowsVisualOverlays = source.kind == .display || source.kind == .region
                 try await prepareCameraOverlayIfNeeded(for: source)
+                try Task.checkCancellation()
+                if case let .region(display, rect, _) = source,
+                   session.content.applications.contains(where: {
+                       $0.processID == ProcessInfo.processInfo.processIdentifier
+                   }),
+                   let screen = ScreenCaptureService.screen(for: display.displayID) {
+                    regionBorderController.show(rect, on: screen)
+                }
                 await recordingService.start(source: source)
                 if recordingService.state.isActive {
+                    cameraOverlaySettingsDidChange(actions.settings().recording)
+                    let cameraEnabled = actions.settings().recording.cameraOverlayEnabled
+                    if !recordingService.isCameraOverlayChanging,
+                       cameraEnabled != recordingService.isCameraOverlayVisible {
+                        setCameraOverlayEnabled(cameraEnabled)
+                    }
                     showRecordingControlIfNeeded()
                 } else {
+                    regionBorderController.stop()
                     actions.restoreWhiteboard()
                 }
             } catch {
+                cameraOverlayController.stop()
+                recordingService.setCameraOverlayState(visible: false)
+                regionBorderController.stop()
                 actions.restoreWhiteboard()
                 actions.presentError(error)
             }
@@ -387,27 +536,39 @@ final class AppRecordingCoordinator {
 
     private func prepareCameraOverlayIfNeeded(for source: RecordingSource) async throws {
         let settings = actions.settings().recording
+        lastCameraPreferenceEnabled = settings.cameraOverlayEnabled
+        lastCameraDeviceID = settings.cameraDeviceID
+        lastCameraShape = settings.cameraOverlayShape
         guard settings.cameraOverlayEnabled,
               source.kind == .display || source.kind == .region
         else {
             cameraOverlayController.stop()
+            recordingService.setCameraOverlayState(visible: false)
             return
         }
 
-        let display: SCDisplay?
-        switch source {
-        case let .display(value), let .region(value, _, _), let .systemAudio(value):
-            display = value
-        case let .application(_, value):
-            display = value
-        case .contentFilter, .window, .mobileDevice:
-            display = nil
-        }
+        let screen = Self.cameraScreen(for: source) ?? actions.activeScreen()
         try await cameraOverlayController.start(
             deviceID: settings.cameraDeviceID,
             shape: settings.cameraOverlayShape,
-            on: display.flatMap { ScreenCaptureService.screen(for: $0.displayID) }
-                ?? actions.activeScreen()
+            on: screen,
+            within: Self.cameraRecordingFrame(for: source, on: screen)
         )
+        recordingService.setCameraOverlayState(visible: true)
+    }
+
+    private static func cameraScreen(for source: RecordingSource) -> NSScreen? {
+        switch source {
+        case let .display(display), let .region(display, _, _), let .systemAudio(display),
+             let .application(_, display):
+            return ScreenCaptureService.screen(for: display.displayID)
+        case .contentFilter, .window, .mobileDevice:
+            return nil
+        }
+    }
+
+    private static func cameraRecordingFrame(for source: RecordingSource, on screen: NSScreen?) -> CGRect? {
+        guard case let .region(_, rect, _) = source, let screen else { return nil }
+        return rect.offsetBy(dx: screen.frame.minX, dy: screen.frame.minY)
     }
 }
