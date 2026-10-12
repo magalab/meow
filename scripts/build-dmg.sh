@@ -22,8 +22,25 @@ esac
 APP_NAME="${APP_NAME:-$DEFAULT_APP_NAME}"
 BINARY_NAME="${BINARY_NAME:-$DEFAULT_BINARY_NAME}"
 APP_BUNDLE_ID="${APP_BUNDLE_ID:-$DEFAULT_BUNDLE_ID}"
-VERSION="${VERSION:-0.1.0}"
+VERSION="${VERSION:-0.1.1}"
+BUILD_NUMBER="${BUILD_NUMBER:-1}"
 TARGET="${TARGET:-}"
+
+if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "Error: VERSION must use major.minor.patch numeric format."
+    exit 1
+fi
+
+if [[ ! "$BUILD_NUMBER" =~ ^[1-9][0-9]*$ ]]; then
+    echo "Error: BUILD_NUMBER must be a positive integer."
+    exit 1
+fi
+
+if [ "$MEOW_EDITION" = "voice" ]; then
+    MICROPHONE_USAGE_DESCRIPTION="$APP_NAME uses the microphone for offline speech recognition and optional screen-recording audio."
+else
+    MICROPHONE_USAGE_DESCRIPTION="$APP_NAME uses the microphone when you enable it for screen recordings."
+fi
 
 if [ -z "$TARGET" ]; then
     case "$(uname -m)" in
@@ -124,12 +141,12 @@ cat > "$APP_DIR/Contents/Info.plist" <<EOF
 <dict>
   <key>CFBundleName</key><string>${APP_NAME}</string>
   <key>CFBundleDisplayName</key><string>${APP_NAME}</string>
-    <key>CFBundleIdentifier</key><string>${APP_BUNDLE_ID}</string>
+  <key>CFBundleIdentifier</key><string>${APP_BUNDLE_ID}</string>
   <key>CFBundleExecutable</key><string>${BINARY_NAME}</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>${VERSION}</string>
-  <key>CFBundleVersion</key><string>1</string>
+  <key>CFBundleVersion</key><string>${BUILD_NUMBER}</string>
   <key>LSMinimumSystemVersion</key><string>15.0</string>
   <key>LSUIElement</key><true/>
   <key>NSHighResolutionCapable</key><true/>
@@ -150,11 +167,11 @@ cat > "$APP_DIR/Contents/Info.plist" <<EOF
     </dict>
   </array>
   <key>NSCalendarsFullAccessUsageDescription</key>
-  <string>Meow shows calendar events for the selected day in the menu bar calendar.</string>
+  <string>${APP_NAME} shows calendar events for the selected day in the menu bar calendar.</string>
   <key>NSMicrophoneUsageDescription</key>
-  <string>Meow uses the microphone for offline speech recognition and optional screen-recording audio.</string>
+  <string>${MICROPHONE_USAGE_DESCRIPTION}</string>
   <key>NSCameraUsageDescription</key>
-  <string>Meow can include a camera overlay in screen recordings when you enable it.</string>
+  <string>${APP_NAME} can include a camera overlay in screen recordings when you enable it.</string>
 </dict>
 </plist>
 EOF

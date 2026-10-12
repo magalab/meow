@@ -261,7 +261,8 @@
 
 "prefs.about.version" = "版本";
 "prefs.about.build" = "构建";
-"prefs.about.privacy" = "隐私";
+"prefs.about.development" = "开发构建";
+"prefs.about.privacy" = "剪贴板隐私";
 "prefs.about.privacy.subtitle" = "剪贴板历史仅保存在本机，且你可以随时关闭该功能。";
 "prefs.about.repo" = "项目仓库";
 "prefs.about.open.repo" = "在 GitHub 打开";

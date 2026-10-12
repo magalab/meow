@@ -261,7 +261,8 @@
 
 "prefs.about.version" = "Version";
 "prefs.about.build" = "Build";
-"prefs.about.privacy" = "Privacy";
+"prefs.about.development" = "Development Build";
+"prefs.about.privacy" = "Clipboard Privacy";
 "prefs.about.privacy.subtitle" = "Clipboard history stays local on your device and can be turned off anytime.";
 "prefs.about.repo" = "Project Repository";
 "prefs.about.open.repo" = "Open on GitHub";

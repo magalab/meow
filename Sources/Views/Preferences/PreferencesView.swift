@@ -360,6 +360,8 @@ struct PreferencesView: View {
 
                         if navigation.selectedSection == .about {
                             PreferenceAboutSectionView(theme: viewModel.settings.theme)
+                                .frame(maxWidth: .infinity)
+                                .padding(.top, 20)
                                 .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
                         }
                     }
@@ -630,6 +632,17 @@ private struct PreferenceAboutSectionView: View {
 
     @Environment(\.colorScheme) private var colorScheme
 
+    private var appName: String {
+        if let name = Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String, !name.isEmpty {
+            return name
+        }
+        #if MEOW_VOICE
+        return "Miao"
+        #else
+        return "Meow"
+        #endif
+    }
+
     private var version: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "-"
     }
@@ -643,36 +656,53 @@ private struct PreferenceAboutSectionView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 10) {
-                Image(systemName: "pawprint.fill")
-                    .font(.system(size: 18, weight: .semibold))
-                    .frame(width: 34, height: 34)
-                    .foregroundStyle(palette.preferencesAccent)
-                    .background(palette.iconChipBackground, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Meow")
-                        .font(.system(size: 19, weight: .bold, design: .rounded))
-                    Text("v\(version) (\(build))")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundStyle(.secondary)
+        VStack(spacing: 20) {
+            VStack(spacing: 8) {
+                Group {
+                    if let icon = NSImage(named: NSImage.applicationIconName) {
+                        Image(nsImage: icon)
+                            .resizable()
+                            .interpolation(.high)
+                            .scaledToFit()
+                    } else {
+                        Image(systemName: "pawprint.fill")
+                            .resizable()
+                            .scaledToFit()
+                            .padding(14)
+                            .foregroundStyle(palette.preferencesAccent)
+                            .background(palette.iconChipBackground, in: RoundedRectangle(cornerRadius: 16))
+                    }
                 }
-            }
+                .frame(width: 68, height: 68)
+                .accessibilityHidden(true)
 
-            Divider()
-
-            aboutRow(title: L10n.prefsAboutVersion, value: version)
-            aboutRow(title: L10n.prefsAboutBuild, value: build)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(L10n.prefsAboutPrivacy)
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                Text(L10n.prefsAboutPrivacySubtitle)
+                Text(appName)
+                    .font(.system(size: 25, weight: .bold, design: .rounded))
+                Text(version == "-"
+                     ? L10n.prefsAboutDevelopment
+                     : "\(L10n.prefsAboutVersion) \(version) · \(L10n.prefsAboutBuild) \(build)")
                     .font(.system(size: 12, weight: .medium, design: .rounded))
                     .foregroundStyle(.secondary)
             }
-            .padding(.top, 4)
+            .frame(maxWidth: .infinity)
+
+            Divider()
+
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "lock.shield")
+                    .font(.system(size: 16))
+                    .foregroundStyle(palette.preferencesAccent)
+                    .frame(width: 20)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(L10n.prefsAboutPrivacy)
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    Text(L10n.prefsAboutPrivacySubtitle)
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
 
             HStack {
                 Text(L10n.prefsAboutRepo)
@@ -687,22 +717,12 @@ private struct PreferenceAboutSectionView: View {
                 .controlSize(.small)
             }
         }
-        .padding(14)
-        .background(palette.preferencesPanelBackground, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .frame(maxWidth: 540)
+        .padding(24)
+        .background(palette.surfaceBackground, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(palette.preferencesPanelStroke, lineWidth: 1)
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(palette.surfaceStroke, lineWidth: 1)
         )
-    }
-
-    private func aboutRow(title: String, value: String) -> some View {
-        HStack {
-            Text(title)
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
-            Spacer()
-            Text(value)
-                .font(.system(size: 13, weight: .medium, design: .rounded))
-                .foregroundStyle(.secondary)
-        }
     }
 }

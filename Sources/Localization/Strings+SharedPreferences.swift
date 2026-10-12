@@ -419,6 +419,10 @@ extension L10n {
         loc("prefs.about.build")
     }
 
+    static var prefsAboutDevelopment: String {
+        loc("prefs.about.development")
+    }
+
     static var prefsAboutPrivacy: String {
         loc("prefs.about.privacy")
     }

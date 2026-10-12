@@ -306,6 +306,12 @@ struct FileHostingPreferencesView: View {
 
     private func runTestUpload() {
         let configID = settings.s3.id
+        #if MEOW_VOICE
+        let fallbackAppName = "Miao"
+        #else
+        let fallbackAppName = "Meow"
+        #endif
+        let appName = Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ?? fallbackAppName
         do {
             try service.saveSecret(secret, for: configID)
         } catch {
@@ -317,7 +323,7 @@ struct FileHostingPreferencesView: View {
                 let url = try await Task.detached(priority: .userInitiated) {
                     let url = FileManager.default.temporaryDirectory
                         .appendingPathComponent("meow-upload-test-\(UUID().uuidString).txt")
-                    try Data("Meow file upload test".utf8).write(to: url, options: .atomic)
+                    try Data("\(appName) file upload test".utf8).write(to: url, options: .atomic)
                     return url
                 }.value
                 defer { try? FileManager.default.removeItem(at: url) }

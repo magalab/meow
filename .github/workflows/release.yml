@@ -41,17 +41,17 @@ jobs:
           if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
             VERSION="${GITHUB_REF_NAME#v}"
           else
-            VERSION="dev-${GITHUB_SHA::7}"
+            VERSION="0.0.0"
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Build Meow DMG
         working-directory: .
-        run: VERSION="${{ steps.version.outputs.version }}" bash scripts/build-dmg.sh
+        run: VERSION="${{ steps.version.outputs.version }}" BUILD_NUMBER="${{ github.run_number }}" bash scripts/build-dmg.sh
 
       - name: Build Miao DMG
         working-directory: .
-        run: MEOW_EDITION=voice VERSION="${{ steps.version.outputs.version }}" bash scripts/build-dmg.sh
+        run: MEOW_EDITION=voice VERSION="${{ steps.version.outputs.version }}" BUILD_NUMBER="${{ github.run_number }}" bash scripts/build-dmg.sh
 
       - name: Verify DMG contents and signatures
         run: |
