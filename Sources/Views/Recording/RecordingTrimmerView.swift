@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 
 struct RecordingTrimmerView: View {
     let sourceURL: URL
+    let theme: AppTheme
 
     private let minimumTrimInterval = 0.05
 
@@ -20,10 +21,11 @@ struct RecordingTrimmerView: View {
     @State private var errorMessage: String?
     @State private var canvasEnabled = false
     @State private var canvasSettings = RecordingCanvasSettings()
-    @State private var canvasColor = Color(red: 0.12, green: 0.12, blue: 0.14)
+    @State private var selectedCanvasPalette: AppTheme? = nil
     @State private var canvasSourceSize: CGSize?
     @State private var canvasUnavailable = false
     @State private var canvasPreviewTask: Task<Void, Never>?
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(spacing: 0) {
@@ -104,14 +106,6 @@ struct RecordingTrimmerView: View {
         }
         .onChange(of: canvasEnabled) { _, _ in updateCanvasPreview() }
         .onChange(of: canvasSettings) { _, _ in updateCanvasPreview() }
-        .onChange(of: canvasColor) { _, color in
-            let converted = NSColor(color).usingColorSpace(.deviceRGB) ?? .black
-            var updated = canvasSettings
-            updated.red = Double(converted.redComponent)
-            updated.green = Double(converted.greenComponent)
-            updated.blue = Double(converted.blueComponent)
-            canvasSettings = updated
-        }
         .alert(L10n.recordingErrorTitle, isPresented: Binding(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
@@ -238,8 +232,30 @@ struct RecordingTrimmerView: View {
                             .frame(width: 36, alignment: .trailing)
                     }
                     HStack(spacing: 8) {
-                        ColorPicker(L10n.recordingCanvasBackground, selection: $canvasColor, supportsOpacity: false)
-                            .frame(width: 150)
+                        Text(L10n.recordingCanvasStyle)
+                        Picker(L10n.recordingCanvasStyle, selection: $canvasSettings.backgroundStyle) {
+                            ForEach(RecordingCanvasBackgroundStyle.allCases) { style in
+                                Text(canvasStyleName(style)).tag(style)
+                            }
+                        }
+                        .labelsHidden()
+                        .frame(width: 105)
+                        Text(L10n.recordingCanvasPalette)
+                        Picker(L10n.recordingCanvasPalette, selection: Binding(
+                            get: { selectedCanvasPalette },
+                            set: { applyCanvasPalette($0) }
+                        )) {
+                            Text(L10n.recordingCanvasPaletteCustom).tag(AppTheme?.none)
+                            Text("\(L10n.recordingCanvasPaletteCurrent) · \(theme.displayName)")
+                                .tag(Optional(theme))
+                            ForEach(AppTheme.allCases.filter { $0 != theme }) { option in
+                                Text(option.displayName).tag(Optional(option))
+                            }
+                        }
+                        .labelsHidden()
+                        .frame(width: 130)
+                        ColorPicker(L10n.recordingCanvasBackground, selection: canvasColorBinding, supportsOpacity: false)
+                            .frame(width: 105)
                         Text(L10n.recordingCanvasCorners)
                         Slider(value: $canvasSettings.cornerRadius, in: 0...0.12)
                         Text("\(Int((canvasSettings.cornerRadius * 100).rounded()))%")
@@ -477,6 +493,53 @@ struct RecordingTrimmerView: View {
         case .square: return "1:1"
         case .classic: return "4:3"
         }
+    }
+
+    private func canvasStyleName(_ style: RecordingCanvasBackgroundStyle) -> String {
+        switch style {
+        case .solid: return L10n.recordingCanvasStyleSolid
+        case .gradient: return L10n.recordingCanvasStyleGradient
+        case .stripes: return L10n.recordingCanvasStyleStripes
+        case .dots: return L10n.recordingCanvasStyleDots
+        case .glow: return L10n.recordingCanvasStyleGlow
+        }
+    }
+
+    private var canvasColorBinding: Binding<Color> {
+        Binding(
+            get: { Color(red: canvasSettings.red, green: canvasSettings.green, blue: canvasSettings.blue) },
+            set: { color in
+                let converted = NSColor(color).usingColorSpace(.sRGB) ?? .black
+                selectedCanvasPalette = nil
+                var updated = canvasSettings
+                updated.red = Double(converted.redComponent)
+                updated.green = Double(converted.greenComponent)
+                updated.blue = Double(converted.blueComponent)
+                updated.accentColor = nil
+                canvasSettings = updated
+            }
+        )
+    }
+
+    private func applyCanvasPalette(_ selection: AppTheme?) {
+        selectedCanvasPalette = selection
+        guard let selection else {
+            canvasSettings.accentColor = nil
+            return
+        }
+        let palette = MeowTheme.palette(theme: selection, scheme: colorScheme)
+        let base = NSColor(palette.launcherGradient[0]).usingColorSpace(.sRGB) ?? .black
+        let accent = NSColor(palette.launcherAccent).usingColorSpace(.sRGB) ?? .black
+        var updated = canvasSettings
+        updated.red = Double(base.redComponent)
+        updated.green = Double(base.greenComponent)
+        updated.blue = Double(base.blueComponent)
+        updated.accentColor = RecordingCanvasRGB(
+            red: Double(accent.redComponent),
+            green: Double(accent.greenComponent),
+            blue: Double(accent.blueComponent)
+        )
+        canvasSettings = updated
     }
 
 }

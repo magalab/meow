@@ -902,6 +902,15 @@
 "recording.canvas.original" = "Original";
 "recording.canvas.margin" = "Margin";
 "recording.canvas.background" = "Background";
+"recording.canvas.style" = "Style";
+"recording.canvas.style.solid" = "Solid";
+"recording.canvas.style.gradient" = "Soft Gradient";
+"recording.canvas.style.stripes" = "Diagonal Stripes";
+"recording.canvas.style.dots" = "Dots";
+"recording.canvas.style.glow" = "Soft Glow";
+"recording.canvas.palette" = "Palette";
+"recording.canvas.palette.custom" = "Custom";
+"recording.canvas.palette.current" = "Current";
 "recording.canvas.corners" = "Corners";
 "recording.preview.title" = "Recording Complete";
 "recording.preview.finder" = "Show in Finder";
