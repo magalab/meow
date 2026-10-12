@@ -188,6 +188,15 @@ extension L10n {
     static var recordingCanvasOriginal: String { loc("recording.canvas.original") }
     static var recordingCanvasMargin: String { loc("recording.canvas.margin") }
     static var recordingCanvasBackground: String { loc("recording.canvas.background") }
+    static var recordingCanvasStyle: String { loc("recording.canvas.style") }
+    static var recordingCanvasStyleSolid: String { loc("recording.canvas.style.solid") }
+    static var recordingCanvasStyleGradient: String { loc("recording.canvas.style.gradient") }
+    static var recordingCanvasStyleStripes: String { loc("recording.canvas.style.stripes") }
+    static var recordingCanvasStyleDots: String { loc("recording.canvas.style.dots") }
+    static var recordingCanvasStyleGlow: String { loc("recording.canvas.style.glow") }
+    static var recordingCanvasPalette: String { loc("recording.canvas.palette") }
+    static var recordingCanvasPaletteCustom: String { loc("recording.canvas.palette.custom") }
+    static var recordingCanvasPaletteCurrent: String { loc("recording.canvas.palette.current") }
     static var recordingCanvasCorners: String { loc("recording.canvas.corners") }
     static var recordingPreviewTitle: String { loc("recording.preview.title") }
     static var recordingPreviewFinder: String { loc("recording.preview.finder") }

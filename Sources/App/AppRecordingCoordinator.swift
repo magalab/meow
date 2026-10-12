@@ -300,7 +300,7 @@ final class AppRecordingCoordinator {
         windowCoordinator.showRecordingTrimmer(
             for: url,
             contentViewController: NSHostingController(
-                rootView: RecordingTrimmerView(sourceURL: url)
+                rootView: RecordingTrimmerView(sourceURL: url, theme: actions.settings().theme)
             )
         )
     }

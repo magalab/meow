@@ -902,6 +902,15 @@
 "recording.canvas.original" = "原始比例";
 "recording.canvas.margin" = "边距";
 "recording.canvas.background" = "背景";
+"recording.canvas.style" = "样式";
+"recording.canvas.style.solid" = "纯色";
+"recording.canvas.style.gradient" = "柔和渐变";
+"recording.canvas.style.stripes" = "斜条纹";
+"recording.canvas.style.dots" = "圆点";
+"recording.canvas.style.glow" = "柔和光晕";
+"recording.canvas.palette" = "配色";
+"recording.canvas.palette.custom" = "自定义";
+"recording.canvas.palette.current" = "当前";
 "recording.canvas.corners" = "圆角";
 "recording.preview.title" = "录制完成";
 "recording.preview.finder" = "在 Finder 中显示";

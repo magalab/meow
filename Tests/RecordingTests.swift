@@ -3,6 +3,7 @@ import AppKit
 @preconcurrency import AVFoundation
 import CoreMedia
 import CoreVideo
+import CoreImage
 import Testing
 #if MEOW_VOICE
 @testable import Miao
@@ -138,10 +139,68 @@ func recordingCanvasLayout() {
     #expect(portrait.contentRect.height == 1080)
 }
 
+@Test("Recording canvas backgrounds render distinct styles")
+func recordingCanvasBackgroundStyles() throws {
+    let rect = CGRect(x: 0, y: 0, width: 128, height: 128)
+    let context = CIContext(options: [.useSoftwareRenderer: true])
+    var settings = RecordingCanvasSettings()
+    settings.red = 0.2
+    settings.green = 0.25
+    settings.blue = 0.3
+    for style in RecordingCanvasBackgroundStyle.allCases {
+        settings.backgroundStyle = style
+        let image = RecordingCanvasComposition.backgroundImage(in: rect, settings: settings)
+        let cgImage = try #require(context.createCGImage(image, from: rect))
+        let bitmap = NSBitmapImageRep(cgImage: cgImage)
+        let samples = stride(from: 0, to: 128, by: 4).flatMap { y in
+            stride(from: 0, to: 128, by: 4).compactMap { x in
+                bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB)?.redComponent
+            }
+        }
+        let spread = (samples.max() ?? 0) - (samples.min() ?? 0)
+        if style == .solid {
+            #expect(spread < 0.01)
+        } else {
+            #expect(spread > 0.015, "\(style) should be visible in the rendered canvas")
+        }
+    }
+}
+
+@Test("Recording canvas theme accent changes decorative backgrounds")
+func recordingCanvasBackgroundAccent() throws {
+    let rect = CGRect(x: 0, y: 0, width: 128, height: 128)
+    let context = CIContext(options: [.useSoftwareRenderer: true])
+    var settings = RecordingCanvasSettings()
+    settings.accentColor = RecordingCanvasRGB(red: 0.9, green: 0.2, blue: 0.1)
+    for style in [
+        RecordingCanvasBackgroundStyle.gradient, .stripes, .dots, .glow
+    ] {
+        settings.backgroundStyle = style
+        let accented = try #require(context.createCGImage(
+            RecordingCanvasComposition.backgroundImage(in: rect, settings: settings), from: rect
+        ))
+        settings.accentColor = nil
+        let plain = try #require(context.createCGImage(
+            RecordingCanvasComposition.backgroundImage(in: rect, settings: settings), from: rect
+        ))
+        settings.accentColor = RecordingCanvasRGB(red: 0.9, green: 0.2, blue: 0.1)
+        let accentedBitmap = NSBitmapImageRep(cgImage: accented)
+        let plainBitmap = NSBitmapImageRep(cgImage: plain)
+        let largestDifference = stride(from: 0, to: 128, by: 4).flatMap { y in
+            stride(from: 0, to: 128, by: 4).compactMap { x -> CGFloat? in
+                guard let a = accentedBitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB),
+                      let b = plainBitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB) else { return nil }
+                return abs(a.redComponent - b.redComponent)
+            }
+        }.max() ?? 0
+        #expect(largestDifference > 0.015, "\(style) should use the theme accent")
+    }
+}
+
 @Test("Recording canvas exports the selected video with its background", arguments: [
     RecordingCanvasAspect.original, .square, .portrait
-])
-func recordingCanvasExport(aspect: RecordingCanvasAspect) async throws {
+], RecordingCanvasBackgroundStyle.allCases)
+func recordingCanvasExport(aspect: RecordingCanvasAspect, style: RecordingCanvasBackgroundStyle) async throws {
     guard let samplePath = ProcessInfo.processInfo.environment["MEOW_RECORDING_CANVAS_SAMPLE"] else {
         return
     }
@@ -151,6 +210,7 @@ func recordingCanvasExport(aspect: RecordingCanvasAspect) async throws {
     let size = try await track.load(.naturalSize)
     var settings = RecordingCanvasSettings()
     settings.aspect = aspect
+    settings.backgroundStyle = style
     settings.margin = 0.1
     settings.red = 0
     settings.green = 1
