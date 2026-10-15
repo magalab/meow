@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct RecordingControlView: View {
+    @ObservedObject private var lang = LanguageManager.shared
     @ObservedObject var service: RecordingService
     let onStop: () -> Void
     let onSaveFrame: () -> Void
@@ -8,6 +9,7 @@ struct RecordingControlView: View {
     let onToggleCamera: () -> Void
 
     var body: some View {
+        let _ = lang.refreshToken
         HStack(spacing: 10) {
             Circle()
                 .fill(Color.red)

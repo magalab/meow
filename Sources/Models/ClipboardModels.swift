@@ -215,10 +215,18 @@ struct AudioClipboardContent: Hashable, Sendable {
     }
 }
 
+struct CalculationEntry: Identifiable, Hashable {
+    let expression: String
+    let result: String
+
+    var id: String { "calculation:\(expression)" }
+}
+
 enum SearchItem: Identifiable, Hashable {
     case app(AppEntry)
     case command(CommandEntry)
     case clipboard(ClipboardEntry)
+    case calculation(CalculationEntry)
 
     var id: String {
         switch self {
@@ -228,6 +236,8 @@ enum SearchItem: Identifiable, Hashable {
             return "command:\(command.id)"
         case let .clipboard(entry):
             return "clipboard:\(entry.id)"
+        case let .calculation(calculation):
+            return calculation.id
         }
     }
 
@@ -239,6 +249,8 @@ enum SearchItem: Identifiable, Hashable {
             return command.title
         case let .clipboard(entry):
             return entry.preview
+        case let .calculation(calculation):
+            return calculation.result
         }
     }
 
@@ -250,6 +262,8 @@ enum SearchItem: Identifiable, Hashable {
             return command.subtitle
         case let .clipboard(entry):
             return entry.content.typeLabel
+        case .calculation:
+            return L10n.calculatorResult
         }
     }
 
@@ -273,6 +287,8 @@ enum SearchItem: Identifiable, Hashable {
             return "command"
         case let .clipboard(entry):
             return entry.symbolName
+        case .calculation:
+            return "equal.circle.fill"
         }
     }
 }

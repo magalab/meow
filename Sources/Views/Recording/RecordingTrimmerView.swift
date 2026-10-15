@@ -4,6 +4,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct RecordingTrimmerView: View {
+    @ObservedObject private var lang = LanguageManager.shared
     let sourceURL: URL
     let theme: AppTheme
 
@@ -28,6 +29,7 @@ struct RecordingTrimmerView: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
+        let _ = lang.refreshToken
         VStack(spacing: 0) {
             previewPane
                 .frame(minHeight: 220, maxHeight: .infinity)

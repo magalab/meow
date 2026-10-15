@@ -22,6 +22,7 @@ struct PreferenceDockIconPreview: View {
     }
 
     var body: some View {
+        let _ = lang.refreshToken
         HStack(spacing: 14) {
             Image(nsImage: previewImage)
                 .resizable()
@@ -48,7 +49,6 @@ struct PreferenceDockIconPreview: View {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .stroke(palette.surfaceStroke, lineWidth: 1)
         )
-        .id(lang.refreshToken)
     }
 }
 

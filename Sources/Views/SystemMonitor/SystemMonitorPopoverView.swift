@@ -14,6 +14,7 @@ struct SystemMonitorPopoverView: View {
     }
 
     var body: some View {
+        let _ = lang.refreshToken
         ScrollView {
             VStack(spacing: 6) {
                 header
@@ -36,7 +37,6 @@ struct SystemMonitorPopoverView: View {
                 endPoint: .bottomTrailing
             )
         )
-        .id(lang.refreshToken)
         .task(id: copiedValue) {
             guard copiedValue != nil else { return }
             try? await Task.sleep(nanoseconds: 1_500_000_000)

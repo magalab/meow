@@ -41,7 +41,10 @@ final class AppPreferencesCoordinator {
             animated: animated,
             makeContent: { [weak self] in
                 guard let self else { return NSViewController() }
-                return NSHostingController(rootView: makePreferencesView())
+                let content = makePreferencesView()
+                return NSHostingController(
+                    rootView: LocalizedRootView { content }
+                )
             }
         )
     }

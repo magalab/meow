@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 
 struct RecordingPreviewView: View {
+    @ObservedObject private var lang = LanguageManager.shared
     let artifact: RecordingArtifact
     let onTrim: () -> Void
     let onClose: () -> Void
@@ -17,6 +18,7 @@ struct RecordingPreviewView: View {
     }
 
     var body: some View {
+        let _ = lang.refreshToken
         VStack(spacing: 12) {
             if artifact.width > 0 {
                 previewImage

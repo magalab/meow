@@ -290,9 +290,10 @@ final class AppCaptureCoordinator {
     }
 
     func showCaptureHistory() {
+        let content = makeCaptureHistoryView(theme: actions.settings().theme)
         windowCoordinator.showCaptureHistory(
             contentViewController: NSHostingController(
-                rootView: makeCaptureHistoryView(theme: actions.settings().theme)
+                rootView: LocalizedRootView { content }
             ),
             title: L10n.screenshotHistoryTitle
         )

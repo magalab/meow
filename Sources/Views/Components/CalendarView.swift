@@ -59,6 +59,7 @@ struct CalendarPopoverView: View {
     }
 
     var body: some View {
+        let _ = lang.refreshToken
         HStack(alignment: .top, spacing: 0) {
             VStack(spacing: 16) {
                 headerView
@@ -110,7 +111,6 @@ struct CalendarPopoverView: View {
             selectedDay = nil
             jumpToToday()
         }
-        .id(lang.refreshToken)
     }
 
     private enum MonthPosition { case past, current, future }

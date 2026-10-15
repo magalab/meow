@@ -24,6 +24,7 @@ struct AuthenticatorPanelView: View {
     }
 
     var body: some View {
+        let _ = lang.refreshToken
         VStack(spacing: 0) {
             header
             Divider()
@@ -62,7 +63,6 @@ struct AuthenticatorPanelView: View {
         } message: {
             Text(errorMessage ?? "")
         }
-        .id(lang.refreshToken)
     }
 
     private var header: some View {

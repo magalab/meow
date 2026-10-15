@@ -57,9 +57,11 @@ final class UploadSuccessHUDController {
 }
 
 private struct UploadSuccessHUD: View {
+    @ObservedObject private var lang = LanguageManager.shared
     let filename: String
 
     var body: some View {
+        let _ = lang.refreshToken
         HStack(spacing: 12) {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 24))

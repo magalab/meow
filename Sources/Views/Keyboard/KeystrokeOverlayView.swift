@@ -29,6 +29,7 @@ final class KeystrokeOverlayViewModel: ObservableObject {
 }
 
 struct KeystrokeOverlayView: View {
+    @ObservedObject private var lang = LanguageManager.shared
     @ObservedObject var viewModel: KeystrokeOverlayViewModel
     @Environment(\.colorScheme) private var colorScheme
 
@@ -45,6 +46,7 @@ struct KeystrokeOverlayView: View {
     }
 
     var body: some View {
+        let _ = lang.refreshToken
         HStack(spacing: isProminent ? 8 : 6) {
             Image(systemName: "keyboard")
                 .font(.system(size: isProminent ? 17 : 13, weight: .semibold))

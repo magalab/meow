@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct HealthBreakOverlayView: View {
+    @ObservedObject private var lang = LanguageManager.shared
     let state: HealthReminderState
     let settings: HealthReminderSettings
     let theme: AppTheme
@@ -25,6 +26,7 @@ struct HealthBreakOverlayView: View {
     }
 
     var body: some View {
+        let _ = lang.refreshToken
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 10) {
                 Image(systemName: "figure.mind.and.body")

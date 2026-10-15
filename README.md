@@ -7,7 +7,8 @@ A lightweight macOS launcher with gadgets, built with SwiftUI + AppKit.
 ## Features
 
 - Global hotkey (`Opt+Space`) to open the launcher
-- App search with launch-history ranking
+- App search with launch-history ranking, category filters, and a compact empty state
+- Explicit calculator mode by prefixing an expression with `=`; supports `+`, `-`, `*`, `/`, `%`, and parentheses
 - Clipboard history with paste, copy, delete, and clear actions
 - Native region, window, and display screenshots with frozen multi-display
   selection, full-resolution local history, and configurable copy/save output
@@ -84,10 +85,11 @@ APP_BUNDLE_ID=tech.lury.meow bash scripts/build-dmg.sh
 ## Usage
 
 1. Launch Meow, then open the panel with the hotkey (default: `Opt+Space`).
-2. Type to search apps or commands.
-3. Use `Up/Down` to select and press Enter to launch or run a command.
-4. Use the action menu on clipboard entries to paste, copy, delete, reveal files, or ask AI.
-5. Open Preferences to adjust language, theme, hotkeys, Dock, menu bar, clipboard, whiteboard, file hosting, authenticator, health reminders, keyboard overlay, and AI settings.
+2. Type to search apps, commands, or clipboard history. Use the launcher filters to narrow results to Apps, Clipboard, or Commands.
+3. Prefix an expression with `=` to calculate it, for example `= (12 + 8) / 4`; press Enter to copy the result and dismiss the launcher. Invalid expressions remain ordinary searches.
+4. Use `Up/Down` to select and press Enter to launch an app or run a command.
+5. Use the action menu on clipboard entries to paste, copy, delete, reveal files, or ask AI.
+6. Open Preferences to adjust language, theme, hotkeys, Dock, menu bar, clipboard, whiteboard, file hosting, authenticator, health reminders, keyboard overlay, and AI settings.
 
 ## Selected Text Actions
 

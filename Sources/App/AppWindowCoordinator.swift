@@ -41,7 +41,9 @@ private final class WindowResignDelegate: NSObject, NSWindowDelegate {
 
 @MainActor
 final class AppWindowCoordinator {
+    private let defaultLauncherWidth: CGFloat = 560
     private var launcherWindow: LauncherPanel?
+    private var hasLaidOutLauncher = false
     private var translationWindow: LauncherPanel?
     private var textActionsWindow: LauncherPanel?
     private var textActionsWindowDelegate: WindowResignDelegate?
@@ -54,7 +56,7 @@ final class AppWindowCoordinator {
     private var recordingTrimmerWindows: [URL: NSWindow] = [:]
     private var recordingTrimmerDelegates: [URL: WindowCloseDelegate] = [:]
     private var calendarPopover: NSPopover?
-    private var calendarPopoverController: NSHostingController<CalendarPopoverView>?
+    private var calendarPopoverController: NSHostingController<LocalizedRootView<CalendarPopoverView>>?
 
     func activeScreen() -> NSScreen? {
         let mouseLocation = NSEvent.mouseLocation
@@ -111,7 +113,7 @@ final class AppWindowCoordinator {
         guard launcherWindow == nil else { return }
 
         let window = LauncherPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 820, height: 540),
+            contentRect: NSRect(x: 0, y: 0, width: defaultLauncherWidth, height: 540),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -128,7 +130,7 @@ final class AppWindowCoordinator {
         window.isReleasedWhenClosed = false
         if let contentView = window.contentView {
             contentView.wantsLayer = true
-            contentView.layer?.cornerRadius = 20
+            contentView.layer?.cornerRadius = 8
             contentView.layer?.masksToBounds = true
         }
         launcherWindow = window
@@ -139,8 +141,90 @@ final class AppWindowCoordinator {
         if launcherWindow?.contentViewController == nil {
             launcherWindow?.contentViewController = makeContent()
         }
+        if let launcherWindow {
+            let contentSize = launcherWindow.contentRect(forFrameRect: launcherWindow.frame).size
+            if contentSize.width < 520 {
+                launcherWindow.setContentSize(
+                    NSSize(width: defaultLauncherWidth, height: contentSize.height)
+                )
+            }
+            launcherWindow.contentView?.layoutSubtreeIfNeeded()
+            positionLauncher(launcherWindow)
+        }
         launcherWindow?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    func setLauncherHeight(_ height: CGFloat) {
+        createLauncherWindowIfNeeded()
+        guard let launcherWindow else { return }
+        let currentSize = launcherWindow.contentRect(forFrameRect: launcherWindow.frame).size
+        let launcherWidth = max(currentSize.width, defaultLauncherWidth)
+        guard abs(currentSize.height - height) > 0.5 else {
+            if !hasLaidOutLauncher {
+                positionLauncher(launcherWindow)
+                hasLaidOutLauncher = true
+            }
+            return
+        }
+
+        if !hasLaidOutLauncher {
+            launcherWindow.setContentSize(NSSize(width: launcherWidth, height: height))
+            positionLauncher(launcherWindow)
+            hasLaidOutLauncher = true
+            return
+        }
+
+        let topEdge = launcherWindow.frame.maxY
+        launcherWindow.setContentSize(NSSize(width: launcherWidth, height: height))
+        setLauncherOrigin(
+            NSPoint(x: launcherWindow.frame.origin.x, y: topEdge - launcherWindow.frame.height),
+            for: launcherWindow
+        )
+    }
+
+    private func setLauncherOrigin(_ origin: NSPoint, for window: NSWindow) {
+        guard let screen = activeScreen() else {
+            window.setFrameOrigin(origin)
+            return
+        }
+        let visibleFrame = screen.visibleFrame
+        let maximumOrigin = NSPoint(
+            x: max(visibleFrame.minX, visibleFrame.maxX - window.frame.width),
+            y: max(visibleFrame.minY, visibleFrame.maxY - window.frame.height)
+        )
+        window.setFrameOrigin(
+            NSPoint(
+                x: min(max(origin.x, visibleFrame.minX), maximumOrigin.x),
+                y: min(max(origin.y, visibleFrame.minY), maximumOrigin.y)
+            )
+        )
+    }
+
+    private func positionLauncher(_ window: NSWindow) {
+        guard let screen = activeScreen() else {
+            center(window)
+            return
+        }
+        let visibleFrame = screen.visibleFrame
+        let targetCenter = NSPoint(
+            x: visibleFrame.midX,
+            y: visibleFrame.minY + visibleFrame.height * 0.58
+        )
+        let proposedOrigin = NSPoint(
+            x: targetCenter.x - window.frame.width / 2,
+            y: targetCenter.y - window.frame.height / 2
+        )
+        setLauncherOrigin(proposedOrigin, for: window)
+    }
+
+    func refreshLocalizedWindowTitles() {
+        textActionsWindow?.title = L10n.textActionsTitle
+        aiChatWindow?.title = L10n.aiChatTitle
+        preferencesWindow?.title = L10n.windowPrefsTitle
+        captureHistoryWindow?.title = L10n.screenshotHistoryTitle
+        recordingPreviewWindow?.title = L10n.recordingPreviewTitle
+        recordingHistoryWindow?.title = L10n.recordingHistoryTitle
     }
 
     func hideLauncher() {
@@ -480,10 +564,13 @@ final class AppWindowCoordinator {
         popover.behavior = .transient
         popover.animates = true
         popover.contentSize = NSSize(width: 320, height: 314)
-        popover.contentViewController = NSHostingController(rootView: contentView(popover))
+        let content = contentView(popover)
+        popover.contentViewController = NSHostingController(
+            rootView: LocalizedRootView { content }
+        )
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         calendarPopover = popover
-        calendarPopoverController = popover.contentViewController as? NSHostingController<CalendarPopoverView>
+        calendarPopoverController = popover.contentViewController as? NSHostingController<LocalizedRootView<CalendarPopoverView>>
     }
 
     func refreshCalendar(contentView: (NSPopover?) -> CalendarPopoverView) {
@@ -491,7 +578,8 @@ final class AppWindowCoordinator {
               calendarPopover.isShown,
               let calendarPopoverController
         else { return }
-        calendarPopoverController.rootView = contentView(calendarPopover)
+        let content = contentView(calendarPopover)
+        calendarPopoverController.rootView = LocalizedRootView { content }
     }
 
     func dismissCalendarPopover() {
