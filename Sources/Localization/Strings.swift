@@ -70,23 +70,21 @@ private enum LocalizationRuntime {
             for bundleName in bundleNames {
                 let resourceBundleURL = container.appendingPathComponent(bundleName)
                 guard let resourceBundle = Bundle(url: resourceBundleURL) else { continue }
-                let hasLocalization = languageNames.contains {
-                    resourceBundle.path(forResource: $0, ofType: "lproj") != nil
+                for languageName in languageNames {
+                    guard let languageURL = resourceBundle.url(
+                        forResource: languageName,
+                        withExtension: "lproj"
+                    ), let languageBundle = Bundle(url: languageURL)
+                    else { continue }
+                    return languageBundle
                 }
-                guard hasLocalization else { continue }
-                return resourceBundle
             }
 
             let localizedPath = languageNames
                 .map { container.appendingPathComponent("\($0).lproj") }
                 .first { fileManager.fileExists(atPath: $0.path) }
-            if localizedPath != nil {
-                if containerPath == Bundle.main.resourceURL?.standardizedFileURL.path ||
-                    containerPath == Bundle.main.bundleURL.standardizedFileURL.path
-                {
-                    return Bundle.main
-                }
-                return Bundle(url: container)
+            if let localizedPath, let languageBundle = Bundle(url: localizedPath) {
+                return languageBundle
             }
         }
 
@@ -112,7 +110,7 @@ private enum LocalizationRuntime {
 final class LanguageManager: ObservableObject {
     static let shared = LanguageManager()
 
-    /// Incrementing token forces SwiftUI views with `.id(refreshToken)` to rebuild.
+    /// Published changes invalidate SwiftUI surfaces that observe the manager.
     @Published private(set) var refreshToken: Int = 0
 
     var bundle: Bundle {

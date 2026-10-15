@@ -235,23 +235,26 @@ final class AppRecordingCoordinator {
     }
 
     func showRecordingControl() {
+        let service = recordingService
         windowCoordinator.showRecordingControl(
             contentView: NSHostingView(
-                rootView: RecordingControlView(
-                    service: recordingService,
-                    onStop: { [weak self] in
-                        self?.stop()
-                    },
-                    onSaveFrame: { [weak self] in
-                        self?.saveCurrentFrame()
-                    },
-                    onToggleMagnifier: { [weak self] in
-                        self?.toggleMagnifier()
-                    },
-                    onToggleCamera: { [weak self] in
-                        self?.toggleCameraOverlay()
-                    }
-                )
+                rootView: LocalizedRootView {
+                    RecordingControlView(
+                        service: service,
+                        onStop: { [weak self] in
+                            self?.stop()
+                        },
+                        onSaveFrame: { [weak self] in
+                            self?.saveCurrentFrame()
+                        },
+                        onToggleMagnifier: { [weak self] in
+                            self?.toggleMagnifier()
+                        },
+                        onToggleCamera: { [weak self] in
+                            self?.toggleCameraOverlay()
+                        }
+                    )
+                }
             )
         )
         Task { await recordingService.refreshDisplayFilterForNewWindows() }
@@ -264,43 +267,52 @@ final class AppRecordingCoordinator {
     func showRecordingPreview(_ artifact: RecordingArtifact) {
         windowCoordinator.showRecordingPreview(size: recordingPreviewPanelSize(for: artifact)) {
             NSHostingController(
-                rootView: RecordingPreviewView(
-                    artifact: artifact,
-                    onTrim: { [weak self] in
-                        self?.windowCoordinator.hideRecordingPreview()
-                        self?.showRecordingTrimmer(for: artifact.fileURL)
-                    },
-                    onClose: { [weak self] in
-                        self?.windowCoordinator.hideRecordingPreview()
-                    }
-                )
+                rootView: LocalizedRootView {
+                    RecordingPreviewView(
+                        artifact: artifact,
+                        onTrim: { [weak self] in
+                            self?.windowCoordinator.hideRecordingPreview()
+                            self?.showRecordingTrimmer(for: artifact.fileURL)
+                        },
+                        onClose: { [weak self] in
+                            self?.windowCoordinator.hideRecordingPreview()
+                        }
+                    )
+                }
             )
         }
     }
 
     func showRecordingHistory() {
+        let store = recordingStore
+        let theme = actions.settings().theme
         windowCoordinator.showRecordingHistory(
             contentViewController: NSHostingController(
-                rootView: RecordingHistoryView(
-                    store: recordingStore,
-                    theme: actions.settings().theme,
-                    onDelete: { [weak self] artifact in
-                        self?.recordingStore.delete(artifact)
-                    },
-                    onTrim: { [weak self] artifact in
-                        self?.showRecordingTrimmer(for: artifact.fileURL)
-                    }
-                )
+                rootView: LocalizedRootView {
+                    RecordingHistoryView(
+                        store: store,
+                        theme: theme,
+                        onDelete: { [weak self] artifact in
+                            self?.recordingStore.delete(artifact)
+                        },
+                        onTrim: { [weak self] artifact in
+                            self?.showRecordingTrimmer(for: artifact.fileURL)
+                        }
+                    )
+                }
             ),
             title: L10n.recordingHistoryTitle
         )
     }
 
     func showRecordingTrimmer(for url: URL) {
+        let theme = actions.settings().theme
         windowCoordinator.showRecordingTrimmer(
             for: url,
             contentViewController: NSHostingController(
-                rootView: RecordingTrimmerView(sourceURL: url, theme: actions.settings().theme)
+                rootView: LocalizedRootView {
+                    RecordingTrimmerView(sourceURL: url, theme: theme)
+                }
             )
         )
     }

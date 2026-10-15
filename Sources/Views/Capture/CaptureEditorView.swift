@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 
 struct CaptureEditorView: View {
+    @ObservedObject private var lang = LanguageManager.shared
     let source: CGImage
     @ObservedObject var model: CaptureEditorModel
     let onCancel: () -> Void
@@ -15,6 +16,7 @@ struct CaptureEditorView: View {
     private let recognitionService = ImageRecognitionService()
 
     var body: some View {
+        let _ = lang.refreshToken
         VStack(spacing: 0) {
             toolBar
             Divider()

@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 
 struct RecordingHistoryView: View {
+    @ObservedObject private var lang = LanguageManager.shared
     @ObservedObject var store: RecordingStore
     let theme: AppTheme
     let onDelete: (RecordingArtifact) -> Void
@@ -22,6 +23,7 @@ struct RecordingHistoryView: View {
     ]
 
     var body: some View {
+        let _ = lang.refreshToken
         VStack(spacing: 0) {
             HStack(spacing: 10) {
                 Image(systemName: "film.stack")

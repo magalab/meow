@@ -7,6 +7,7 @@ import NaturalLanguage
 
 /// Top-level SwiftUI view for the floating translation panel.
 struct TranslationPanelView: View {
+    @ObservedObject private var lang = LanguageManager.shared
     private let panelWidth: CGFloat = 560
 
     let sourceText: String
@@ -16,6 +17,7 @@ struct TranslationPanelView: View {
     let onDismiss: () -> Void
 
     var body: some View {
+        let _ = lang.refreshToken
         if axPermissionDenied && sourceText.isEmpty {
             noPermissionView
         } else if sourceText.isEmpty {

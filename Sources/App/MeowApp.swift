@@ -395,6 +395,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self.simulatePaste()
             }
         }
+        viewModel.onCopyText = { [weak self] text in
+            guard let self else { return }
+            self.hideLauncher()
+            self.clipboardStore.writePrivateTextToPasteboard(text)
+        }
         viewModel.onLaunchApplication = { [weak self] app in
             guard let self else { return }
             self.hideLauncher()
@@ -542,6 +547,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if systemMonitorServiceLoaded {
                 systemMonitorService.refreshLocalization()
             }
+            windowCoordinator.refreshLocalizedWindowTitles()
             viewModel?.refresh()
             windowCoordinator.updatePreferencesTitle(L10n.windowPrefsTitle)
             appliedLanguage = settings.language
@@ -1386,9 +1392,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         windowCoordinator.showLauncher { [weak self] in
             guard let self else { return NSViewController() }
             return NSHostingController(
-                rootView: LauncherView(viewModel: self.viewModel) { [weak self] in
-                    self?.hideLauncher()
-                }
+                rootView: LauncherView(
+                    viewModel: self.viewModel,
+                    onDismiss: { [weak self] in
+                        self?.hideLauncher()
+                    },
+                    onLauncherHeightChange: { [weak self] height in
+                        self?.windowCoordinator.setLauncherHeight(height)
+                    }
+                )
             )
         }
     }
@@ -1624,7 +1636,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             )
         )
         hideLauncher()
-        windowCoordinator.showAIChat(contentViewController: NSHostingController(rootView: view))
+        windowCoordinator.showAIChat(
+            contentViewController: NSHostingController(
+                rootView: LocalizedRootView { view }
+            )
+        )
     }
 
     private func openAIChat(_ input: AIChatInitialInput?) {

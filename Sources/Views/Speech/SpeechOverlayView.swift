@@ -9,7 +9,7 @@ final class SpeechOverlayPanel: NSPanel {
 @MainActor
 final class SpeechOverlayController {
     private var panel: SpeechOverlayPanel?
-    private var hostingController: NSHostingController<SpeechOverlayView>?
+    private var hostingController: NSHostingController<LocalizedRootView<SpeechOverlayView>>?
     private weak var service: SpeechRecognitionService?
 
     func connect(to service: SpeechRecognitionService) {
@@ -33,7 +33,11 @@ final class SpeechOverlayController {
         guard let service else { return }
         let panel = createPanelIfNeeded()
         if hostingController == nil {
-            let hosting = NSHostingController(rootView: SpeechOverlayView(service: service))
+            let hosting = NSHostingController(
+                rootView: LocalizedRootView {
+                    SpeechOverlayView(service: service)
+                }
+            )
             hostingController = hosting
             panel.contentViewController = hosting
         }
@@ -75,9 +79,11 @@ final class SpeechOverlayController {
 }
 
 struct SpeechOverlayView: View {
+    @ObservedObject private var lang = LanguageManager.shared
     @ObservedObject var service: SpeechRecognitionService
 
     var body: some View {
+        let _ = lang.refreshToken
         HStack(spacing: 12) {
             statusIcon
                 .frame(width: 28, height: 28)

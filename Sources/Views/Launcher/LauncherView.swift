@@ -5,11 +5,37 @@ extension Notification.Name {
     static let meowLauncherDidHide = Notification.Name("meow.launcher.didHide")
 }
 
+private enum LauncherFilter: CaseIterable, Hashable {
+    case all
+    case applications
+    case clipboard
+    case commands
+
+    var title: String {
+        switch self {
+        case .all: return L10n.filterAll
+        case .applications: return L10n.filterApplications
+        case .clipboard: return L10n.filterClipboard
+        case .commands: return L10n.filterCommands
+        }
+    }
+
+    var symbolName: String {
+        switch self {
+        case .all: return "square.grid.2x2"
+        case .applications: return "app.fill"
+        case .clipboard: return "doc.on.clipboard"
+        case .commands: return "terminal"
+        }
+    }
+}
+
 struct LauncherView: View {
     @ObservedObject var viewModel: LauncherViewModel
     @ObservedObject private var lang = LanguageManager.shared
     @Environment(\.colorScheme) private var colorScheme
     var onDismiss: () -> Void
+    var onLauncherHeightChange: ((CGFloat) -> Void)?
     @State private var selectedID: SearchItem.ID?
     @FocusState private var isSearchFieldFocused: Bool
     @State private var keyMonitor: Any?
@@ -17,17 +43,21 @@ struct LauncherView: View {
     @State private var showActionMenu = false
     @State private var actionMenuSelectionIndex = 0
     @State private var showClearClipboardConfirmation = false
+    @State private var selectedFilter: LauncherFilter = .all
+    @State private var launcherHeightUpdateWorkItem: DispatchWorkItem?
 
     private var groupedResults: [(title: String, items: [SearchItem])] {
-        let commands = viewModel.results.filter {
-            if case .command = $0 { return true }
-            return false
+        let commands = filteredResults.filter {
+            switch $0 {
+            case .command, .calculation: return true
+            default: return false
+            }
         }
-        let apps = viewModel.results.filter {
+        let apps = filteredResults.filter {
             if case .app = $0 { return true }
             return false
         }
-        let clipboard = viewModel.results.filter {
+        let clipboard = filteredResults.filter {
             if case .clipboard = $0 { return true }
             return false
         }
@@ -56,8 +86,47 @@ struct LauncherView: View {
         return sections
     }
 
+    private var filteredResults: [SearchItem] {
+        switch selectedFilter {
+        case .all:
+            return viewModel.results
+        case .applications:
+            return viewModel.results.filter {
+                if case .app = $0 { return true }
+                return false
+            }
+        case .clipboard:
+            return viewModel.results.filter {
+                if case .clipboard = $0 { return true }
+                return false
+            }
+        case .commands:
+            return viewModel.results.filter {
+                switch $0 {
+                case .command, .calculation: return true
+                default: return false
+                }
+            }
+        }
+    }
+
     private var orderedResults: [SearchItem] {
         groupedResults.flatMap(\.items)
+    }
+
+    private var isQueryEmpty: Bool {
+        viewModel.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var preferredHeight: CGFloat {
+        guard !isQueryEmpty else { return 44 }
+        let rowHeight: CGFloat = 50
+        let sectionHeaderHeight: CGFloat = 30
+        let outerSpacing: CGFloat = 40
+        let contentHeight = CGFloat(orderedResults.count) * rowHeight
+            + CGFloat(groupedResults.count) * sectionHeaderHeight
+            + outerSpacing
+        return min(540, max(180, contentHeight))
     }
 
     private var palette: ThemePalette {
@@ -65,6 +134,7 @@ struct LauncherView: View {
     }
 
     var body: some View {
+        let _ = lang.refreshToken
         ZStack {
             LinearGradient(
                 colors: palette.launcherGradient,
@@ -72,9 +142,9 @@ struct LauncherView: View {
                 endPoint: .bottomTrailing
             )
             .ignoresSafeArea()
-            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
-            VStack(spacing: 12) {
+            VStack(spacing: 8) {
                 HStack(spacing: 10) {
                     Image(systemName: "pawprint.fill")
                         .font(.system(size: 17, weight: .semibold))
@@ -90,25 +160,42 @@ struct LauncherView: View {
 
                     Spacer()
 
-                    Text(L10n.filterAll)
-                        .font(.system(.subheadline, design: .rounded, weight: .bold))
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(palette.filterCapsuleBackground, in: Capsule())
+                    HStack(spacing: 4) {
+                        ForEach(LauncherFilter.allCases, id: \.self) { filter in
+                            Button {
+                                selectedFilter = filter
+                            } label: {
+                                Image(systemName: filter.symbolName)
+                                    .font(.system(size: 13, weight: .bold))
+                                    .foregroundStyle(selectedFilter == filter ? Color.primary : .secondary)
+                                    .frame(width: 28, height: 26)
+                                    .background(
+                                        selectedFilter == filter
+                                            ? palette.filterCapsuleBackground
+                                            : Color.clear,
+                                        in: Capsule()
+                                    )
+                            }
+                            .buttonStyle(.plain)
+                            .help(filter.title)
+                            .accessibilityLabel(filter.title)
+                        }
+                    }
                 }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 12)
-                .background(palette.surfaceBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .frame(minHeight: 44)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 0)
+                .background(palette.surfaceBackground, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
                         .stroke(palette.surfaceStroke, lineWidth: 1)
                 )
 
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        LazyVStack(spacing: 8) {
-                            ForEach(Array(groupedResults.enumerated()), id: \.offset) { sectionIndex, section in
+                if !isQueryEmpty {
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            LazyVStack(spacing: 8) {
+                                ForEach(Array(groupedResults.enumerated()), id: \.offset) { sectionIndex, section in
                                 VStack(alignment: .leading, spacing: 6) {
                                     HStack(spacing: 8) {
                                         Text(section.title)
@@ -193,33 +280,34 @@ struct LauncherView: View {
                                         )
                                     }
                                 }
+                                }
+                            }
+                            .padding(2)
+                        }
+                        .scrollIndicators(.hidden)
+                        .onChange(of: selectedID) { _, id in
+                            guard let id else { return }
+                            withAnimation(.snappy(duration: 0.12)) {
+                                proxy.scrollTo(id, anchor: .center)
                             }
                         }
-                        .padding(2)
-                    }
-                    .scrollIndicators(.hidden)
-                    .onChange(of: selectedID) { _, id in
-                        guard let id else { return }
-                        withAnimation(.snappy(duration: 0.12)) {
-                            proxy.scrollTo(id, anchor: .center)
-                        }
-                    }
-                    .onChange(of: scrollResetToken) { _, _ in
-                        var transaction = Transaction()
-                        transaction.animation = nil
-                        withTransaction(transaction) {
-                            if let firstID = orderedResults.first?.id {
-                                proxy.scrollTo(firstID, anchor: .top)
+                        .onChange(of: scrollResetToken) { _, _ in
+                            var transaction = Transaction()
+                            transaction.animation = nil
+                            withTransaction(transaction) {
+                                if let firstID = orderedResults.first?.id {
+                                    proxy.scrollTo(firstID, anchor: .top)
+                                }
                             }
                         }
                     }
                 }
             }
-            .padding(14)
+            .padding(0)
         }
-        .frame(minWidth: 760, minHeight: 480)
-        .id(lang.refreshToken)
+        .frame(minWidth: 560, minHeight: preferredHeight)
         .onAppear {
+            onLauncherHeightChange?(preferredHeight)
             selectedID = orderedResults.first?.id
             DispatchQueue.main.async {
                 isSearchFieldFocused = true
@@ -262,6 +350,13 @@ struct LauncherView: View {
                         return nil
                     }
                     return event
+                case 48: // Tab
+                    let filters = LauncherFilter.allCases
+                    guard let currentIndex = filters.firstIndex(of: selectedFilter) else { return event }
+                    let step = flags.contains(.shift) ? -1 : 1
+                    let nextIndex = (currentIndex + step + filters.count) % filters.count
+                    selectedFilter = filters[nextIndex]
+                    return nil
                 case 8: // C
                     if showActionMenu, flags.contains(.command) {
                         if flags.contains(.shift) {
@@ -319,9 +414,29 @@ struct LauncherView: View {
                 }
             }
         }
-        .onChange(of: viewModel.results) { _, newValue in
-            if selectedID == nil || !newValue.contains(where: { $0.id == selectedID }) {
+        .onChange(of: viewModel.results) { _, _ in
+            if selectedID == nil || !filteredResults.contains(where: { $0.id == selectedID }) {
                 selectedID = orderedResults.first?.id
+            }
+            if !viewModel.isSearchingClipboard {
+                scheduleLauncherHeightUpdate()
+            }
+        }
+        .onChange(of: viewModel.query) { _, _ in
+            if !viewModel.isSearchingClipboard {
+                scheduleLauncherHeightUpdate()
+            }
+        }
+        .onChange(of: viewModel.isSearchingClipboard) { _, isSearching in
+            if !isSearching {
+                scheduleLauncherHeightUpdate()
+            }
+        }
+        .onChange(of: selectedFilter) { _, _ in
+            selectedID = orderedResults.first?.id
+            scrollResetToken += 1
+            if !viewModel.isSearchingClipboard {
+                scheduleLauncherHeightUpdate()
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { notification in
@@ -342,6 +457,8 @@ struct LauncherView: View {
             onDismiss()
         }
         .onDisappear {
+            launcherHeightUpdateWorkItem?.cancel()
+            launcherHeightUpdateWorkItem = nil
             if let keyMonitor {
                 NSEvent.removeMonitor(keyMonitor)
                 self.keyMonitor = nil
@@ -380,6 +497,17 @@ struct LauncherView: View {
         } message: {
             Text(L10n.clipboardClearAllMessage)
         }
+    }
+
+    private func scheduleLauncherHeightUpdate() {
+        launcherHeightUpdateWorkItem?.cancel()
+        let height = preferredHeight
+        let callback = onLauncherHeightChange
+        let workItem = DispatchWorkItem {
+            callback?(height)
+        }
+        launcherHeightUpdateWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(80), execute: workItem)
     }
 
     private func activateCurrentSelection() {
@@ -493,7 +621,7 @@ struct LauncherView: View {
             }
             actions += [.askAI, .delete]
             return actions
-        case .command:
+        case .command, .calculation:
             return [.execute]
         }
     }
@@ -528,6 +656,8 @@ struct LauncherView: View {
              (.clipboard, .delete):
             return true
         case (.command, .execute):
+            return true
+        case (.calculation, .execute):
             return true
         default:
             return false

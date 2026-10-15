@@ -10,8 +10,6 @@ enum WhiteboardCommand {
 @MainActor
 final class LauncherViewModel: ObservableObject {
     private let maxSearchResults = 80
-    private let maxIdleApplications = 6
-    private let maxIdleClipboardResults = 8
 
     @Published var query: String = "" {
         didSet {
@@ -21,6 +19,7 @@ final class LauncherViewModel: ObservableObject {
     }
 
     @Published private(set) var results: [SearchItem] = []
+    @Published private(set) var isSearchingClipboard = false
     @Published private(set) var finderHotkeyRegistrationError: String?
     @Published private(set) var whiteboardHotkeyRegistrationError: String?
     @Published var settingsPersistenceError: String?
@@ -42,6 +41,7 @@ final class LauncherViewModel: ObservableObject {
     var onOpenPreferences: (() -> Void)?
     var onSettingsChanged: ((AppSettings) -> Void)?
     var onPasteClipboard: ((ClipboardEntry) -> Void)?
+    var onCopyText: ((String) -> Void)?
     var onLaunchApplication: ((AppEntry) -> Void)?
     var onOpenAIChat: ((AIChatInitialInput?) -> Void)?
     var onOpenAuthenticator: (() -> Void)?
@@ -64,6 +64,7 @@ final class LauncherViewModel: ObservableObject {
     private let discoveryService: AppDiscoveryService
     private let launchHistoryStore: LaunchHistoryStore
     private let clipboardStore: ClipboardStore
+    private let calculator = CalculatorEvaluator()
     private let currentBundleID = Bundle.main.bundleIdentifier?.lowercased()
     private let discoveryRefreshInterval: TimeInterval = 8
 
@@ -545,6 +546,9 @@ final class LauncherViewModel: ObservableObject {
         case let .clipboard(entry):
             onPasteClipboard?(entry)
             results = []
+        case let .calculation(calculation):
+            onCopyText?(calculation.result)
+            results = []
         }
     }
 
@@ -625,42 +629,41 @@ final class LauncherViewModel: ObservableObject {
         clipboardSearchTask?.cancel()
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if q.isEmpty {
-            let idleApplications = apps
-                .sorted { lhs, rhs in
-                    let lhsScore = launchHistoryStore.score(for: lhs.id)
-                    let rhsScore = launchHistoryStore.score(for: rhs.id)
-                    if lhsScore != rhsScore { return lhsScore > rhsScore }
-                    return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
-                }
-                .prefix(maxIdleApplications)
-
-            var idle: [SearchItem] = idleApplications.map(SearchItem.app)
-            if settings.clipboardHistoryEnabled {
-                let recentClipboard = clipboardStore
-                    .getEntries()
-                    .prefix(maxIdleClipboardResults)
-                    .map(SearchItem.clipboard)
-                idle += recentClipboard
-            }
-            results = idle
+            // Keep the hotkey launcher quiet until the user starts searching.
+            isSearchingClipboard = false
+            results = []
             return
         }
 
-        let immediateClipboard = settings.clipboardHistoryEnabled
+        if q.hasPrefix("="),
+           let calculation = calculationResult(for: q)
+        {
+            isSearchingClipboard = false
+            results = [.calculation(calculation)]
+            return
+        }
+
+        let shouldSearchClipboard = settings.clipboardHistoryEnabled
+        isSearchingClipboard = shouldSearchClipboard
+        let immediateClipboard = shouldSearchClipboard
             ? clipboardStore.getEntries().filter {
                 $0.content.searchText.localizedCaseInsensitiveContains(q)
             }
             : []
         results = rankedSearchResults(query: q, clipboardEntries: immediateClipboard)
 
-        guard settings.clipboardHistoryEnabled else { return }
+        guard shouldSearchClipboard else { return }
         clipboardSearchTask = Task { [weak self] in
             guard let self else { return }
             let persisted = await clipboardStore.search(q, limit: maxSearchResults)
             guard !Task.isCancelled,
                   query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == q
             else { return }
-            results = rankedSearchResults(query: q, clipboardEntries: persisted)
+            let updatedResults = rankedSearchResults(query: q, clipboardEntries: persisted)
+            if updatedResults != results {
+                results = updatedResults
+            }
+            isSearchingClipboard = false
         }
     }
 
@@ -700,6 +703,17 @@ final class LauncherViewModel: ObservableObject {
         if text.hasPrefix(query) { return 90 }
         if text.contains(" \(query)") { return 70 }
         return 50
+    }
+
+    private func calculationResult(for query: String) -> CalculationEntry? {
+        let expression = query.dropFirst().trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !expression.isEmpty,
+              let value = calculator.evaluate(expression)
+        else { return nil }
+        return CalculationEntry(
+            expression: String(expression),
+            result: NSDecimalNumber(decimal: value).stringValue
+        )
     }
 
     private func latestClipboardImage() -> ImageClipboardContent? {

@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 
 struct AIChatPanelView: View {
+    @ObservedObject private var lang = LanguageManager.shared
     @ObservedObject var viewModel: LauncherViewModel
     let initialInput: AIChatInitialInput?
     @ObservedObject var historyStore: AIChatHistoryStore
@@ -34,6 +35,7 @@ struct AIChatPanelView: View {
     }
 
     var body: some View {
+        let _ = lang.refreshToken
         HStack(spacing: 0) {
             if settings.isConfigured, settings.chatHistoryEnabled {
                 historySidebar

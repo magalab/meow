@@ -35,6 +35,10 @@ struct SearchItemIcon: View {
                 Image(systemName: item.symbolName)
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(palette.launcherAccent)
+            case .calculation:
+                Image(systemName: item.symbolName)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(palette.launcherAccent)
             case let .clipboard(entry):
                 if showClipboardImagePreviews,
                    case let .image(imageContent) = entry.content {

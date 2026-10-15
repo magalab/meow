@@ -18,6 +18,7 @@ enum HistoryLayoutMode: String, CaseIterable, Identifiable {
 }
 
 struct CaptureHistoryView: View {
+    @ObservedObject private var lang = LanguageManager.shared
     @ObservedObject var store: CaptureStore
     let theme: AppTheme
     let onCopy: (CaptureArtifact) -> Void
@@ -45,6 +46,7 @@ struct CaptureHistoryView: View {
     ]
 
     var body: some View {
+        let _ = lang.refreshToken
         VStack(spacing: 0) {
             header
             Divider()

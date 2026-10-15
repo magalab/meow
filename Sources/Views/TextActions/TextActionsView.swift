@@ -28,6 +28,7 @@ enum TextAction: Hashable, Sendable {
 }
 
 struct TextActionsPanelView: View {
+    @ObservedObject private var lang = LanguageManager.shared
     let text: String
     let theme: AppTheme
     let onAction: (TextAction) -> Void
@@ -40,6 +41,7 @@ struct TextActionsPanelView: View {
     }
 
     var body: some View {
+        let _ = lang.refreshToken
         VStack(alignment: .leading, spacing: 0) {
             header
             Divider()

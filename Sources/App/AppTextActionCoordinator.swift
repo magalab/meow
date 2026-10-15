@@ -68,7 +68,9 @@ final class AppTextActionCoordinator {
 
         // A fresh hosting controller resets TranslationPanelView's @State for each request.
         windowCoordinator.showTranslation(
-            contentViewController: NSHostingController(rootView: view),
+            contentViewController: NSHostingController(
+                rootView: LocalizedRootView { view }
+            ),
             size: estimatedTranslationPanelSize(for: text)
         )
     }
@@ -99,7 +101,9 @@ final class AppTextActionCoordinator {
             }
         )
         windowCoordinator.showTextActions(
-            contentViewController: NSHostingController(rootView: view),
+            contentViewController: NSHostingController(
+                rootView: LocalizedRootView { view }
+            ),
             onResign: { [weak self] in
                 self?.hideTextActionsPanel()
             }

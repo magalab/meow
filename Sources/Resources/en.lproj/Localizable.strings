@@ -1,6 +1,10 @@
 /* Launcher */
-"search.placeholder" = "Search for apps and commands...";
+"search.placeholder" = "Search apps and commands, or enter =1+2…";
 "filter.all" = "All";
+"filter.applications" = "Apps";
+"filter.clipboard" = "Clipboard";
+"filter.commands" = "Commands";
+"calculator.result" = "Calculation";
 "category.application" = "Application";
 "category.clipboard" = "Clipboard";
 "launcher.section.commands" = "Commands";

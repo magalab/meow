@@ -126,6 +126,7 @@ final class ScrollingCaptureHUDController {
 }
 
 private struct ScrollingCaptureHUDView: View {
+    @ObservedObject private var lang = LanguageManager.shared
     @ObservedObject var model: ScrollingCaptureHUDModel
 
     private var isPaused: Bool {
@@ -135,6 +136,7 @@ private struct ScrollingCaptureHUDView: View {
     }
 
     var body: some View {
+        let _ = lang.refreshToken
         VStack(spacing: 12) {
             HStack(spacing: 9) {
                 Image(systemName: "scroll")

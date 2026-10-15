@@ -104,6 +104,9 @@ struct ActionMenu: View {
 
             case .command:
                 menuRow(action: .execute, title: L10n.actionMenuExecute, systemImage: "terminal", shortcuts: ["↩"])
+
+            case .calculation:
+                menuRow(action: .execute, title: L10n.calculatorResult, systemImage: "equal.circle", shortcuts: ["↩"])
             }
         }
     }

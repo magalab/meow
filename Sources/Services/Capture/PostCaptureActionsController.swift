@@ -181,6 +181,7 @@ final class PostCaptureActionsController {
 }
 
 private struct PostCaptureActionsView: View {
+    @ObservedObject private var lang = LanguageManager.shared
     let artifact: CaptureArtifact
     let actions: [PostCaptureAction]
     let onAction: (PostCaptureAction) -> Void
@@ -188,6 +189,7 @@ private struct PostCaptureActionsView: View {
     let onHoverChanged: (Bool) -> Void
 
     var body: some View {
+        let _ = lang.refreshToken
         HStack(spacing: 9) {
             if let image = NSImage(contentsOf: artifact.thumbnailURL) {
                 Image(nsImage: image)

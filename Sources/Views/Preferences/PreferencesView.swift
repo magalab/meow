@@ -134,6 +134,7 @@ struct PreferencesView: View {
     }
 
     var body: some View {
+        let _ = lang.refreshToken
         ZStack {
             LinearGradient(
                 colors: palette.preferencesGradient,
@@ -373,7 +374,6 @@ struct PreferencesView: View {
             .background(Color(nsColor: .windowBackgroundColor).opacity(colorScheme == .dark ? 0.76 : 0.84))
         }
         .frame(width: 840, height: 560)
-        .id(lang.refreshToken)
         .alert(
             L10n.prefsSettingsSaveErrorTitle,
             isPresented: Binding(

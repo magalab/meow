@@ -1,6 +1,10 @@
 /* 启动器 */
-"search.placeholder" = "搜索应用和命令…";
+"search.placeholder" = "搜索应用和命令，或输入 =1+2…";
 "filter.all" = "全部";
+"filter.applications" = "应用";
+"filter.clipboard" = "剪贴板";
+"filter.commands" = "命令";
+"calculator.result" = "计算结果";
 "category.application" = "应用程序";
 "category.clipboard" = "剪贴板";
 "launcher.section.commands" = "命令";

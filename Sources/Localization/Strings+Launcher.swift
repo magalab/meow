@@ -11,6 +11,12 @@ extension L10n {
         loc("filter.all")
     }
 
+    static var filterApplications: String { loc("filter.applications") }
+    static var filterClipboard: String { loc("filter.clipboard") }
+    static var filterCommands: String { loc("filter.commands") }
+
+    static var calculatorResult: String { loc("calculator.result") }
+
     static var categoryApplication: String {
         loc("category.application")
     }
