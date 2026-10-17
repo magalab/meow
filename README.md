@@ -192,8 +192,8 @@ Configure S3-compatible file hosting from Preferences -> File Hosting.
 - Uploads clipboard files or images from the Launcher command
 - Accepts files dragged onto the menu bar icon without adding upload items to its context menu
 - Streams regular uploads and switches to multipart uploads for files of 64 MB or larger
-- Supports custom-domain, public-bucket, and expiring presigned links in URL, Markdown, or HTML format
-- Keeps local upload history with thumbnails, source labels, refreshed presigned links, and optional remote-object deletion
+- Supports custom-domain and public-bucket links in URL, Markdown, or HTML format
+- Keeps local upload history with thumbnails, source labels, and optional remote-object deletion
 - Copies the resulting link and shows an in-app completion banner after upload
 
 Upload history is stored under:
@@ -326,5 +326,5 @@ Meow shows the destination endpoint and compression settings before each upload.
 - For AI changes, manually check configured and unconfigured states, model fetch/manual entry, Enter send, Shift+Enter newline, chat history, and opening the history folder.
 - For health reminder changes, manually check timer start/pause/resume, break start/skip/done, daily goal progress, activity-paused countdown, and menu bar calendar controls.
 - For keyboard overlay changes, manually check Accessibility permission denied/granted states, hotkey conflict behavior, dragging/resetting the overlay, and non-US keyboard layouts.
-- For file-upload changes, manually check AWS S3, R2, and MinIO configurations, public and presigned links, files above 64 MB, cancellation, clipboard cleanup, drag-and-drop, remote deletion, and Keychain credential handling.
+- For file-upload changes, manually check AWS S3, R2, and MinIO configurations, public links, files above 64 MB, cancellation, clipboard cleanup, drag-and-drop, remote deletion, and Keychain credential handling.
 - See [DEVELOPMENT.md](DEVELOPMENT.md) for development details.

@@ -965,8 +965,6 @@
 "upload.url.strategy" = "Share URL";
 "upload.url.custom" = "Custom Domain";
 "upload.url.public" = "Public Bucket";
-"upload.url.presigned" = "Presigned";
-"upload.expiration" = "Expiration (seconds)";
 "upload.public.base.url" = "Public Base URL";
 "upload.url.style" = "URL Style";
 "upload.link.format" = "Copied Link Format";

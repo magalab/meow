@@ -14,14 +14,6 @@ func swiftPMNotificationFallback() {
     FileUploadNotifications.notifySuccess(filename: "test.txt")
 }
 
-@Test("S3 retries transient network failures only")
-func s3RetryClassification() {
-    #expect(S3Uploader.isRetryable(URLError(.timedOut)))
-    #expect(S3Uploader.isRetryable(URLError(.networkConnectionLost)))
-    #expect(!S3Uploader.isRetryable(URLError(.cancelled)))
-    #expect(!S3Uploader.isRetryable(UploadError.notConfigured))
-}
-
 private final class MemorySecurityClient: FileUploadSecurityClient, @unchecked Sendable {
     private let lock = NSLock()
     private var values: [String: Data] = [:]
@@ -476,33 +468,6 @@ func r2EndpointValidation() async throws {
     }
 }
 
-@Test("R2 disables AWS chunked payload signing")
-func r2DisablesChunkedPayloadSigning() {
-    var config = S3Config()
-    config.region = "auto"
-    config.endpoint = "https://account.r2.cloudflarestorage.com"
-    let options = S3Uploader.serviceOptions(for: config)
-
-    #expect(options.contains(.s3DisableChunkedUploads))
-}
-
-@Test("AWS keeps chunked payload signing enabled")
-func awsKeepsChunkedPayloadSigning() {
-    var config = S3Config()
-    config.region = "us-east-1"
-    config.endpoint = ""
-    let options = S3Uploader.serviceOptions(for: config)
-
-    #expect(!options.contains(.s3DisableChunkedUploads))
-    #expect(options.contains(.s3ForceVirtualHost))
-}
-
-@Test("S3 error fallback preserves useful localized descriptions")
-func s3ErrorFallbackDescription() {
-    let error = NSError(domain: NSURLErrorDomain, code: NSURLErrorCannotConnectToHost)
-    #expect(S3Uploader.errorMessage(for: error) == error.localizedDescription)
-}
-
 @Test("Test upload publishes results only after the share URL is reachable")
 @MainActor
 func testUploadVerificationFailureHasNoSuccessSideEffects() async throws {
@@ -585,27 +550,6 @@ func uploadErrorDescriptionsAreSpecific() {
     #expect(UploadError.clipboardContentUnavailable.localizedDescription != UploadError.invalidResponse.localizedDescription)
     #expect(UploadError.fileUnreadable("test.txt") != UploadError.invalidResponse)
     #expect(UploadError.shareURLInvalidResponse("https://cdn.example/test.txt") != UploadError.invalidResponse)
-}
-
-@Test("Upload file stream keeps returning nil after reaching EOF")
-func uploadFileStreamEOFIsStable() async throws {
-    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-    defer { try? FileManager.default.removeItem(at: root) }
-    let file = root.appendingPathComponent("小狗.jpeg")
-    try Data("image-data".utf8).write(to: file)
-    let iterator = FileChunkSequence(
-        url: file,
-        chunkSize: 4,
-        total: 10,
-        progress: { _ in }
-    ).makeAsyncIterator()
-
-    #expect(try await iterator.next() == Data("imag".utf8))
-    #expect(try await iterator.next() == Data("e-da".utf8))
-    #expect(try await iterator.next() == Data("ta".utf8))
-    #expect(try await iterator.next() == nil)
-    #expect(try await iterator.next() == nil)
 }
 
 @Test("S3 share URLs encode each object-key segment")
@@ -722,18 +666,18 @@ func temporaryClipboardCleanupKeepsRecentUploads() throws {
     #expect(fileManager.fileExists(atPath: recentFile.path))
 }
 
-@Test("History refreshes presigned links and rejects deleted configurations")
+@Test("History refreshes a missing public link and rejects deleted configurations")
 @MainActor
-func historyPresignedRefresh() async throws {
+func historyPublicLinkRefresh() async throws {
     let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     defer { try? FileManager.default.removeItem(at: root) }
-    var settings = configuredSettings(strategy: .presigned)
+    var settings = configuredSettings(strategy: .customDomain)
     let historicalConfigID = settings.s3.id
     var currentConfig = S3Config()
     currentConfig.name = "Current"
     settings.s3Configurations.append(currentConfig)
     settings.selectedS3ConfigID = currentConfig.id
-    let refreshed = URL(string: "https://example.com/object?signature=new")!
+    let refreshed = URL(string: "https://cdn.example/object")!
     let service = FileUploadService(
         historyStore: UploadHistoryStore(directoryURL: root), settings: { settings },
         credentials: TestCredentialStore(value: "secret"),

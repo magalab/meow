@@ -8,7 +8,8 @@ The package builds two editions: the default `Meow` edition and the optional
 - `Sources/ViewModels/`: launcher logic and ranking (`LauncherViewModel.swift`)
 - `Sources/Views/` and `Sources/Views/Components/`: UI screens, translation panel, AI chat, authenticator, capture, recording, system monitor, speech, preferences, and reusable view parts
 - `Sources/Services/`: system integrations (clipboard, settings, launch history, capture, recording, file upload, translation capture, AI chat, authenticator storage/sync, health reminder, and voice-edition speech recognition)
-- `Sources/Services/Uploaders/`: backend-neutral upload protocol plus the Soto-based S3 uploader
+- `Sources/Services/Uploaders/`: app upload orchestration and backend-neutral upload protocol
+- `Sources/MeowS3/`: standalone S3-compatible upload/delete client and AWS Signature V4 implementation
 - `Sources/Models/`: app, clipboard, file hosting, AI settings, authenticator, capture, recording, speech, system monitor, and health reminder models
 - `Modules/WhiteboardFeature/`: standalone whiteboard feature module, resources, and tests
 - `Packages/MeowSpeech/`: local voice-only package containing speech contracts and the extracted SenseVoice CoreML backend
@@ -63,7 +64,7 @@ For UI/localization changes, test both English and Simplified Chinese resources.
 For translation changes, test on macOS 15+ with Accessibility permission granted and denied; verify selected text capture and pasteboard restoration.
 For AI changes, test configured and unconfigured states, Ask AI command, clipboard Ask AI action, Enter send vs Shift+Enter newline, model fetch/manual model entry, API key show/copy, AI settings deep-link, chat history toggle, clear-history confirmation, and opening the chat history folder.
 For AI persistence changes, verify history files under `~/Library/Application Support/Meow/AIChats/`. Keep AI API keys in Keychain; keep non-secret AI settings in the local settings blob. Never store API keys in `UserDefaults`, settings JSON, or upload history.
-For file upload changes, test AWS S3, Cloudflare R2, and MinIO configurations; custom-domain, public-bucket, and presigned links; small streaming and 64 MB+ multipart uploads; cancellation and network failures; clipboard temporary-file cleanup; status-item drag-and-drop; history refresh and optional remote deletion. Keep Secret Access Keys in Keychain, never settings or upload history JSON.
+For file upload changes, test AWS S3, Cloudflare R2, and MinIO configurations; custom-domain and public-bucket links; small streaming and 64 MB+ multipart uploads; cancellation and network failures; clipboard temporary-file cleanup; status-item drag-and-drop; history refresh and optional remote deletion. Keep Secret Access Keys in Keychain, never settings or upload history JSON.
 For health reminder changes, test start/pause/resume, manual break start, skip, done, daily progress persistence, activity-paused countdown, gentle vs strict break window behavior, and menu bar calendar controls.
 For authenticator changes, test disabled/enabled states, manual secret and `otpauth://` import, unsupported algorithm rejection, code copying without clipboard-history retention, JSON import/export warnings, duplicate handling, deletion, and launcher presentation. Keep secrets in Keychain, never `UserDefaults`.
 For authenticator sync changes, test local-only fallback, missing-entitlement errors, first-enable merge, offline additions/deletions, deletion tombstones, manual refresh, and re-enabling sync without resurrecting deleted accounts. Real cross-device validation requires a signed build with iCloud Keychain capability.

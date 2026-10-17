@@ -127,18 +127,9 @@ struct FileHostingPreferencesView: View {
                         Picker("", selection: $settings.s3.publicURLStrategy) {
                             Text(L10n.uploadURLCustom).tag(S3PublicURLStrategy.customDomain)
                             Text(L10n.uploadURLPublic).tag(S3PublicURLStrategy.publicBucket)
-                            Text(L10n.uploadURLPresigned).tag(S3PublicURLStrategy.presigned)
                         }.labelsHidden()
                     }
-                    if settings.s3.publicURLStrategy == .presigned {
-                        GridRow {
-                            Text(L10n.uploadExpiration)
-                            TextField("", value: $settings.s3.presignedURLExpiration, format: .number)
-                                .textFieldStyle(.roundedBorder)
-                        }
-                    } else {
-                        field(L10n.uploadPublicBaseURL, text: $settings.s3.publicBaseURL)
-                    }
+                    field(L10n.uploadPublicBaseURL, text: $settings.s3.publicBaseURL)
                     GridRow {
                         Text(L10n.uploadURLStyle)
                         Picker("", selection: $settings.s3.urlStyle) {
