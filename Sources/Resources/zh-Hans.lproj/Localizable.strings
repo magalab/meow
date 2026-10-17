@@ -965,8 +965,6 @@
 "upload.url.strategy" = "分享链接";
 "upload.url.custom" = "自定义域名";
 "upload.url.public" = "公共 Bucket";
-"upload.url.presigned" = "预签名链接";
-"upload.expiration" = "有效期（秒）";
 "upload.public.base.url" = "公共根 URL";
 "upload.url.style" = "URL 风格";
 "upload.link.format" = "复制链接格式";

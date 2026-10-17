@@ -3,7 +3,6 @@ import Foundation
 enum S3PublicURLStrategy: String, Codable, CaseIterable, Identifiable, Sendable {
     case customDomain
     case publicBucket
-    case presigned
 
     var id: String { rawValue }
 }
@@ -59,13 +58,12 @@ struct S3Config: Codable, Equatable, Sendable {
     var objectKeyTemplate = "{year}/{month}/{day}/{filename}-{random}.{ext}"
     var publicURLStrategy = S3PublicURLStrategy.customDomain
     var publicBaseURL = ""
-    var presignedURLExpiration = 3600
     var urlStyle = S3URLStyle.virtualHosted
     var isEnabled = false
 
     private enum CodingKeys: String, CodingKey {
         case id, name, endpoint, region, accessKeyID, bucket, objectKeyTemplate
-        case publicURLStrategy, publicBaseURL, presignedURLExpiration, urlStyle, isEnabled
+        case publicURLStrategy, publicBaseURL, urlStyle, isEnabled
     }
 
     init() {}
@@ -82,7 +80,6 @@ struct S3Config: Codable, Equatable, Sendable {
             ?? "{year}/{month}/{day}/{filename}-{random}.{ext}"
         publicURLStrategy = try values.decodeIfPresent(S3PublicURLStrategy.self, forKey: .publicURLStrategy) ?? .customDomain
         publicBaseURL = try values.decodeIfPresent(String.self, forKey: .publicBaseURL) ?? ""
-        presignedURLExpiration = try values.decodeIfPresent(Int.self, forKey: .presignedURLExpiration) ?? 3600
         urlStyle = try values.decodeIfPresent(S3URLStyle.self, forKey: .urlStyle) ?? .virtualHosted
         isEnabled = try values.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? false
     }

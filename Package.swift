@@ -16,8 +16,8 @@ let voiceSources = [
 
 var executableDependencies: [Target.Dependency] = [
     .target(name: "WhiteboardFeature"),
+    .target(name: "MeowS3"),
     .product(name: "GRDB", package: "GRDB.swift"),
-    .product(name: "SotoS3", package: "soto"),
 ]
 if isVoiceEdition {
     executableDependencies += [
@@ -28,7 +28,6 @@ if isVoiceEdition {
 
 var packageDependencies: [Package.Dependency] = [
     .package(url: "https://github.com/groue/GRDB.swift.git", from: "7.8.0"),
-    .package(url: "https://github.com/soto-project/soto.git", from: "7.0.0"),
 ]
 if isVoiceEdition {
     packageDependencies.insert(.package(path: "Packages/MeowSpeech"), at: 0)
@@ -49,11 +48,15 @@ let targets: [Target] = [
         path: "Modules/WhiteboardFeature/Sources",
         resources: [.process("Resources")]
     ),
+    .target(
+        name: "MeowS3",
+        path: "Sources/MeowS3"
+    ),
     .executableTarget(
         name: executableName,
         dependencies: executableDependencies,
         path: "Sources",
-        exclude: isVoiceEdition ? [] : voiceSources,
+        exclude: (isVoiceEdition ? [] : voiceSources) + ["MeowS3"],
         resources: [.process("Resources")],
         swiftSettings: isVoiceEdition ? [.define("MEOW_VOICE")] : [],
         linkerSettings: executableLinkerSettings
@@ -64,6 +67,7 @@ let targets: [Target] = [
             .target(name: executableName)
         ],
         path: "Tests",
+        exclude: ["MeowS3Tests"],
         swiftSettings: testSwiftSettings
     ),
     .testTarget(
@@ -71,13 +75,21 @@ let targets: [Target] = [
         dependencies: ["WhiteboardFeature"],
         path: "Modules/WhiteboardFeature/Tests"
     ),
+    .testTarget(
+        name: "MeowS3Tests",
+        dependencies: ["MeowS3"],
+        path: "Tests/MeowS3Tests"
+    ),
 ]
 
 let package = Package(
     name: "Meow",
     defaultLocalization: "en",
     platforms: [.macOS(.v15)],
-    products: [.executable(name: executableName, targets: [executableName])],
+    products: [
+        .executable(name: executableName, targets: [executableName]),
+        .library(name: "MeowS3", targets: ["MeowS3"]),
+    ],
     dependencies: packageDependencies,
     targets: targets
 )

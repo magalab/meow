@@ -45,8 +45,6 @@ extension L10n {
     static var uploadURLStrategy: String { loc("upload.url.strategy") }
     static var uploadURLCustom: String { loc("upload.url.custom") }
     static var uploadURLPublic: String { loc("upload.url.public") }
-    static var uploadURLPresigned: String { loc("upload.url.presigned") }
-    static var uploadExpiration: String { loc("upload.expiration") }
     static var uploadPublicBaseURL: String { loc("upload.public.base.url") }
     static var uploadURLStyle: String { loc("upload.url.style") }
     static var uploadLinkFormat: String { loc("upload.link.format") }

@@ -1,36 +1,9 @@
 import Foundation
-import SotoS3
-
-private struct S3RetryPolicy: RetryPolicy {
-    private let standardPolicy = RetryPolicyFactory.exponential(
-        base: .milliseconds(250),
-        maxRetries: 2
-    ).retryPolicy
-
-    func getRetryWaitTime(error: Error, attempt: Int) -> RetryStatus? {
-        if let urlError = error as? URLError {
-            guard attempt < 2 else { return .dontRetry }
-            switch urlError.code {
-            case .cannotConnectToHost, .networkConnectionLost, .notConnectedToInternet,
-                 .resourceUnavailable, .timedOut:
-                let delayMilliseconds = 250 * (1 << attempt)
-                return .retry(wait: .milliseconds(Int64(delayMilliseconds)))
-            default:
-                return .dontRetry
-            }
-        }
-
-        return standardPolicy.getRetryWaitTime(error: error, attempt: attempt)
-    }
-}
+import MeowS3
 
 final class S3Uploader: FileUploader, @unchecked Sendable {
-    private static let multipartThreshold: Int64 = 64 * 1_024 * 1_024
-    private static let partSize = 16 * 1_024 * 1_024
-
     private let config: S3Config
-    private let client: AWSClient
-    private let s3: S3
+    private let client: S3Client
 
     init(config: S3Config, secretAccessKey: String) throws {
         var normalizedConfig = config
@@ -42,32 +15,16 @@ final class S3Uploader: FileUploader, @unchecked Sendable {
         if !normalizedConfig.endpoint.isEmpty { try Self.validateHTTPURL(normalizedConfig.endpoint) }
         if !normalizedConfig.publicBaseURL.isEmpty { try Self.validateHTTPURL(normalizedConfig.publicBaseURL) }
         self.config = normalizedConfig
-        client = AWSClient(
-            credentialProvider: .static(
-                accessKeyId: config.accessKeyID,
-                secretAccessKey: secretAccessKey
-            ),
-            retryPolicy: RetryPolicyFactory(retryPolicy: S3RetryPolicy())
-        )
-        let options = Self.serviceOptions(for: normalizedConfig)
-        s3 = S3(
-            client: client,
-            region: Region(rawValue: normalizedConfig.region),
-            endpoint: normalizedConfig.endpoint.isEmpty ? nil : normalizedConfig.endpoint,
-            options: options
-        )
-    }
-
-    static func serviceOptions(for config: S3Config) -> AWSServiceConfig.Options {
-        var options: AWSServiceConfig.Options = []
-        if config.urlStyle == .virtualHosted {
-            options.insert(.s3ForceVirtualHost)
-        }
-        let endpointHost = URLComponents(string: config.endpoint)?.host?.lowercased() ?? ""
-        if config.region.lowercased() == "auto" || endpointHost.hasSuffix(".r2.cloudflarestorage.com") {
-            options.insert(.s3DisableChunkedUploads)
-        }
-        return options
+        let endpoint = normalizedConfig.endpoint.isEmpty ? nil : URL(string: normalizedConfig.endpoint)
+        let addressingStyle: S3AddressingStyle = normalizedConfig.urlStyle == .path ? .path : .virtualHosted
+        client = try S3Client(configuration: .init(
+            endpoint: endpoint,
+            region: normalizedConfig.region,
+            bucket: normalizedConfig.bucket,
+            accessKeyID: normalizedConfig.accessKeyID,
+            secretAccessKey: secretAccessKey,
+            addressingStyle: addressingStyle
+        ))
     }
 
     func upload(
@@ -75,38 +32,28 @@ final class S3Uploader: FileUploader, @unchecked Sendable {
         progress: @escaping @Sendable (UploadProgress) -> Void
     ) async throws -> UploadResult {
         do {
-            try Task.checkCancellation()
-            if request.fileSize >= Self.multipartThreshold {
-                try await multipartUpload(request, progress: progress)
-            } else {
-                let sequence = FileChunkSequence(
-                    url: request.fileURL,
-                    chunkSize: 1 * 1_024 * 1_024,
-                    total: request.fileSize,
-                    progress: progress
-                )
-                let body = AWSHTTPBody(asyncSequence: sequence, length: Int(request.fileSize))
-                let input = S3.PutObjectRequest(
-                    body: body,
-                    bucket: config.bucket,
-                    contentLength: request.fileSize,
-                    contentType: request.mimeType,
-                    key: request.objectKey
-                )
-                _ = try await s3.putObject(input)
+            try await client.upload(
+                fileURL: request.fileURL,
+                objectKey: request.objectKey,
+                contentType: request.mimeType
+            ) { value in
+                progress(.init(sentBytes: value.sentBytes, totalBytes: value.totalBytes))
             }
+            let publicURL = try await shareURL(for: request.objectKey)
             return UploadResult(
                 objectKey: request.objectKey,
-                shareURL: try await shareURL(for: request.objectKey),
+                shareURL: publicURL,
                 fileSize: request.fileSize,
                 mimeType: request.mimeType
             )
         } catch is CancellationError {
             throw UploadError.cancelled
-        } catch let error as UploadError {
-            throw error
+        } catch let error as URLError where error.code == .cancelled {
+            throw UploadError.cancelled
+        } catch let error as S3ClientError {
+            throw Self.map(error)
         } catch {
-            throw UploadError.s3Error(Self.errorMessage(for: error))
+            throw UploadError.s3Error(error.localizedDescription)
         }
     }
 
@@ -122,102 +69,67 @@ final class S3Uploader: FileUploader, @unchecked Sendable {
                 return try appendEncodedPath(ObjectKeyBuilder.encodedPath(objectKey), to: base)
             }
             return try apiURL(for: objectKey)
-        case .presigned:
-            return try await s3.signURL(
-                url: apiURL(for: objectKey),
-                httpMethod: .GET,
-                expires: .seconds(Int64(max(1, min(config.presignedURLExpiration, 604_800))))
-            )
         }
     }
 
     func deleteObject(for objectKey: String) async throws {
         do {
-            _ = try await s3.deleteObject(.init(bucket: config.bucket, key: objectKey))
+            try await client.delete(objectKey: objectKey)
         } catch is CancellationError {
             throw UploadError.cancelled
+        } catch let error as URLError where error.code == .cancelled {
+            throw UploadError.cancelled
+        } catch let error as S3ClientError {
+            throw Self.map(error)
         } catch {
-            throw UploadError.s3Error(Self.errorMessage(for: error))
+            throw UploadError.s3Error(error.localizedDescription)
         }
-    }
-
-    static func errorMessage(for error: Error) -> String {
-        if let awsError = error as? any AWSErrorType {
-            var heading = awsError.errorCode
-            if let statusCode = awsError.context?.responseCode.code {
-                heading = "HTTP \(statusCode) · \(heading)"
-            }
-            let message = awsError.message?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            if !message.isEmpty {
-                return "\(heading): \(message)"
-            }
-            return heading
-        }
-        if let rawError = error as? AWSRawError {
-            return rawError.description
-        }
-        return error.localizedDescription
     }
 
     func shutdown() async throws {
-        try await client.shutdown()
+        await client.shutdown()
     }
 
-    private func multipartUpload(
-        _ request: UploadRequest,
-        progress: @escaping @Sendable (UploadProgress) -> Void
-    ) async throws {
-        _ = try await s3.multipartUpload(
-            .init(
-                bucket: config.bucket,
-                contentType: request.mimeType,
-                key: request.objectKey
-            ),
-            partSize: Self.partSize,
-            filename: request.fileURL.path,
-            concurrentUploads: 4,
-            abortOnFail: true
-        ) { fraction in
-            try Task.checkCancellation()
-            let sent = min(request.fileSize, Int64(Double(request.fileSize) * fraction))
-            progress(.init(sentBytes: sent, totalBytes: request.fileSize))
+    private static func map(_ error: S3ClientError) -> UploadError {
+        switch error {
+        case .invalidConfiguration: .notConfigured
+        case .invalidEndpoint: .publicURLUnavailable
+        case .invalidObjectKey: .invalidObjectKey
+        case let .unreadableFile(filename): .fileUnreadable(filename)
+        case .invalidResponse: .invalidResponse
+        case let .service(_, message): .s3Error(message)
         }
-    }
-
-    static func isRetryable(_ error: Error) -> Bool {
-        guard let status = S3RetryPolicy().getRetryWaitTime(error: error, attempt: 0) else {
-            return false
-        }
-        if case .retry = status { return true }
-        return false
     }
 
     private func apiURL(for objectKey: String) throws -> URL {
-        let key = ObjectKeyBuilder.encodedPath(objectKey)
-        if !config.endpoint.isEmpty, let endpoint = normalizedURL(config.endpoint) {
-            if config.urlStyle == .virtualHosted,
-               !config.bucket.contains("."),
-               var components = URLComponents(url: endpoint, resolvingAgainstBaseURL: false),
-               let host = components.host
-            {
-                components.host = "\(config.bucket).\(host)"
-                guard let base = components.url else { throw UploadError.publicURLUnavailable }
-                return try appendEncodedPath(key, to: base)
-            }
-            return try appendEncodedPath("\(config.bucket)/\(key)", to: endpoint)
+        let endpoint: URL
+        if let configured = normalizedURL(config.endpoint) {
+            endpoint = configured
+        } else {
+            let key = ObjectKeyBuilder.encodedPath(objectKey)
+            let value = config.urlStyle == .virtualHosted && !config.bucket.contains(".")
+                ? "https://\(config.bucket).s3.\(config.region).amazonaws.com/\(key)"
+                : "https://s3.\(config.region).amazonaws.com/\(config.bucket)/\(key)"
+            guard let url = URL(string: value) else { throw UploadError.publicURLUnavailable }
+            return url
         }
-        let value = config.urlStyle == .virtualHosted && !config.bucket.contains(".")
-            ? "https://\(config.bucket).s3.\(config.region).amazonaws.com/\(key)"
-            : "https://s3.\(config.region).amazonaws.com/\(config.bucket)/\(key)"
-        guard let url = URL(string: value) else {
+        let useVirtualHost = config.urlStyle == .virtualHosted && !config.bucket.contains(".")
+        guard var components = URLComponents(url: endpoint, resolvingAgainstBaseURL: false) else {
             throw UploadError.publicURLUnavailable
         }
+        var prefix = components.percentEncodedPath
+        while prefix.hasSuffix("/") { prefix.removeLast() }
+        if useVirtualHost, let host = components.host {
+            components.host = "\(config.bucket).\(host)"
+        }
+        let key = ObjectKeyBuilder.encodedPath(objectKey)
+        components.percentEncodedPath = prefix + (useVirtualHost ? "" : "/\(config.bucket)") + "/\(key)"
+        guard let url = components.url else { throw UploadError.publicURLUnavailable }
         return url
     }
 
     private func normalizedURL(_ value: String) -> URL? {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         guard !trimmed.isEmpty else { return nil }
         return URL(string: trimmed)
     }
@@ -242,57 +154,5 @@ final class S3Uploader: FileUploader, @unchecked Sendable {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, !trimmed.contains("://") else { return trimmed }
         return "https://\(trimmed)"
-    }
-}
-
-struct FileChunkSequence: AsyncSequence, Sendable {
-    typealias Element = Data
-
-    let url: URL
-    let chunkSize: Int
-    let total: Int64
-    let progress: @Sendable (UploadProgress) -> Void
-
-    func makeAsyncIterator() -> Iterator {
-        Iterator(url: url, chunkSize: chunkSize, total: total, progress: progress)
-    }
-
-    final class Iterator: AsyncIteratorProtocol, @unchecked Sendable {
-        private let chunkSize: Int
-        private let total: Int64
-        private let progress: @Sendable (UploadProgress) -> Void
-        private let filename: String
-        private var handle: FileHandle?
-        private var isFinished = false
-        private var sent: Int64 = 0
-
-        init(url: URL, chunkSize: Int, total: Int64, progress: @escaping @Sendable (UploadProgress) -> Void) {
-            self.chunkSize = chunkSize
-            self.total = total
-            self.progress = progress
-            filename = url.lastPathComponent
-            do {
-                handle = try FileHandle(forReadingFrom: url)
-            } catch {
-                handle = nil
-            }
-        }
-
-        func next() async throws -> Data? {
-            try Task.checkCancellation()
-            if isFinished { return nil }
-            guard let handle else {
-                throw UploadError.fileUnreadable(filename)
-            }
-            guard let data = try handle.read(upToCount: chunkSize), !data.isEmpty else {
-                try? handle.close()
-                self.handle = nil
-                isFinished = true
-                return nil
-            }
-            sent += Int64(data.count)
-            progress(.init(sentBytes: sent, totalBytes: total))
-            return data
-        }
     }
 }

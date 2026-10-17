@@ -301,7 +301,7 @@ final class FileUploadService: ObservableObject {
             filename: fileURL.lastPathComponent,
             fileSize: result.fileSize,
             mimeType: result.mimeType,
-            uploadedURL: settings.s3.publicURLStrategy == .presigned ? nil : result.shareURL.absoluteString,
+            uploadedURL: result.shareURL.absoluteString,
             objectKey: result.objectKey,
             backendKind: "s3",
             backendConfigID: settings.s3.id,
