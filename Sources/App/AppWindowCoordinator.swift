@@ -41,6 +41,16 @@ private final class WindowResignDelegate: NSObject, NSWindowDelegate {
 
 @MainActor
 final class AppWindowCoordinator {
+    struct EventMonitorActions {
+        let dismissLauncher: @MainActor () -> Void
+        let dismissTranslation: @MainActor () -> Void
+        let dismissTextActions: @MainActor () -> Void
+        let dismissCalendarPopover: @MainActor () -> Void
+        let statusItemButton: @MainActor () -> NSButton?
+        let cancelSpeechIfActive: @MainActor () -> Bool
+        let showPreferences: @MainActor () -> Void
+    }
+
     private let defaultLauncherWidth: CGFloat = 560
     private var launcherWindow: LauncherPanel?
     private var hasLaidOutLauncher = false
@@ -57,6 +67,107 @@ final class AppWindowCoordinator {
     private var recordingTrimmerDelegates: [URL: WindowCloseDelegate] = [:]
     private var calendarPopover: NSPopover?
     private var calendarPopoverController: NSHostingController<LocalizedRootView<CalendarPopoverView>>?
+    private var eventMonitorActions: EventMonitorActions?
+    private var globalMouseMonitor: Any?
+    private var localMouseMonitor: Any?
+    private var globalKeyMonitor: Any?
+    private var localKeyMonitor: Any?
+    private var eventMonitorsInstalled = false
+
+    func installEventMonitors(actions: EventMonitorActions) {
+        guard !eventMonitorsInstalled else { return }
+        eventMonitorActions = actions
+
+        globalMouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) {
+            [weak self] _ in
+            self?.dismissWindowsClickedOutside()
+        }
+        localMouseMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) {
+            [weak self] event in
+            self?.dismissWindowsClickedOutside()
+            return event
+        }
+        globalKeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
+            guard let self else { return }
+            if event.keyCode == 53 {
+                _ = eventMonitorActions?.cancelSpeechIfActive()
+            }
+            _ = dismissTranslationIfEscape(event)
+            _ = dismissTextActionsIfEscape(event)
+        }
+        localKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
+            guard let self else { return event }
+            if event.keyCode == 53 {
+                var handled = eventMonitorActions?.cancelSpeechIfActive() ?? false
+                if dismissTranslationIfEscape(event) { handled = true }
+                if dismissTextActionsIfEscape(event) { handled = true }
+                if handled { return nil }
+            }
+            if dismissTranslationIfEscape(event) { return nil }
+
+            let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+            if flags.contains(.command), event.charactersIgnoringModifiers == "," {
+                eventMonitorActions?.showPreferences()
+                return nil
+            }
+            return event
+        }
+        eventMonitorsInstalled = true
+    }
+
+    func removeEventMonitors() {
+        for monitor in [globalMouseMonitor, localMouseMonitor, globalKeyMonitor, localKeyMonitor].compactMap({ $0 }) {
+            NSEvent.removeMonitor(monitor)
+        }
+        globalMouseMonitor = nil
+        localMouseMonitor = nil
+        globalKeyMonitor = nil
+        localKeyMonitor = nil
+        eventMonitorActions = nil
+        eventMonitorsInstalled = false
+    }
+
+    private func dismissWindowsClickedOutside() {
+        dismissIfClickedOutsideLauncher()
+        dismissIfClickedOutsideTranslation()
+        dismissIfClickedOutsideTextActions()
+        dismissIfClickedOutsideCalendarPopover()
+    }
+
+    private func dismissIfClickedOutsideLauncher() {
+        guard isLauncherVisible, let frame = launcherFrame(), !frame.contains(NSEvent.mouseLocation) else { return }
+        eventMonitorActions?.dismissLauncher()
+    }
+
+    private func dismissIfClickedOutsideTranslation() {
+        guard isTranslationVisible, let frame = translationFrame(), !frame.contains(NSEvent.mouseLocation) else { return }
+        eventMonitorActions?.dismissTranslation()
+    }
+
+    private func dismissIfClickedOutsideTextActions() {
+        guard isTextActionsVisible, let frame = textActionsFrame(), !frame.contains(NSEvent.mouseLocation) else { return }
+        eventMonitorActions?.dismissTextActions()
+    }
+
+    private func dismissIfClickedOutsideCalendarPopover() {
+        guard isCalendarPopoverShown,
+              !calendarPopoverContains(mouseLocation: NSEvent.mouseLocation,
+                                       statusButton: eventMonitorActions?.statusItemButton())
+        else { return }
+        eventMonitorActions?.dismissCalendarPopover()
+    }
+
+    private func dismissTranslationIfEscape(_ event: NSEvent) -> Bool {
+        guard event.keyCode == 53, isTranslationVisible else { return false }
+        eventMonitorActions?.dismissTranslation()
+        return true
+    }
+
+    private func dismissTextActionsIfEscape(_ event: NSEvent) -> Bool {
+        guard event.keyCode == 53, isTextActionsVisible else { return false }
+        eventMonitorActions?.dismissTextActions()
+        return true
+    }
 
     func activeScreen() -> NSScreen? {
         let mouseLocation = NSEvent.mouseLocation
