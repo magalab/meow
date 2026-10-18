@@ -347,29 +347,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         viewModel.onUploadClipboard = { [weak self] in
             self?.hideLauncher()
-            self?.uploadFromClipboard()
+            self?.clipboardActionCoordinator.uploadFromClipboard()
         }
         viewModel.onPinClipboardImage = { [weak self] image in
             self?.hideLauncher()
             self?.pinnedImageController.pin(image)
         }
         viewModel.onRecognizeClipboardImage = { [weak self] image in
-            self?.recognizeClipboardImage(image, translate: false)
+            self?.clipboardActionCoordinator.recognizeClipboardImage(image, translate: false)
         }
         viewModel.onTranslateClipboardImage = { [weak self] image in
-            self?.recognizeClipboardImage(image, translate: true)
+            self?.clipboardActionCoordinator.recognizeClipboardImage(image, translate: true)
         }
         viewModel.onScanClipboardImageQRCode = { [weak self] image in
-            self?.scanClipboardImageQRCode(image)
+            self?.clipboardActionCoordinator.scanClipboardImageQRCode(image)
         }
         viewModel.onEditClipboardImage = { [weak self] image in
-            self?.editClipboardImage(image)
+            self?.clipboardActionCoordinator.editClipboardImage(image)
         }
         viewModel.onOpenClipboardImage = { [weak self] image in
-            self?.openClipboardImage(image)
+            self?.clipboardActionCoordinator.openClipboardImage(image)
         }
         viewModel.onSaveClipboardImage = { [weak self] image in
-            self?.saveClipboardImageAs(image)
+            self?.clipboardActionCoordinator.saveClipboardImageAs(image)
         }
         viewModel.onSendClipboardImageToWhiteboard = { [weak self] image in
             self?.sendImageToWhiteboard(image)
@@ -531,7 +531,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             },
             uploadDroppedFile: { [weak self] url in
                 guard self?.viewModel.settings.fileHosting.s3.isEnabled == true else { return }
-                self?.upload(fileURL: url)
+                self?.clipboardActionCoordinator.upload(fileURL: url)
             },
             quit: {
                 NSApp.terminate(nil)
@@ -710,13 +710,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.presentScrollingCaptureReducedImageWarning()
             },
             editImage: { [weak self] url in
-                self?.editImage(at: url)
+                self?.clipboardActionCoordinator.editImage(at: url)
             },
             recognizeClipboardImage: { [weak self] image, translate in
-                self?.recognizeClipboardImage(image, translate: translate)
+                self?.clipboardActionCoordinator.recognizeClipboardImage(image, translate: translate)
             },
             scanClipboardImageQRCode: { [weak self] image in
-                self?.scanClipboardImageQRCode(image)
+                self?.clipboardActionCoordinator.scanClipboardImageQRCode(image)
             },
             askAI: { [weak self] url in
                 self?.viewModel.openAIChat(
@@ -1507,38 +1507,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             axPermissionDenied: axPermissionDenied,
             sourceImagePath: sourceImagePath
         )
-    }
-
-    private func recognizeClipboardImage(_ image: ImageClipboardContent, translate: Bool) {
-        clipboardActionCoordinator.recognizeClipboardImage(image, translate: translate)
-    }
-
-    private func scanClipboardImageQRCode(_ image: ImageClipboardContent) {
-        clipboardActionCoordinator.scanClipboardImageQRCode(image)
-    }
-
-    private func editClipboardImage(_ image: ImageClipboardContent) {
-        clipboardActionCoordinator.editClipboardImage(image)
-    }
-
-    private func openClipboardImage(_ image: ImageClipboardContent) {
-        clipboardActionCoordinator.openClipboardImage(image)
-    }
-
-    private func saveClipboardImageAs(_ image: ImageClipboardContent) {
-        clipboardActionCoordinator.saveClipboardImageAs(image)
-    }
-
-    private func editImage(at url: URL) {
-        clipboardActionCoordinator.editImage(at: url)
-    }
-
-    private func upload(fileURL: URL) {
-        clipboardActionCoordinator.upload(fileURL: fileURL)
-    }
-
-    private func uploadFromClipboard() {
-        clipboardActionCoordinator.uploadFromClipboard()
     }
 
     private func presentUploadError(_ error: Error) {
