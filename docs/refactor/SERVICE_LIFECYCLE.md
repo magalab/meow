@@ -9,7 +9,7 @@ contract. Permission recovery and manual checks remain platform-dependent.
 | --- | --- | --- | --- |
 | System monitor sampler | `SystemMonitorService`, configured by `AppSettingsCoordinator`; starts when enabled or when its panel is shown | Disabled setting or app termination | `SystemMonitorEngine` now serializes lifecycle operations, ignores stale callbacks, and `SystemMetricsActor.stop()` awaits its canceled loop. Repeated start/stop has a unit test. Manual setting toggle and app termination checks remain. |
 | Screen recording | `AppRecordingCoordinator` owns the user operation task and visual overlays; `RecordingService` owns ScreenCaptureKit, writer, microphone capture, and timers | User stop, failed start, cancellation, or app termination | `canStartRecording` checks the coordinator task and service state. Service stop is async and tears down stream/audio before finalizing. Rapid cancellation during prepare/countdown and repeated start/stop need manual permission and capture hardware coverage. |
-| Clipboard monitor | `AppSettingsCoordinator` starts/stops `ClipboardStore` when clipboard history changes; app termination stops it | Setting disabled or app termination | `startMonitoring` first calls `stopMonitoring`, preventing duplicate timer/observer installation. It owns a 0.5-second timer and workspace app observer. Test rapid setting toggles and app termination. |
+| Clipboard monitor | `AppSettingsCoordinator` starts/stops `ClipboardStore` when clipboard history changes; app termination stops it | Setting disabled or app termination | `startMonitoring` first calls `stopMonitoring`, preventing duplicate timer/observer installation. It owns a 0.5-second timer and workspace app observer. Meow and Miao tests now restart monitoring and verify changes after stop are ignored using an isolated pasteboard and notification center. |
 | Keystroke visualizer | `AppSettingsCoordinator` applies settings; the service starts its event tap when enabled | Setting disabled, app termination, or deinit | `start()` guards an existing event tap; `stop()` removes the run-loop source and disables the tap. `applicationDidBecomeActive` retries accessibility permission when enabled. Test grant/revoke and repeated enable/disable. |
 | Health reminder | `AppSettingsCoordinator` applies settings; enabled state starts the timer and work interval | Setting disabled or app termination | `startTimerIfNeeded` owns a single timer; `stop` invalidates it and hides the break panel. Test repeated apply, pause/resume, and termination with a visible break panel. |
 | Keep Awake | `AppSettingsCoordinator` applies settings; user action starts an IOKit assertion, while settings disable, sleep, expiration, or app termination release it | Explicit stop, disabled setting, sleep transition, expiration, or app termination | Async start/stop use operation tokens, settle pending release tasks, and retry failed releases. Wake reconciliation is implemented. Tests cover driver failures and sleep/wake; retain those checks when changing lifecycle ownership. |
@@ -41,8 +41,8 @@ contract. Permission recovery and manual checks remain platform-dependent.
 1. Exercise system monitor start/stop and setting changes in the packaged app.
 2. Exercise recording cancellation during source selection, countdown, and
    capture shutdown with screen and microphone permissions granted and denied.
-3. Exercise clipboard and event monitor repeated enable/disable and verify no
-   callbacks arrive after stop.
+3. Manually exercise clipboard and event monitor repeated enable/disable and
+   verify no callbacks arrive after stop.
 4. Exercise app sleep/wake with Keep Awake active and system monitor enabled.
 5. Manually verify app termination removes the status item and Dock calendar
    refresh observer in both editions.
