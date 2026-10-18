@@ -42,6 +42,40 @@ func systemMonitorSnapshotPreservesUnavailableMetrics() {
     #expect(snapshot.batteryFraction == nil)
 }
 
+@MainActor
+struct SystemMonitorLifecycleTests {
+    @Test
+    func repeatedStartAndStopDoesNotLeaveSamplingCallbacksActive() async throws {
+        let engine = SystemMonitorEngine(
+            configuration: SystemMonitorConfiguration(
+                updateInterval: 1,
+                historyDuration: 60,
+                enabledModules: []
+            )
+        )
+        var snapshotCount = 0
+        engine.onSnapshot = { _ in snapshotCount += 1 }
+
+        engine.start()
+        engine.start()
+        try await Task.sleep(nanoseconds: 100_000_000)
+        #expect(snapshotCount == 1)
+
+        engine.stop()
+        engine.stop()
+        #expect(!engine.isRunning)
+        let stoppedSnapshotCount = snapshotCount
+        try await Task.sleep(nanoseconds: 1_100_000_000)
+        #expect(snapshotCount == stoppedSnapshotCount)
+
+        engine.start()
+        engine.stop()
+        try await Task.sleep(nanoseconds: 100_000_000)
+        #expect(!engine.isRunning)
+        #expect(snapshotCount == stoppedSnapshotCount)
+    }
+}
+
 @Test("System monitor localization resources contain the same keys")
 func systemMonitorLocalizationIsComplete() throws {
     let sourceRoot = URL(fileURLWithPath: #filePath)
