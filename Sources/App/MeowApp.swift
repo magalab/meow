@@ -34,6 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var launchHistoryStore: LaunchHistoryStore { serviceRegistry.launchHistoryStore }
     private var autoLaunchService: AutoLaunchService { serviceRegistry.autoLaunchService }
     private lazy var hotkeyCoordinator = AppHotkeyCoordinator(hotkeyService: HotkeyService())
+    private lazy var hotkeyRouter = AppHotkeyRouter(actions: makeHotkeyRouterActions())
     private lazy var settingsCoordinator = AppSettingsCoordinator(actions: makeSettingsActions())
     private var keystrokeVisualizerService: KeystrokeVisualizerService {
         serviceRegistry.keystrokeVisualizerService
@@ -640,7 +641,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             },
             applyHotkeys: { [weak self] settings in
                 guard let self else { return }
-                self.hotkeyCoordinator.apply(settings: settings, actions: self.makeHotkeyActions())
+                self.hotkeyCoordinator.apply(
+                    settings: settings,
+                    actions: self.hotkeyRouter.makeCoordinatorActions()
+                )
             },
             applyWhiteboardSettings: { [weak self] settings in
                 self?.applyWhiteboard(settings.whiteboard)
@@ -914,163 +918,51 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
     }
 
-    private func makeHotkeyActions() -> AppHotkeyCoordinator.Actions {
-        AppHotkeyCoordinator.Actions(
-            invoke: { [weak self] event in
-                self?.handleHotkeyEvent(event)
+    private func makeHotkeyRouterActions() -> AppHotkeyRouter.Actions {
+        AppHotkeyRouter.Actions(
+            settings: { [weak self] in self?.viewModel.settings ?? .default },
+            updateSettings: { [weak self] settings in self?.viewModel.settings = settings },
+            toggleLauncher: { [weak self] in self?.toggleLauncher() },
+            openFinder: { [weak self] in self?.openFinder() },
+            translate: { [weak self] in self?.triggerTranslation() },
+            textActions: { [weak self] in self?.triggerTextActions() },
+            scrollingScreenshot: { [weak self] in self?.triggerScrollingCapture() },
+            screenshot: { [weak self] mode, editAfterCapture, uploadAfterCapture in
+                self?.triggerScreenshot(
+                    mode: mode,
+                    editAfterCapture: editAfterCapture,
+                    uploadAfterCapture: uploadAfterCapture
+                )
             },
-            restore: { [weak self] kind, keyCode, modifiers in
-                self?.restoreHotkey(kind, keyCode: keyCode, modifiers: modifiers)
+            recording: { [weak self] mode in self?.triggerRecording(mode: mode) },
+            pauseRecording: { [weak self] in self?.recordingService.pauseOrResume() },
+            stopRecording: { [weak self] in
+                guard let self else { return }
+                Task { await self.recordingService.stop() }
             },
-            registrationSucceeded: { [weak self] kind in
-                self?.handleHotkeyRegistrationSuccess(kind)
+            saveRecordingFrame: { [weak self] in self?.saveRecordingFrame() },
+            toggleRecordingMagnifier: { [weak self] in self?.toggleRecordingMagnifier() },
+            toggleWhiteboard: { [weak self] in self?.whiteboardFeatureController.toggleEditing() },
+            speechPressed: { [weak self] in
+                #if MEOW_VOICE
+                self?.speechRecognitionService.hotkeyPressed()
+                #endif
             },
-            registrationFailure: { [weak self] kind, status in
-                self?.handleHotkeyRegistrationFailure(kind, status: status)
+            speechReleased: { [weak self] in
+                #if MEOW_VOICE
+                self?.speechRecognitionService.hotkeyReleased()
+                #endif
+            },
+            setFinderRegistrationError: { [weak self] in
+                self?.viewModel.setFinderHotkeyRegistrationError($0)
+            },
+            setWhiteboardRegistrationError: { [weak self] in
+                self?.viewModel.setWhiteboardHotkeyRegistrationError($0)
+            },
+            presentTextActionsHotkeyConflict: { [weak self] keyCode, modifiers in
+                self?.presentTextActionsHotkeyConflict(keyCode: keyCode, modifiers: modifiers)
             }
         )
-    }
-
-    private func handleHotkeyEvent(_ event: AppHotkeyCoordinator.Event) {
-        switch event {
-        case .toggleLauncher:
-            toggleLauncher()
-        case .openFinder:
-            openFinder()
-        case .translate:
-            triggerTranslation()
-        case .textActions:
-            triggerTextActions()
-        case .screenshotDefault:
-            triggerScreenshot(mode: viewModel.settings.screenshot.defaultCaptureMode)
-        case .screenshotDefaultAndEdit:
-            triggerScreenshot(
-                mode: viewModel.settings.screenshot.defaultCaptureMode,
-                editAfterCapture: true
-            )
-        case .scrollingScreenshot:
-            triggerScrollingCapture()
-        case let .screenshot(mode):
-            triggerScreenshot(mode: mode)
-        case let .recording(mode):
-            triggerRecording(mode: mode)
-        case .pauseRecording:
-            recordingService.pauseOrResume()
-        case .stopRecording:
-            Task { await recordingService.stop() }
-        case .saveRecordingFrame:
-            saveRecordingFrame()
-        case .toggleRecordingMagnifier:
-            toggleRecordingMagnifier()
-        case .uploadScreenshot:
-            triggerScreenshot(mode: .region, uploadAfterCapture: true)
-        case .toggleWhiteboard:
-            whiteboardFeatureController.toggleEditing()
-        #if MEOW_VOICE
-        case .speechPressed:
-            speechRecognitionService.hotkeyPressed()
-        case .speechReleased:
-            speechRecognitionService.hotkeyReleased()
-        #endif
-        }
-    }
-
-    private func restoreHotkey(
-        _ kind: AppHotkeyCoordinator.Kind,
-        keyCode: UInt32,
-        modifiers: UInt32
-    ) {
-        switch kind {
-        case .launcher:
-            viewModel.updateLauncherHotkey(keyCode: keyCode, modifiers: modifiers)
-        case .finder:
-            viewModel.updateFinderHotkey(keyCode: keyCode, modifiers: modifiers)
-        case .translation:
-            viewModel.updateTranslateHotkey(keyCode: keyCode, modifiers: modifiers)
-        case .textActions:
-            viewModel.updateTextActionsHotkey(keyCode: keyCode, modifiers: modifiers)
-        case .screenshotRegion:
-            viewModel.settings.screenshot.regionHotkeyKeyCode = keyCode
-            viewModel.settings.screenshot.regionHotkeyModifiers = modifiers
-        case .screenshotScrolling:
-            viewModel.settings.screenshot.scrollingHotkeyKeyCode = keyCode
-            viewModel.settings.screenshot.scrollingHotkeyModifiers = modifiers
-        case .screenshotEdit:
-            viewModel.settings.screenshot.editHotkeyKeyCode = keyCode
-            viewModel.settings.screenshot.editHotkeyModifiers = modifiers
-        case .screenshotWindow:
-            viewModel.settings.screenshot.windowHotkeyKeyCode = keyCode
-            viewModel.settings.screenshot.windowHotkeyModifiers = modifiers
-        case .screenshotDisplay:
-            viewModel.settings.screenshot.displayHotkeyKeyCode = keyCode
-            viewModel.settings.screenshot.displayHotkeyModifiers = modifiers
-        case .recordingDisplay:
-            viewModel.settings.recording.displayHotkeyKeyCode = keyCode
-            viewModel.settings.recording.displayHotkeyModifiers = modifiers
-        case .recordingRegion:
-            viewModel.settings.recording.regionHotkeyKeyCode = keyCode
-            viewModel.settings.recording.regionHotkeyModifiers = modifiers
-        case .recordingWindow:
-            viewModel.settings.recording.windowHotkeyKeyCode = keyCode
-            viewModel.settings.recording.windowHotkeyModifiers = modifiers
-        case .recordingPause:
-            viewModel.settings.recording.pauseHotkeyKeyCode = keyCode
-            viewModel.settings.recording.pauseHotkeyModifiers = modifiers
-        case .recordingStop:
-            viewModel.settings.recording.stopHotkeyKeyCode = keyCode
-            viewModel.settings.recording.stopHotkeyModifiers = modifiers
-        case .recordingFrame:
-            viewModel.settings.recording.frameHotkeyKeyCode = keyCode
-            viewModel.settings.recording.frameHotkeyModifiers = modifiers
-        case .recordingMagnifier:
-            viewModel.settings.recording.magnifierHotkeyKeyCode = keyCode
-            viewModel.settings.recording.magnifierHotkeyModifiers = modifiers
-        case .upload:
-            viewModel.settings.fileHosting.uploadHotkeyKeyCode = keyCode
-            viewModel.settings.fileHosting.uploadHotkeyModifiers = modifiers
-        case .whiteboard:
-            viewModel.settings.whiteboard.hotkeyKeyCode = keyCode
-            viewModel.settings.whiteboard.hotkeyModifiers = modifiers
-        #if MEOW_VOICE
-        case .speech:
-            viewModel.settings.speech.hotkeyKeyCode = keyCode
-            viewModel.settings.speech.hotkeyModifiers = modifiers
-        #endif
-        }
-    }
-
-    private func handleHotkeyRegistrationSuccess(_ kind: AppHotkeyCoordinator.Kind) {
-        switch kind {
-        case .finder:
-            viewModel.setFinderHotkeyRegistrationError(nil)
-        case .whiteboard:
-            viewModel.setWhiteboardHotkeyRegistrationError(nil)
-        default:
-            break
-        }
-    }
-
-    private func handleHotkeyRegistrationFailure(
-        _ kind: AppHotkeyCoordinator.Kind,
-        status: OSStatus
-    ) {
-        switch kind {
-        case .finder:
-            viewModel.setFinderHotkeyRegistrationError(
-                String(format: L10n.prefsFinderHotkeyError, status)
-            )
-        case .textActions:
-            presentTextActionsHotkeyConflict(
-                keyCode: viewModel.settings.textActionsHotkeyKeyCode,
-                modifiers: viewModel.settings.textActionsHotkeyModifiers
-            )
-        case .whiteboard:
-            viewModel.setWhiteboardHotkeyRegistrationError(
-                String(format: L10n.whiteboardHotkeyError, status)
-            )
-        default:
-            break
-        }
     }
 
     private func handleHealthCommand(_ command: HealthReminderCommand) {
