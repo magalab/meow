@@ -2,6 +2,13 @@ import AppKit
 
 @MainActor
 final class AppLifecycleCoordinator {
+    struct StartupActions {
+        let prepareApplication: @MainActor () -> Void
+        let setupStatusItem: @MainActor () -> Void
+        let applyInitialSettings: @MainActor () -> Void
+        let installEventMonitors: @MainActor () -> Void
+    }
+
     struct Actions {
         let systemDidWake: @MainActor () -> Void
         let systemWillSleep: @MainActor () -> Void
@@ -35,21 +42,42 @@ final class AppLifecycleCoordinator {
         let stopDockIcon: @MainActor () -> Void
         let removeEventMonitors: @MainActor () -> Void
         let shutdownUploads: @MainActor () async -> Void
+        let replyToTermination: @MainActor (NSApplication) -> Void
     }
 
     private let actions: Actions
+    private let startupActions: StartupActions
+    private let workspaceNotificationCenter: NotificationCenter
     private var workspaceWakeObserver: NSObjectProtocol?
     private var workspaceSleepObserver: NSObjectProtocol?
+    private var didFinishLaunching = false
     private var terminationShutdownStarted = false
 
-    init(actions: Actions) {
+    init(
+        actions: Actions,
+        startupActions: StartupActions,
+        workspaceNotificationCenter: NotificationCenter = NSWorkspace.shared.notificationCenter
+    ) {
         self.actions = actions
+        self.startupActions = startupActions
+        self.workspaceNotificationCenter = workspaceNotificationCenter
+    }
+
+    func applicationDidFinishLaunching() {
+        guard !didFinishLaunching else { return }
+        didFinishLaunching = true
+
+        startupActions.prepareApplication()
+        startupActions.setupStatusItem()
+        startupActions.applyInitialSettings()
+        observeSystemPowerState()
+        startupActions.installEventMonitors()
     }
 
     func observeSystemPowerState() {
         guard workspaceWakeObserver == nil, workspaceSleepObserver == nil else { return }
 
-        workspaceWakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
+        workspaceWakeObserver = workspaceNotificationCenter.addObserver(
             forName: NSWorkspace.didWakeNotification,
             object: nil,
             queue: .main
@@ -58,7 +86,7 @@ final class AppLifecycleCoordinator {
                 self?.actions.systemDidWake()
             }
         }
-        workspaceSleepObserver = NSWorkspace.shared.notificationCenter.addObserver(
+        workspaceSleepObserver = workspaceNotificationCenter.addObserver(
             forName: NSWorkspace.willSleepNotification,
             object: nil,
             queue: .main
@@ -80,7 +108,9 @@ final class AppLifecycleCoordinator {
         Task { @MainActor [weak self, weak sender] in
             await self?.actions.stopKeepAwake()
             await self?.actions.shutdownUploads()
-            sender?.reply(toApplicationShouldTerminate: true)
+            if let sender {
+                self?.actions.replyToTermination(sender)
+            }
         }
         return .terminateLater
     }
@@ -128,11 +158,11 @@ final class AppLifecycleCoordinator {
 
     private func removeSystemPowerObservers() {
         if let workspaceWakeObserver {
-            NSWorkspace.shared.notificationCenter.removeObserver(workspaceWakeObserver)
+            workspaceNotificationCenter.removeObserver(workspaceWakeObserver)
             self.workspaceWakeObserver = nil
         }
         if let workspaceSleepObserver {
-            NSWorkspace.shared.notificationCenter.removeObserver(workspaceSleepObserver)
+            workspaceNotificationCenter.removeObserver(workspaceSleepObserver)
             self.workspaceSleepObserver = nil
         }
     }
