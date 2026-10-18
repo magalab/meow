@@ -34,6 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var launchHistoryStore: LaunchHistoryStore { serviceRegistry.launchHistoryStore }
     private var autoLaunchService: AutoLaunchService { serviceRegistry.autoLaunchService }
     private lazy var hotkeyCoordinator = AppHotkeyCoordinator(hotkeyService: HotkeyService())
+    private lazy var settingsCoordinator = AppSettingsCoordinator(actions: makeSettingsActions())
     private var keystrokeVisualizerService: KeystrokeVisualizerService {
         serviceRegistry.keystrokeVisualizerService
     }
@@ -292,11 +293,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var localMouseMonitor: Any?
     private var globalKeyMonitor: Any?
     private var localKeyMonitor: Any?
-    private var appliedLanguage: AppLanguage?
     private var whiteboardPreparedForRecording = false
-    private var clipboardMonitoringEnabled = false
     private var calendarRefreshToken = UUID()
-    private var uploadNotificationAuthorizationRequested = false
 
     func applicationDidFinishLaunching(_: Notification) {
         lifecycleCoordinator.applicationDidFinishLaunching()
@@ -544,100 +542,138 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func apply(settings: AppSettings) {
-        let languageChanged = appliedLanguage != settings.language
-        if languageChanged {
-            LanguageManager.shared.apply(settings.language)
-            statusItemService.updateL10n()
-            dockIconService.refresh()
-            if systemMonitorServiceLoaded {
-                systemMonitorService.refreshLocalization()
-            }
-            windowCoordinator.refreshLocalizedWindowTitles()
-            viewModel?.refresh()
-            windowCoordinator.updatePreferencesTitle(L10n.windowPrefsTitle)
-            appliedLanguage = settings.language
-        }
-
-        dockService.apply(showDockIcon: settings.showDockIcon)
-        dockIconService.apply(style: settings.dockIconStyle)
-        statusItemService.setVisible(settings.showStatusItem)
-        statusItemService.updateToggleStates(settings)
-        statusItemService.updateDateIconStyle(settings.dateIconStyle)
-        if settings.fileHosting.s3.isEnabled, !uploadNotificationAuthorizationRequested {
-            uploadNotificationAuthorizationRequested = true
-            FileUploadNotifications.requestAuthorization()
-        }
-        if aiChatHistoryStoreLoaded {
-            aiChatHistoryStore.setPersistenceEnabled(settings.ai.chatHistoryEnabled)
-        }
-        if captureStoreLoaded {
-            captureStore.applyRetention(
-                historyLimit: settings.screenshot.historyLimit,
-                retentionDays: settings.screenshot.retentionDays,
-                maxStorageMB: settings.screenshot.maxStorageMB
+        settingsCoordinator.apply(
+            settings: settings,
+            runtimeState: AppSettingsCoordinator.RuntimeState(
+                aiChatHistoryStoreLoaded: aiChatHistoryStoreLoaded,
+                captureStoreLoaded: captureStoreLoaded,
+                recordingServiceLoaded: recordingServiceLoaded,
+                recordingStateShowsControls: recordingStateShowsControls,
+                authenticatorServiceLoaded: authenticatorServiceLoaded,
+                systemMonitorServiceLoaded: systemMonitorServiceLoaded,
+                speechRecognitionServiceLoaded: speechRecognitionServiceLoadedForSettings
             )
-        }
-        if recordingServiceLoaded {
-            recordingService.apply(settings: settings)
-            recordingCoordinator.cameraOverlaySettingsDidChange(settings.recording)
-            recordingCoordinator.magnifierSettingsDidChange(settings.recording)
-        }
-        if recordingStateShowsControls {
-            if settings.recording.showFloatingControls {
-                showRecordingControl()
-            } else {
-                hideRecordingControl()
-            }
-        } else {
-            hideRecordingControl()
-        }
-        if settings.authenticatorEnabled || authenticatorServiceLoaded {
-            authenticatorService.apply(
-                enabled: settings.authenticatorEnabled,
-                iCloudSyncEnabled: settings.authenticatorICloudSyncEnabled,
-                theme: settings.theme
-            )
-        }
-        if settings.systemMonitor.enabled || systemMonitorServiceLoaded {
-            systemMonitorService.apply(settings: settings.systemMonitor, theme: settings.theme)
-        }
-        keystrokeVisualizerService.apply(settings: settings)
-        healthReminderService.apply(settings: settings)
-        keepAwakeService.apply(settings: settings.keepAwake)
-        #if MEOW_VOICE
-        if settings.speech.enabled || speechRecognitionServiceLoaded {
-            speechModelStore.apply(selectedModel: settings.speech.model)
-            speechRecognitionService.apply(settings: settings.speech)
-        }
-        #endif
-        let actualAutoLaunchEnabled = autoLaunchService.apply(enabled: settings.autoLaunch)
-        hotkeyCoordinator.apply(settings: settings, actions: makeHotkeyActions())
-        applyWhiteboard(settings.whiteboard)
-
-        clipboardStore.configure(
-            retention: settings.clipboardRetention,
-            imageStorageLimitMB: settings.clipboardImageStorageLimitMB,
-            disabledAppBundleIDs: settings.clipboardDisabledAppBundleIDs
         )
+    }
 
-        if settings.clipboardHistoryEnabled != clipboardMonitoringEnabled {
-            if settings.clipboardHistoryEnabled {
-                clipboardStore.startMonitoring { [weak self] in
-                    self?.viewModel.refresh()
+    private var speechRecognitionServiceLoadedForSettings: Bool {
+        #if MEOW_VOICE
+        speechRecognitionServiceLoaded
+        #else
+        false
+        #endif
+    }
+
+    private func makeSettingsActions() -> AppSettingsCoordinator.Actions {
+        AppSettingsCoordinator.Actions(
+            applyLanguage: { [weak self] language, systemMonitorLoaded in
+                guard let self else { return }
+                LanguageManager.shared.apply(language)
+                self.statusItemService.updateL10n()
+                self.dockIconService.refresh()
+                if systemMonitorLoaded {
+                    self.systemMonitorService.refreshLocalization()
                 }
-            } else {
-                clipboardStore.stopMonitoring()
+                self.windowCoordinator.refreshLocalizedWindowTitles()
+                self.viewModel?.refresh()
+                self.windowCoordinator.updatePreferencesTitle(L10n.windowPrefsTitle)
+            },
+            applyDisplaySettings: { [weak self] settings in
+                guard let self else { return }
+                self.dockService.apply(showDockIcon: settings.showDockIcon)
+                self.dockIconService.apply(style: settings.dockIconStyle)
+                self.statusItemService.setVisible(settings.showStatusItem)
+                self.statusItemService.updateToggleStates(settings)
+                self.statusItemService.updateDateIconStyle(settings.dateIconStyle)
+            },
+            requestUploadNotificationAuthorization: {
+                FileUploadNotifications.requestAuthorization()
+            },
+            setAIChatHistoryPersistence: { [weak self] enabled in
+                self?.aiChatHistoryStore.setPersistenceEnabled(enabled)
+            },
+            applyCaptureRetention: { [weak self] settings in
+                self?.captureStore.applyRetention(
+                    historyLimit: settings.historyLimit,
+                    retentionDays: settings.retentionDays,
+                    maxStorageMB: settings.maxStorageMB
+                )
+            },
+            applyRecordingSettings: { [weak self] settings in
+                guard let self else { return }
+                self.recordingService.apply(settings: settings)
+                self.recordingCoordinator.cameraOverlaySettingsDidChange(settings.recording)
+                self.recordingCoordinator.magnifierSettingsDidChange(settings.recording)
+            },
+            setRecordingControlsVisible: { [weak self] visible in
+                if visible {
+                    self?.showRecordingControl()
+                } else {
+                    self?.hideRecordingControl()
+                }
+            },
+            applyAuthenticatorSettings: { [weak self] settings in
+                self?.authenticatorService.apply(
+                    enabled: settings.authenticatorEnabled,
+                    iCloudSyncEnabled: settings.authenticatorICloudSyncEnabled,
+                    theme: settings.theme
+                )
+            },
+            applySystemMonitorSettings: { [weak self] settings in
+                self?.systemMonitorService.apply(settings: settings.systemMonitor, theme: settings.theme)
+            },
+            applyAlwaysOnServices: { [weak self] settings in
+                guard let self else { return }
+                self.keystrokeVisualizerService.apply(settings: settings)
+                self.healthReminderService.apply(settings: settings)
+                self.keepAwakeService.apply(settings: settings.keepAwake)
+            },
+            applySpeechSettings: { [weak self] settings in
+                #if MEOW_VOICE
+                guard let self else { return }
+                self.speechModelStore.apply(selectedModel: settings.speech.model)
+                self.speechRecognitionService.apply(settings: settings.speech)
+                #endif
+            },
+            applyAutoLaunch: { [weak self] enabled in
+                self?.autoLaunchService.apply(enabled: enabled) ?? false
+            },
+            applyHotkeys: { [weak self] settings in
+                guard let self else { return }
+                self.hotkeyCoordinator.apply(settings: settings, actions: self.makeHotkeyActions())
+            },
+            applyWhiteboardSettings: { [weak self] settings in
+                self?.applyWhiteboard(settings.whiteboard)
+            },
+            configureClipboard: { [weak self] settings in
+                self?.clipboardStore.configure(
+                    retention: settings.clipboardRetention,
+                    imageStorageLimitMB: settings.clipboardImageStorageLimitMB,
+                    disabledAppBundleIDs: settings.clipboardDisabledAppBundleIDs
+                )
+            },
+            setClipboardMonitoring: { [weak self] enabled in
+                guard let self else { return }
+                if enabled {
+                    self.clipboardStore.startMonitoring { [weak self] in
+                        self?.viewModel.refresh()
+                    }
+                } else {
+                    self.clipboardStore.stopMonitoring()
+                }
+            },
+            refreshLauncherAfterClipboardChange: { [weak self] in
+                self?.viewModel.refresh()
+            },
+            reconcileAutoLaunch: { [weak self] actualAutoLaunchEnabled in
+                DispatchQueue.main.async { [weak self] in
+                    guard let self,
+                          self.viewModel.settings.autoLaunch != actualAutoLaunchEnabled
+                    else { return }
+                    self.viewModel.settings.autoLaunch = actualAutoLaunchEnabled
+                }
             }
-            clipboardMonitoringEnabled = settings.clipboardHistoryEnabled
-            viewModel.refresh()
-        }
-
-        if actualAutoLaunchEnabled != settings.autoLaunch {
-            DispatchQueue.main.async { [weak self] in
-                guard let self, self.viewModel.settings.autoLaunch != actualAutoLaunchEnabled else { return }
-                self.viewModel.settings.autoLaunch = actualAutoLaunchEnabled
-            }
-        }
+        )
     }
 
     private func makeCaptureActions() -> AppCaptureCoordinator.Actions {
