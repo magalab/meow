@@ -173,6 +173,44 @@ func clipboardPinBeyondMemoryWindow() async throws {
     store.stopMonitoring()
 }
 
+@MainActor
+@Test("Clipboard monitoring can restart and ignores pasteboard changes after stop")
+func clipboardMonitoringLifecycle() async throws {
+    let directory = try makeClipboardTestDirectory()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let notificationCenter = NotificationCenter()
+    let pasteboard = NSPasteboard.withUniqueName()
+    let store = ClipboardStore(
+        historyDirectory: directory,
+        monitoringPasteboard: pasteboard,
+        workspaceNotificationCenter: notificationCenter
+    )
+    store.configure(retention: .forever, imageStorageLimitMB: 16, disabledAppBundleIDs: [])
+    var changeCount = 0
+
+    store.startMonitoring { changeCount += 1 }
+    store.startMonitoring { changeCount += 1 }
+    await store.waitForPendingPersistence()
+
+    pasteboard.clearContents()
+    pasteboard.setString("clipboard-lifecycle-first", forType: .string)
+    notificationCenter.post(name: NSWorkspace.didDeactivateApplicationNotification, object: nil)
+    await store.waitForPendingPersistence()
+    #expect(store.getEntries().contains { $0.content == .text("clipboard-lifecycle-first") })
+
+    store.stopMonitoring()
+    let stoppedChangeCount = changeCount
+    pasteboard.clearContents()
+    pasteboard.setString("clipboard-lifecycle-after-stop", forType: .string)
+    notificationCenter.post(name: NSWorkspace.didDeactivateApplicationNotification, object: nil)
+    try await Task.sleep(for: .milliseconds(600))
+    await store.waitForPendingPersistence()
+
+    #expect(!store.getEntries().contains { $0.content == .text("clipboard-lifecycle-after-stop") })
+    #expect(changeCount == stoppedChangeCount)
+    store.stopMonitoring()
+}
+
 @Test("Short search restores URL and file clipboard entries")
 func clipboardShortSearchAndKinds() async throws {
     let directory = try makeClipboardTestDirectory()

@@ -175,6 +175,8 @@ final class ClipboardStore: ObservableObject {
 
     private let historyStore: ClipboardHistoryStore
     private let memoryWindow: Int
+    private let monitoringPasteboard: NSPasteboard
+    private let workspaceNotificationCenter: NotificationCenter
     private var entries: [ClipboardEntry] = []
     private var lastChangeCount = 0
     private var monitorTimer: Timer?
@@ -194,9 +196,13 @@ final class ClipboardStore: ObservableObject {
     init(
         historyDirectory: URL? = nil,
         memoryWindow: Int = 1000,
-        legacyCacheDirectory: URL? = nil
+        legacyCacheDirectory: URL? = nil,
+        monitoringPasteboard: NSPasteboard = .general,
+        workspaceNotificationCenter: NotificationCenter = NSWorkspace.shared.notificationCenter
     ) {
         self.memoryWindow = max(100, memoryWindow)
+        self.monitoringPasteboard = monitoringPasteboard
+        self.workspaceNotificationCenter = workspaceNotificationCenter
         historyStore = ClipboardHistoryStore(
             directory: historyDirectory,
             memoryWindow: memoryWindow,
@@ -237,12 +243,12 @@ final class ClipboardStore: ObservableObject {
         stopMonitoring()
         self.onChange = onChange
         isMonitoring = true
-        lastChangeCount = NSPasteboard.general.changeCount
+        lastChangeCount = monitoringPasteboard.changeCount
         if !hasLoadedHistory {
             reloadHistory()
         }
 
-        workspaceApplicationObserver = NSWorkspace.shared.notificationCenter.addObserver(
+        workspaceApplicationObserver = workspaceNotificationCenter.addObserver(
             forName: NSWorkspace.didDeactivateApplicationNotification,
             object: nil,
             queue: .main
@@ -270,7 +276,7 @@ final class ClipboardStore: ObservableObject {
         monitorTimer?.invalidate()
         monitorTimer = nil
         if let workspaceApplicationObserver {
-            NSWorkspace.shared.notificationCenter.removeObserver(workspaceApplicationObserver)
+            workspaceNotificationCenter.removeObserver(workspaceApplicationObserver)
             self.workspaceApplicationObserver = nil
         }
     }
@@ -535,7 +541,7 @@ final class ClipboardStore: ObservableObject {
 
     private func checkClipboard(sourceBundleID sourceBundleIDOverride: String? = nil) {
         guard isMonitoring else { return }
-        let pasteboard = NSPasteboard.general
+        let pasteboard = monitoringPasteboard
         let currentCount = pasteboard.changeCount
         guard currentCount != lastChangeCount else { return }
         lastChangeCount = currentCount
