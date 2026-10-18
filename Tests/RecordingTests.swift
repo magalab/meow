@@ -29,6 +29,39 @@ func recordingSettingsCompatibility() throws {
     #expect(!settings.magnifierCircular)
 }
 
+@MainActor
+@Test("Canceling a recording countdown releases its state for the next recording")
+func recordingCountdownCancellationAllowsRestart() async throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("meow-recording-lifecycle-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let service = RecordingService(store: RecordingStore(storageDirectory: directory))
+    service.apply(settings: .default)
+    let startTask = Task { @MainActor in
+        await service.start(source: .mobileDevice("lifecycle-test-device"))
+    }
+
+    try await Task.sleep(for: .milliseconds(50))
+    guard case .countdown(3) = service.state else {
+        Issue.record("Recording should be waiting in its countdown before cancellation")
+        return
+    }
+
+    startTask.cancel()
+    await startTask.value
+    guard case .failed = service.state else {
+        Issue.record("Cancelled startup should settle in a failed, inactive state")
+        return
+    }
+
+    try service.prepare(source: .mobileDevice("lifecycle-test-device"))
+    #expect(service.state == .preparing)
+    await service.stop()
+    #expect(service.state == .idle)
+}
+
 @Test("Trim export refuses the source file and aliases")
 @MainActor
 func recordingTrimPreservesSource() throws {
