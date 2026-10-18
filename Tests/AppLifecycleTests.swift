@@ -109,6 +109,7 @@ func lifecycleTerminationCancelsFeaturesBeforeMonitors() {
             stopKeystrokeVisualizer: { calls.append("keystrokeVisualizer") },
             stopHealthReminder: { calls.append("healthReminder") },
             stopClipboardMonitoring: { calls.append("clipboard") },
+            stopStatusItem: { calls.append("statusItem") },
             stopDockIcon: { calls.append("dockIcon") },
             removeEventMonitors: { calls.append("eventMonitors") }
         ),
@@ -119,7 +120,9 @@ func lifecycleTerminationCancelsFeaturesBeforeMonitors() {
     coordinator.applicationWillTerminate()
 
     #expect(calls.starts(with: ["whiteboard", "hotkeys", "upload", "capture", "recording"]))
-    #expect(calls.suffix(5) == ["keystrokeVisualizer", "healthReminder", "clipboard", "dockIcon", "eventMonitors"])
+    #expect(calls.suffix(6) == [
+        "keystrokeVisualizer", "healthReminder", "clipboard", "statusItem", "dockIcon", "eventMonitors",
+    ])
 }
 
 @MainActor
@@ -152,6 +155,7 @@ private func makeLifecycleTestActions(
     stopHealthReminder: @escaping @MainActor () -> Void = {},
     stopKeepAwake: @escaping @MainActor () async -> Void = {},
     stopClipboardMonitoring: @escaping @MainActor () -> Void = {},
+    stopStatusItem: @escaping @MainActor () -> Void = {},
     stopDockIcon: @escaping @MainActor () -> Void = {},
     removeEventMonitors: @escaping @MainActor () -> Void = {},
     shutdownUploads: @escaping @MainActor () async -> Void = {},
@@ -186,6 +190,7 @@ private func makeLifecycleTestActions(
         stopHealthReminder: stopHealthReminder,
         stopKeepAwake: stopKeepAwake,
         stopClipboardMonitoring: stopClipboardMonitoring,
+        stopStatusItem: stopStatusItem,
         stopDockIcon: stopDockIcon,
         removeEventMonitors: removeEventMonitors,
         shutdownUploads: shutdownUploads,

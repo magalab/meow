@@ -39,6 +39,7 @@ final class AppLifecycleCoordinator {
         let stopHealthReminder: @MainActor () -> Void
         let stopKeepAwake: @MainActor () async -> Void
         let stopClipboardMonitoring: @MainActor () -> Void
+        let stopStatusItem: @MainActor () -> Void
         let stopDockIcon: @MainActor () -> Void
         let removeEventMonitors: @MainActor () -> Void
         let shutdownUploads: @MainActor () async -> Void
@@ -151,6 +152,7 @@ final class AppLifecycleCoordinator {
             await actions.stopKeepAwake()
         }
         actions.stopClipboardMonitoring()
+        actions.stopStatusItem()
         actions.stopDockIcon()
         removeSystemPowerObservers()
         actions.removeEventMonitors()
