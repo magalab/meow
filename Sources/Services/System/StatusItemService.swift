@@ -172,6 +172,28 @@ final class StatusItemService {
         updateToggleStates(initialSettings)
     }
 
+    func stop() {
+        dateRefreshTimer?.invalidate()
+        dateRefreshTimer = nil
+        dropView?.removeFromSuperview()
+        dropView = nil
+        if let statusItem {
+            NSStatusBar.system.removeStatusItem(statusItem)
+        }
+        statusItem = nil
+        statusMenu = nil
+        actionTargets.removeAll()
+        openItem = nil
+        preferencesItem = nil
+        whiteboardItem = nil
+        autoLaunchItem = nil
+        quitItem = nil
+        recordingStatusItem = nil
+        recordingPauseItem = nil
+        recordingStopItem = nil
+        recordingActive = false
+    }
+
     var statusItemButton: NSButton? {
         statusItem?.button
     }

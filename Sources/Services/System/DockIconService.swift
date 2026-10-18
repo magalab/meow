@@ -5,22 +5,34 @@ import Foundation
 final class DockIconService {
     private var dayChangeObserver: NSObjectProtocol?
     private var style: DockIconStyle = .calendar
+    private let notificationCenter: NotificationCenter
+    private let refreshAction: (@MainActor (DockIconStyle) -> Void)?
+
+    init(
+        notificationCenter: NotificationCenter = .default,
+        refreshAction: (@MainActor (DockIconStyle) -> Void)? = nil
+    ) {
+        self.notificationCenter = notificationCenter
+        self.refreshAction = refreshAction
+    }
 
     func start(style: DockIconStyle = .calendar) {
         self.style = style
         refresh()
-        dayChangeObserver = NotificationCenter.default.addObserver(
+        guard dayChangeObserver == nil else { return }
+        dayChangeObserver = notificationCenter.addObserver(
             forName: .NSCalendarDayChanged, object: nil, queue: .main
         ) { [weak self] _ in
             Task { @MainActor in
-                self?.refresh()
+                guard let self else { return }
+                self.refresh()
             }
         }
     }
 
     func stop() {
         if let obs = dayChangeObserver {
-            NotificationCenter.default.removeObserver(obs)
+            notificationCenter.removeObserver(obs)
             dayChangeObserver = nil
         }
     }
@@ -31,6 +43,10 @@ final class DockIconService {
     }
 
     func refresh() {
+        if let refreshAction {
+            refreshAction(style)
+            return
+        }
         switch style {
         case .calendar:
             NSApp.applicationIconImage = Self.renderCalendarIcon()
