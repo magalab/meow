@@ -291,10 +291,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #endif
     }()
     private var viewModel: LauncherViewModel!
-    private var globalMouseMonitor: Any?
-    private var localMouseMonitor: Any?
-    private var globalKeyMonitor: Any?
-    private var localKeyMonitor: Any?
     private var whiteboardPreparedForRecording = false
     private var calendarRefreshToken = UUID()
 
@@ -1381,151 +1377,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func setupOutsideClickDismissMonitor() {
-        globalMouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) {
-            [weak self] _ in
-            self?.dismissIfClickedOutsideLauncher()
-            self?.dismissIfClickedOutsideTranslation()
-            self?.dismissIfClickedOutsideTextActions()
-            self?.dismissIfClickedOutsideCalendarPopover()
-        }
-
-        localMouseMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) {
-            [weak self] event in
-            self?.dismissIfClickedOutsideLauncher()
-            self?.dismissIfClickedOutsideTranslation()
-            self?.dismissIfClickedOutsideTextActions()
-            self?.dismissIfClickedOutsideCalendarPopover()
-            return event
-        }
-
-        globalKeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
-            #if MEOW_VOICE
-            if event.keyCode == 53,
-               self?.speechRecognitionServiceLoaded == true,
-               self?.speechRecognitionService.state.isActive == true
-            {
-                self?.speechRecognitionService.cancel()
-            }
-            #endif
-            self?.dismissTranslationIfEscape(event)
-            self?.dismissTextActionsIfEscape(event)
-        }
-
-        // Use a single app-level shortcut path for Cmd+, because command routing can
-        // be unreliable when the launcher is a nonactivating panel.
-        localKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
-            if event.keyCode == 53 {
-                var handled = false
-                #if MEOW_VOICE
-                if self?.speechRecognitionServiceLoaded == true,
-                   self?.speechRecognitionService.state.isActive == true
-                {
-                    self?.speechRecognitionService.cancel()
-                    handled = true
-                }
-                #endif
-                if self?.dismissTranslationIfEscape(event) == true {
-                    handled = true
-                }
-                if self?.dismissTextActionsIfEscape(event) == true {
-                    handled = true
-                }
-                if handled {
-                    return nil
-                }
-            }
-            if self?.dismissTranslationIfEscape(event) == true {
-                return nil
-            }
-
-            let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-            if flags.contains(.command), event.charactersIgnoringModifiers == "," {
-                self?.showPreferences(animated: true)
-                return nil
-            }
-            return event
-        }
+        windowCoordinator.installEventMonitors(
+            actions: AppWindowCoordinator.EventMonitorActions(
+                dismissLauncher: { [weak self] in self?.hideLauncher() },
+                dismissTranslation: { [weak self] in self?.hideTranslationPanel() },
+                dismissTextActions: { [weak self] in self?.hideTextActionsPanel() },
+                dismissCalendarPopover: { [weak self] in self?.windowCoordinator.dismissCalendarPopover() },
+                statusItemButton: { [weak self] in self?.statusItemService.statusItemButton },
+                cancelSpeechIfActive: { [weak self] in
+                    #if MEOW_VOICE
+                    guard let self,
+                          self.speechRecognitionServiceLoaded,
+                          self.speechRecognitionService.state.isActive
+                    else { return false }
+                    self.speechRecognitionService.cancel()
+                    return true
+                    #else
+                    false
+                    #endif
+                },
+                showPreferences: { [weak self] in self?.showPreferences(animated: true) }
+            )
+        )
     }
 
     private func removeEventMonitors() {
-        if let globalMouseMonitor {
-            NSEvent.removeMonitor(globalMouseMonitor)
-            self.globalMouseMonitor = nil
-        }
-        if let localMouseMonitor {
-            NSEvent.removeMonitor(localMouseMonitor)
-            self.localMouseMonitor = nil
-        }
-        if let globalKeyMonitor {
-            NSEvent.removeMonitor(globalKeyMonitor)
-            self.globalKeyMonitor = nil
-        }
-        if let localKeyMonitor {
-            NSEvent.removeMonitor(localKeyMonitor)
-            self.localKeyMonitor = nil
-        }
-    }
-
-    private func dismissIfClickedOutsideLauncher() {
-        guard windowCoordinator.isLauncherVisible,
-              let launcherFrame = windowCoordinator.launcherFrame()
-        else { return }
-        let mouseLocation = NSEvent.mouseLocation
-        if !launcherFrame.contains(mouseLocation) {
-            hideLauncher()
-        }
-    }
-
-    private func dismissIfClickedOutsideTranslation() {
-        guard windowCoordinator.isTranslationVisible,
-              let translationFrame = windowCoordinator.translationFrame()
-        else { return }
-        let mouseLocation = NSEvent.mouseLocation
-        if !translationFrame.contains(mouseLocation) {
-            hideTranslationPanel()
-        }
-    }
-
-    private func dismissIfClickedOutsideTextActions() {
-        guard windowCoordinator.isTextActionsVisible,
-              let textActionsFrame = windowCoordinator.textActionsFrame()
-        else { return }
-        let mouseLocation = NSEvent.mouseLocation
-        if !textActionsFrame.contains(mouseLocation) {
-            hideTextActionsPanel()
-        }
-    }
-
-    private func dismissIfClickedOutsideCalendarPopover() {
-        guard windowCoordinator.isCalendarPopoverShown else { return }
-        let mouseLocation = NSEvent.mouseLocation
-        if windowCoordinator.calendarPopoverContains(
-            mouseLocation: mouseLocation,
-            statusButton: statusItemService.statusItemButton
-        ) {
-            return
-        }
-        windowCoordinator.dismissCalendarPopover()
-    }
-
-    @discardableResult
-    private func dismissTranslationIfEscape(_ event: NSEvent) -> Bool {
-        guard event.keyCode == 53,
-              windowCoordinator.isTranslationVisible
-        else { return false }
-
-        hideTranslationPanel()
-        return true
-    }
-
-    @discardableResult
-    private func dismissTextActionsIfEscape(_ event: NSEvent) -> Bool {
-        guard event.keyCode == 53,
-              windowCoordinator.isTextActionsVisible
-        else { return false }
-
-        hideTextActionsPanel()
-        return true
+        windowCoordinator.removeEventMonitors()
     }
 
     // MARK: - Translation panel
