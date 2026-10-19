@@ -269,6 +269,91 @@ func finderHotkeySettingsRoundTrip() throws {
     #expect(decoded.finderHotkeyModifiers == 4096)
 }
 
+@Test("Clipboard settings retain the flat persisted schema")
+func clipboardSettingsSchemaCompatibility() throws {
+    var settings = AppSettings.default
+    settings.clipboardHistoryEnabled = false
+    settings.clipboardShowImagePreviews = false
+    settings.clipboardRetention = .forever
+    settings.clipboardDisabledAppBundleIDs = ["com.example.password-manager"]
+    settings.clipboardImageStorageLimitMB = 1024
+
+    let encoded = try JSONEncoder().encode(settings)
+    let payload = try #require(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+    #expect(Set(payload.keys) == Set([
+        "autoLaunch",
+        "clipboardHistoryEnabled",
+        "clipboardShowImagePreviews",
+        "clipboardRetention",
+        "clipboardDisabledAppBundleIDs",
+        "clipboardImageStorageLimitMB",
+        "showStatusItem",
+        "showDockIcon",
+        "hotkeyKeyCode",
+        "hotkeyModifiers",
+        "finderHotkeyKeyCode",
+        "finderHotkeyModifiers",
+        "translateHotkeyKeyCode",
+        "translateHotkeyModifiers",
+        "textActionsHotkeyKeyCode",
+        "textActionsHotkeyModifiers",
+        "language",
+        "theme",
+        "dateIconStyle",
+        "dockIconStyle",
+        "ai",
+        "fileHosting",
+        "screenshot",
+        "recording",
+        "whiteboard",
+        "speech",
+        "healthReminder",
+        "keepAwake",
+        "authenticatorEnabled",
+        "authenticatorICloudSyncEnabled",
+        "systemMonitor",
+        "keystrokeVisualizerEnabled",
+        "keystrokeVisualizerShowModifierOnly",
+        "keystrokeVisualizerOverlayPosition",
+        "keystrokeVisualizerStyle",
+        "keystrokeVisualizerDisplayDuration",
+        "keystrokeVisualizerCustomDisplayDuration",
+        "keystrokeVisualizerOpacity",
+        "keystrokeVisualizerHistoryCount",
+        "keystrokeVisualizerDisplayMode",
+    ]))
+    #expect(payload["clipboard"] == nil)
+    #expect(payload["clipboardHistoryEnabled"] as? Bool == false)
+    #expect(payload["clipboardShowImagePreviews"] as? Bool == false)
+    #expect(payload["clipboardRetention"] as? Int == ClipboardRetention.forever.rawValue)
+    #expect(payload["clipboardDisabledAppBundleIDs"] as? [String] == ["com.example.password-manager"])
+    #expect(payload["clipboardImageStorageLimitMB"] as? Int == 1024)
+
+    let legacyPayload = Data(
+        """
+        {
+          "clipboardHistoryEnabled": false,
+          "clipboardShowImagePreviews": false,
+          "clipboardRetention": -1,
+          "clipboardDisabledAppBundleIDs": ["com.example.password-manager"],
+          "clipboardImageStorageLimitMB": 1024
+        }
+        """.utf8
+    )
+    let decoded = try JSONDecoder().decode(AppSettings.self, from: legacyPayload)
+    #expect(decoded.clipboard == settings.clipboard)
+
+    let partial = try JSONDecoder().decode(
+        AppSettings.self,
+        from: Data("{\"clipboardImageStorageLimitMB\":64}".utf8)
+    )
+    #expect(partial.clipboard.historyEnabled == ClipboardSettings.default.historyEnabled)
+    #expect(partial.clipboard.showImagePreviews == ClipboardSettings.default.showImagePreviews)
+    #expect(partial.clipboard.retention == ClipboardSettings.default.retention)
+    #expect(partial.clipboard.disabledAppBundleIDs == ClipboardSettings.default.disabledAppBundleIDs)
+    #expect(partial.clipboard.imageStorageLimitMB == 128)
+}
+
 @Test("System monitor settings clamp unsafe persisted values")
 func systemMonitorSettingsCompatibility() throws {
     let data = Data(
