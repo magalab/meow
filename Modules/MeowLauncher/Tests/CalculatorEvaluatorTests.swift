@@ -1,11 +1,6 @@
 import Foundation
 import Testing
-
-#if MEOW_VOICE
-@testable import Miao
-#else
-@testable import Meow
-#endif
+@testable import MeowLauncher
 
 struct CalculatorTests {
     @Test
