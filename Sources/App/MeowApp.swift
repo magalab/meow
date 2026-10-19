@@ -102,6 +102,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             skipBreak: { [weak self] in self?.healthReminderService.skipBreak() }
         )
     )
+    private lazy var calendarCoordinator = AppCalendarCoordinator(
+        windowCoordinator: windowCoordinator,
+        healthReminderService: healthReminderService,
+        actions: AppCalendarCoordinator.Actions(
+            statusItemButton: { [weak self] in self?.statusItemService.statusItemButton },
+            theme: { [weak self] in self?.viewModel.settings.theme ?? .gingerCat },
+            handleHealthCommand: { [weak self] in self?.healthReminderCoordinator.handle($0) },
+            openHealthPreferences: { [weak self] in self?.showPreferences(section: .health) }
+        )
+    )
     private lazy var keepAwakeCommandCoordinator = AppKeepAwakeCommandCoordinator(
         actions: AppKeepAwakeCommandCoordinator.Actions(
             hideLauncher: { [weak self] in self?.launcherCoordinator.hide() },
@@ -354,8 +364,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #endif
     }()
     private var viewModel: LauncherViewModel!
-    private var calendarRefreshToken = UUID()
-
     func applicationDidFinishLaunching(_: Notification) {
         lifecycleCoordinator.applicationDidFinishLaunching()
     }
@@ -560,10 +568,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         dockIconService.refresh()
         statusItemService.refreshDateIcon()
 
-        calendarRefreshToken = UUID()
-        windowCoordinator.refreshCalendar { popover in
-            self.makeCalendarPopoverView(for: popover)
-        }
+        calendarCoordinator.refresh()
     }
 
     private func setupStatusItem() {
@@ -576,7 +581,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.showPreferences()
             },
             showCalendar: { [weak self] in
-                self?.showCalendarPopover()
+                self?.calendarCoordinator.togglePopover()
             },
             toggleAutoLaunch: { [weak self] in
                 guard let self else { return }
@@ -1072,33 +1077,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func openPreferencesFromCommand() {
         showPreferences(animated: true)
-    }
-
-    private func showCalendarPopover() {
-        guard let button = statusItemService.statusItemButton else { return }
-        windowCoordinator.toggleCalendarPopover(
-            contentView: { popover in
-                self.makeCalendarPopoverView(for: popover)
-            },
-            relativeTo: button
-        )
-    }
-
-    private func makeCalendarPopoverView(for popover: NSPopover? = nil) -> CalendarPopoverView {
-        CalendarPopoverView(
-            theme: viewModel.settings.theme,
-            healthReminderService: healthReminderService,
-            onHealthCommand: { [weak self] command in
-                self?.healthReminderCoordinator.handle(command)
-            },
-            onOpenHealthPreferences: { [weak self] in
-                self?.showPreferences(section: .health)
-            },
-            onContentSizeChanged: { [weak popover] size in
-                popover?.contentSize = size
-            },
-            refreshToken: calendarRefreshToken
-        )
     }
 
 }
