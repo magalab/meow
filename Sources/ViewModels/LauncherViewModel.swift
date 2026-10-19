@@ -678,13 +678,13 @@ final class LauncherViewModel: ObservableObject {
         let matchedCommands = commands.compactMap { command -> (SearchItem, Int)? in
             let hay = ([command.title, command.subtitle] + command.keywords).joined(separator: " ").lowercased()
             guard hay.contains(q) else { return nil }
-            return (.command(command), score(text: hay, query: q) + 15)
+            return (.command(command), LauncherSearchScorer.score(text: hay, query: q) + 15)
         }
 
         let matchedApps = apps.compactMap { app -> (SearchItem, Int)? in
             let hay = [app.name, app.bundleId ?? ""].joined(separator: " ").lowercased()
             guard hay.contains(q) else { return nil }
-            let base = score(text: hay, query: q)
+            let base = LauncherSearchScorer.score(text: hay, query: q)
             let history = launchHistoryStore.score(for: app.id)
             return (.app(app), base + history)
         }
@@ -700,13 +700,6 @@ final class LauncherViewModel: ObservableObject {
             }
             .prefix(maxSearchResults)
             .map { $0.0 }
-    }
-
-    private func score(text: String, query: String) -> Int {
-        if text == query { return 120 }
-        if text.hasPrefix(query) { return 90 }
-        if text.contains(" \(query)") { return 70 }
-        return 50
     }
 
     private func calculationResult(for query: String) -> CalculationEntry? {
