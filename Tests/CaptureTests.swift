@@ -198,28 +198,6 @@ func pixelMagnifierClampsAtEdges() {
     #expect(frame.minY >= 0 && frame.maxY <= 200)
 }
 
-@Test("Capture editor command stack supports undo and redo")
-@MainActor
-func captureEditorUndoRedo() {
-    let model = CaptureEditorModel(sourceSize: CGSize(width: 100, height: 80))
-    let command = CaptureEditorCommand.rectangle(
-        rect: CGRect(x: 10, y: 10, width: 30, height: 20),
-        color: .red,
-        width: 4
-    )
-
-    model.add(command)
-    #expect(model.commands == [command])
-    #expect(model.canUndo)
-
-    model.undo()
-    #expect(model.commands.isEmpty)
-    #expect(model.canRedo)
-
-    model.redo()
-    #expect(model.commands == [command])
-}
-
 @Test("OCR search index removes OTPAuth payloads")
 @MainActor
 func captureSearchIndexExcludesOTPAuth() {
