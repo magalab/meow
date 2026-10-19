@@ -269,6 +269,63 @@ func finderHotkeySettingsRoundTrip() throws {
     #expect(decoded.finderHotkeyModifiers == 4096)
 }
 
+@Test("Hotkey settings retain legacy flat keys and accessors")
+func hotkeySettingsSchemaCompatibility() throws {
+    let legacyPayload = Data(
+        """
+        {
+          "hotkeyKeyCode": 48,
+          "hotkeyModifiers": 4096,
+          "finderHotkeyKeyCode": 13,
+          "finderHotkeyModifiers": 5120,
+          "translateHotkeyKeyCode": 3,
+          "translateHotkeyModifiers": 6144,
+          "textActionsHotkeyKeyCode": 8,
+          "textActionsHotkeyModifiers": 7168
+        }
+        """.utf8
+    )
+    let settings = try JSONDecoder().decode(AppSettings.self, from: legacyPayload)
+    let expected = HotkeySettings(
+        launcherKeyCode: 48,
+        launcherModifiers: 4096,
+        finderKeyCode: 13,
+        finderModifiers: 5120,
+        translateKeyCode: 3,
+        translateModifiers: 6144,
+        textActionsKeyCode: 8,
+        textActionsModifiers: 7168
+    )
+    #expect(settings.hotkeys == expected)
+
+    let encoded = try JSONEncoder().encode(settings)
+    let payload = try #require(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+    #expect(payload["hotkeys"] == nil)
+    #expect(payload["hotkeyKeyCode"] as? Int == 48)
+    #expect(payload["hotkeyModifiers"] as? Int == 4096)
+    #expect(payload["finderHotkeyKeyCode"] as? Int == 13)
+    #expect(payload["finderHotkeyModifiers"] as? Int == 5120)
+    #expect(payload["translateHotkeyKeyCode"] as? Int == 3)
+    #expect(payload["translateHotkeyModifiers"] as? Int == 6144)
+    #expect(payload["textActionsHotkeyKeyCode"] as? Int == 8)
+    #expect(payload["textActionsHotkeyModifiers"] as? Int == 7168)
+    #expect(try JSONDecoder().decode(AppSettings.self, from: encoded).hotkeys == expected)
+
+    var legacyAccessors = AppSettings.default
+    legacyAccessors.hotkeyKeyCode = expected.launcherKeyCode
+    legacyAccessors.hotkeyModifiers = expected.launcherModifiers
+    legacyAccessors.finderHotkeyKeyCode = expected.finderKeyCode
+    legacyAccessors.finderHotkeyModifiers = expected.finderModifiers
+    legacyAccessors.translateHotkeyKeyCode = expected.translateKeyCode
+    legacyAccessors.translateHotkeyModifiers = expected.translateModifiers
+    legacyAccessors.textActionsHotkeyKeyCode = expected.textActionsKeyCode
+    legacyAccessors.textActionsHotkeyModifiers = expected.textActionsModifiers
+    #expect(legacyAccessors.hotkeys == expected)
+
+    let empty = try JSONDecoder().decode(AppSettings.self, from: Data("{}".utf8))
+    #expect(empty.hotkeys == HotkeySettings.default)
+}
+
 @Test("Clipboard settings retain the flat persisted schema")
 func clipboardSettingsSchemaCompatibility() throws {
     #expect(ClipboardRetention.allCases.map(\.rawValue) == [1, 7, 30, 90, 180, 365, -1])
