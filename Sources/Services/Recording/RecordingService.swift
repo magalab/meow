@@ -461,7 +461,16 @@ final class RecordingService: NSObject, ObservableObject {
             store.markRecordingStarted(fileURL: outputURL, source: source.kind)
             let capture = RecordingMobileDeviceCapture(
                 deviceID: deviceID,
-                outputURL: outputURL
+                outputURL: outputURL,
+                findDevice: { id in
+                    Self.mobileDevices().first { $0.uniqueID == id }
+                },
+                makeFailure: { failure in
+                    switch failure {
+                    case .unavailable: RecordingError.sourceUnavailable
+                    case .invalidConfiguration: RecordingError.invalidConfiguration
+                    }
+                }
             )
             try capture.start()
             mobileCapture = capture
@@ -1012,100 +1021,6 @@ final class RecordingService: NSObject, ObservableObject {
             UInt32(MemoryLayout<UInt32>.size),
             &allow
         )
-    }
-}
-
-private struct RecordingMobileDeviceResult {
-    let fileURL: URL
-    let duration: TimeInterval
-    let width: Int
-    let height: Int
-    let hasAudio: Bool
-}
-
-private final class RecordingMobileDeviceCapture: NSObject, AVCaptureFileOutputRecordingDelegate, @unchecked Sendable {
-    private let deviceID: String
-    private let outputURL: URL
-    private let session = AVCaptureSession()
-    private let output = AVCaptureMovieFileOutput()
-    private let lock = NSLock()
-    private var continuation: CheckedContinuation<RecordingMobileDeviceResult, Error>?
-    private var stopTimeoutTask: Task<Void, Never>?
-
-    init(deviceID: String, outputURL: URL) {
-        self.deviceID = deviceID
-        self.outputURL = outputURL
-    }
-
-    func start() throws {
-        guard let device = RecordingService.mobileDevices().first(where: { $0.uniqueID == deviceID }) else {
-            throw RecordingError.sourceUnavailable
-        }
-        let input = try AVCaptureDeviceInput(device: device)
-        guard session.canAddInput(input) else { throw RecordingError.invalidConfiguration }
-        session.addInput(input)
-        guard session.canAddOutput(output) else { throw RecordingError.invalidConfiguration }
-        session.addOutput(output)
-        session.startRunning()
-        output.startRecording(to: outputURL, recordingDelegate: self)
-    }
-
-    func stop() async throws -> RecordingMobileDeviceResult {
-        try await withCheckedThrowingContinuation { continuation in
-            lock.withLock {
-                self.continuation = continuation
-            }
-            stopTimeoutTask?.cancel()
-            stopTimeoutTask = Task { [weak self] in
-                try? await Task.sleep(nanoseconds: 5_000_000_000)
-                guard !Task.isCancelled else { return }
-                self?.resumeStop(throwing: RecordingError.sourceUnavailable)
-            }
-            output.stopRecording()
-        }
-    }
-
-    func fileOutput(
-        _ output: AVCaptureFileOutput,
-        didFinishRecordingTo outputFileURL: URL,
-        from connections: [AVCaptureConnection],
-        error: Error?
-    ) {
-        session.stopRunning()
-        if let error {
-            resumeStop(throwing: error)
-            return
-        }
-        let pending = takeContinuation()
-        Task {
-            let asset = AVURLAsset(url: outputFileURL)
-            let duration = (try? await asset.load(.duration).seconds) ?? 0
-            let videoTracks = (try? await asset.loadTracks(withMediaType: .video)) ?? []
-            let audioTracks = (try? await asset.loadTracks(withMediaType: .audio)) ?? []
-            let size = (try? await videoTracks.first?.load(.naturalSize)) ?? .zero
-            pending?.resume(returning: RecordingMobileDeviceResult(
-                fileURL: outputFileURL,
-                duration: duration,
-                width: Int(abs(size.width)),
-                height: Int(abs(size.height)),
-                hasAudio: !audioTracks.isEmpty
-            ))
-        }
-    }
-
-    private func takeContinuation() -> CheckedContinuation<RecordingMobileDeviceResult, Error>? {
-        lock.withLock {
-            let pending = continuation
-            continuation = nil
-            stopTimeoutTask?.cancel()
-            stopTimeoutTask = nil
-            return pending
-        }
-    }
-
-    private func resumeStop(throwing error: Error) {
-        session.stopRunning()
-        takeContinuation()?.resume(throwing: error)
     }
 }
 
