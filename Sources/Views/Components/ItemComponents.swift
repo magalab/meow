@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import MeowLauncher
 
 @MainActor
 private enum SearchItemImageCache {

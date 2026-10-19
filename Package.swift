@@ -68,6 +68,7 @@ let targets: [Target] = [
     ),
     .target(
         name: "MeowLauncher",
+        dependencies: ["MeowClipboard"],
         path: "Modules/MeowLauncher/Sources"
     ),
     .target(
@@ -128,7 +129,7 @@ let targets: [Target] = [
     ),
     .testTarget(
         name: "MeowLauncherTests",
-        dependencies: ["MeowLauncher"],
+        dependencies: ["MeowLauncher", "MeowClipboard"],
         path: "Modules/MeowLauncher/Tests"
     ),
     .testTarget(
