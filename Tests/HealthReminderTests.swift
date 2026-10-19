@@ -70,6 +70,41 @@ struct HealthReminderTests {
         #expect(record.skippedBreaks == 0)
     }
 
+    @Test
+    func repeatedApplyKeepsOneTimerAndDisableAllowsRestart() {
+        let (defaults, suiteName) = makeDefaults()
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        var timers: [Timer] = []
+        let store = HealthReminderStore(defaults: defaults)
+        let service = HealthReminderService(store: store) { interval, repeats, block in
+            let timer = Timer(timeInterval: interval, repeats: repeats, block: block)
+            timers.append(timer)
+            return timer
+        }
+        var settings = AppSettings.default
+        settings.healthReminder.enabled = true
+
+        service.apply(settings: settings)
+        service.apply(settings: settings)
+
+        #expect(timers.count == 1)
+        #expect(timers[0].isValid)
+
+        settings.healthReminder.enabled = false
+        service.apply(settings: settings)
+
+        #expect(!timers[0].isValid)
+
+        settings.healthReminder.enabled = true
+        service.apply(settings: settings)
+
+        #expect(timers.count == 2)
+        #expect(timers[1].isValid)
+        service.stop()
+        #expect(!timers[1].isValid)
+    }
+
     private func makeDefaults() -> (UserDefaults, String) {
         let suiteName = "Meow-HealthReminderTests-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!

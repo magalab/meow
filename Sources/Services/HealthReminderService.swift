@@ -48,6 +48,8 @@ final class HealthReminderStore {
 
 @MainActor
 final class HealthReminderService: ObservableObject {
+    typealias TimerFactory = @MainActor (TimeInterval, Bool, @escaping @Sendable (Timer) -> Void) -> Timer
+
     @Published private(set) var state: HealthReminderState
 
     var onStateChanged: ((HealthReminderState) -> Void)?
@@ -56,6 +58,7 @@ final class HealthReminderService: ObservableObject {
     }
 
     private let store: HealthReminderStore
+    private let timerFactory: TimerFactory
     private var settings: HealthReminderSettings = .default
     private var theme: AppTheme = .gingerCat
     private var timer: Timer?
@@ -64,8 +67,14 @@ final class HealthReminderService: ObservableObject {
     private var breakHostingController: NSHostingController<HealthBreakOverlayView>?
     private var activityGraceUntil: Date?
 
-    init(store: HealthReminderStore = HealthReminderStore()) {
+    init(
+        store: HealthReminderStore = HealthReminderStore(),
+        timerFactory: @escaping TimerFactory = { interval, repeats, block in
+            Timer.scheduledTimer(withTimeInterval: interval, repeats: repeats, block: block)
+        }
+    ) {
         self.store = store
+        self.timerFactory = timerFactory
         let date = HealthReminderStore.todayString()
         currentDate = date
         let record = store.record(for: date)
@@ -196,7 +205,7 @@ final class HealthReminderService: ObservableObject {
 
     private func startTimerIfNeeded() {
         guard timer == nil else { return }
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+        timer = timerFactory(1, true) { [weak self] _ in
             Task { @MainActor in
                 self?.tick()
             }
