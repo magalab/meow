@@ -2,32 +2,38 @@
 import CoreImage
 import CoreImage.CIFilterBuiltins
 
-enum RecordingCanvasBackgroundStyle: String, CaseIterable, Identifiable, Sendable {
+public enum RecordingCanvasBackgroundStyle: String, CaseIterable, Identifiable, Sendable {
     case solid
     case gradient
     case stripes
     case dots
     case glow
 
-    var id: String { rawValue }
+    public var id: String { rawValue }
 }
 
-struct RecordingCanvasRGB: Equatable, Sendable {
-    var red: Double
-    var green: Double
-    var blue: Double
+public struct RecordingCanvasRGB: Equatable, Sendable {
+    public var red: Double
+    public var green: Double
+    public var blue: Double
+
+    public init(red: Double, green: Double, blue: Double) {
+        self.red = red
+        self.green = green
+        self.blue = blue
+    }
 }
 
-enum RecordingCanvasAspect: String, CaseIterable, Identifiable, Sendable {
+public enum RecordingCanvasAspect: String, CaseIterable, Identifiable, Sendable {
     case original
     case widescreen
     case portrait
     case square
     case classic
 
-    var id: String { rawValue }
+    public var id: String { rawValue }
 
-    var ratio: CGFloat? {
+    public var ratio: CGFloat? {
         switch self {
         case .original: return nil
         case .widescreen: return 16 / 9
@@ -38,23 +44,43 @@ enum RecordingCanvasAspect: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
-struct RecordingCanvasSettings: Equatable, Sendable {
-    var aspect: RecordingCanvasAspect = .original
-    var margin: Double = 0.08
-    var cornerRadius: Double = 0.04
-    var red: Double = 0.12
-    var green: Double = 0.12
-    var blue: Double = 0.14
-    var backgroundStyle: RecordingCanvasBackgroundStyle = .solid
-    var accentColor: RecordingCanvasRGB?
+public struct RecordingCanvasSettings: Equatable, Sendable {
+    public var aspect: RecordingCanvasAspect = .original
+    public var margin: Double = 0.08
+    public var cornerRadius: Double = 0.04
+    public var red: Double = 0.12
+    public var green: Double = 0.12
+    public var blue: Double = 0.14
+    public var backgroundStyle: RecordingCanvasBackgroundStyle = .solid
+    public var accentColor: RecordingCanvasRGB?
+
+    public init(
+        aspect: RecordingCanvasAspect = .original,
+        margin: Double = 0.08,
+        cornerRadius: Double = 0.04,
+        red: Double = 0.12,
+        green: Double = 0.12,
+        blue: Double = 0.14,
+        backgroundStyle: RecordingCanvasBackgroundStyle = .solid,
+        accentColor: RecordingCanvasRGB? = nil
+    ) {
+        self.aspect = aspect
+        self.margin = margin
+        self.cornerRadius = cornerRadius
+        self.red = red
+        self.green = green
+        self.blue = blue
+        self.backgroundStyle = backgroundStyle
+        self.accentColor = accentColor
+    }
 }
 
-struct RecordingCanvasLayout: Equatable {
-    let renderSize: CGSize
-    let contentRect: CGRect
-    let cornerRadius: CGFloat
+public struct RecordingCanvasLayout: Equatable {
+    public let renderSize: CGSize
+    public let contentRect: CGRect
+    public let cornerRadius: CGFloat
 
-    init(sourceSize: CGSize, settings: RecordingCanvasSettings) {
+    public init(sourceSize: CGSize, settings: RecordingCanvasSettings) {
         let sourceWidth = max(2, sourceSize.width)
         let sourceHeight = max(2, sourceSize.height)
         var width = sourceWidth
@@ -84,13 +110,13 @@ struct RecordingCanvasLayout: Equatable {
     }
 }
 
-enum RecordingCanvasComposition {
+public enum RecordingCanvasComposition {
     // CIImage is an immutable rendering recipe; sharing it across frame callbacks is safe.
     private struct SharedBackground: @unchecked Sendable {
         let image: CIImage
     }
 
-    static func make(
+    public static func make(
         asset: AVAsset,
         sourceSize: CGSize,
         settings: RecordingCanvasSettings
@@ -148,7 +174,7 @@ enum RecordingCanvasComposition {
         return composition
     }
 
-    static func backgroundImage(in rect: CGRect, settings: RecordingCanvasSettings) -> CIImage {
+    public static func backgroundImage(in rect: CGRect, settings: RecordingCanvasSettings) -> CIImage {
         let base = CIColor(red: settings.red, green: settings.green, blue: settings.blue)
         let solid = CIImage(color: base).cropped(to: rect)
         switch settings.backgroundStyle {
