@@ -78,6 +78,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return service
     }()
     private var healthReminderService: HealthReminderService { serviceRegistry.healthReminderService }
+    private lazy var healthReminderCoordinator = AppHealthReminderCoordinator(
+        actions: AppHealthReminderCoordinator.Actions(
+            isEnabled: { [weak self] in self?.viewModel.settings.healthReminder.enabled ?? false },
+            enable: { [weak self] in self?.viewModel.settings.healthReminder.enabled = true },
+            startWorking: { [weak self] in self?.healthReminderService.startWorking() },
+            pauseOrResume: { [weak self] in self?.healthReminderService.pauseOrResume() },
+            startBreak: { [weak self] in self?.healthReminderService.startBreak() },
+            skipBreak: { [weak self] in self?.healthReminderService.skipBreak() }
+        )
+    )
     private var keepAwakeService: KeepAwakeService { serviceRegistry.keepAwakeService }
     private var clipboardStore: ClipboardStore { serviceRegistry.clipboardStore }
     private var screenCaptureService: ScreenCaptureService { serviceRegistry.screenCaptureService }
@@ -345,7 +355,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.authenticatorService.showPanel()
         }
         viewModel.onHealthCommand = { [weak self] command in
-            self?.handleHealthCommand(command)
+            self?.healthReminderCoordinator.handle(command)
         }
         viewModel.onScreenshotCommand = { [weak self] command in
             self?.captureCoordinator.handle(command)
@@ -989,30 +999,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
     }
 
-    private func handleHealthCommand(_ command: HealthReminderCommand) {
-        switch command {
-        case .start:
-            if !viewModel.settings.healthReminder.enabled {
-                viewModel.settings.healthReminder.enabled = true
-            }
-            healthReminderService.startWorking()
-        case .pauseResume:
-            if !viewModel.settings.healthReminder.enabled {
-                viewModel.settings.healthReminder.enabled = true
-                return
-            }
-            healthReminderService.pauseOrResume()
-        case .startBreak:
-            if !viewModel.settings.healthReminder.enabled {
-                viewModel.settings.healthReminder.enabled = true
-            }
-            healthReminderService.startBreak()
-        case .skipBreak:
-            guard viewModel.settings.healthReminder.enabled else { return }
-            healthReminderService.skipBreak()
-        }
-    }
-
     private func handleKeepAwakeCommand() {
         launcherCoordinator.hide()
         Task { @MainActor [weak self] in
@@ -1183,7 +1169,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             theme: viewModel.settings.theme,
             healthReminderService: healthReminderService,
             onHealthCommand: { [weak self] command in
-                self?.handleHealthCommand(command)
+                self?.healthReminderCoordinator.handle(command)
             },
             onOpenHealthPreferences: { [weak self] in
                 self?.showPreferences(section: .health)
