@@ -23,6 +23,13 @@ final class AppTextActionCoordinator {
         self.actions = actions
     }
 
+    func installServicesProvider(_ provider: TextServiceProvider) {
+        provider.onProcessText = { [weak self] text in
+            self?.presentTextActions(for: text)
+        }
+        NSApp.servicesProvider = provider
+    }
+
     func triggerTranslation() {
         // Capture text while the user's app still has Accessibility focus.
         let text = translationService.capture()
