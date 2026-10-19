@@ -128,7 +128,7 @@ final class HealthReminderService: ObservableObject {
             phase: .working,
             remainingSeconds: max(1, settings.workMinutes) * 60,
             activityPaused: false,
-            pausedFrom: nil
+            pausedFrom: .some(nil)
         )
         startTimerIfNeeded()
     }
@@ -142,7 +142,7 @@ final class HealthReminderService: ObservableObject {
             updateState(phase: .paused, activityPaused: false, pausedFrom: state.phase)
         case .paused:
             let next = state.pausedFrom ?? .working
-            updateState(phase: next, activityPaused: false, pausedFrom: nil)
+            updateState(phase: next, activityPaused: false, pausedFrom: .some(nil))
             startTimerIfNeeded()
             refreshBreakWindow()
         case .idle:
@@ -157,7 +157,7 @@ final class HealthReminderService: ObservableObject {
             phase: .breaking,
             remainingSeconds: max(10, settings.breakSeconds),
             activityPaused: false,
-            pausedFrom: nil
+            pausedFrom: .some(nil)
         )
         playSoundIfNeeded()
         startTimerIfNeeded()
