@@ -12,16 +12,22 @@ public enum AIChatError: Error, Equatable, Sendable {
 public struct AIChatClient: Sendable {
     public typealias ImageDataURLProvider = @Sendable (String, AISettings) throws -> String
     public typealias HTTPFailureLogger = @Sendable (_ operation: String, _ detail: String, _ statusCode: Int) -> Void
+    public typealias HTTPDataLoader = @Sendable (URLRequest) async throws -> (Data, URLResponse)
 
     private let imageDataURLProvider: ImageDataURLProvider
     private let httpFailureLogger: HTTPFailureLogger
+    private let httpDataLoader: HTTPDataLoader
 
     public init(
         imageDataURLProvider: @escaping ImageDataURLProvider,
-        httpFailureLogger: @escaping HTTPFailureLogger
+        httpFailureLogger: @escaping HTTPFailureLogger,
+        httpDataLoader: @escaping HTTPDataLoader = { request in
+            try await URLSession.shared.data(for: request)
+        }
     ) {
         self.imageDataURLProvider = imageDataURLProvider
         self.httpFailureLogger = httpFailureLogger
+        self.httpDataLoader = httpDataLoader
     }
 
     public func fetchModels(settings: AISettings) async throws -> [String] {
@@ -37,7 +43,7 @@ public struct AIChatClient: Sendable {
         request.timeoutInterval = 30
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await httpDataLoader(request)
         if let httpResponse = response as? HTTPURLResponse,
            !(200 ... 299).contains(httpResponse.statusCode)
         {
@@ -68,7 +74,7 @@ public struct AIChatClient: Sendable {
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.httpBody = try requestBody(messages: messages, settings: settings)
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await httpDataLoader(request)
         if let httpResponse = response as? HTTPURLResponse,
            !(200 ... 299).contains(httpResponse.statusCode)
         {

@@ -61,3 +61,57 @@ func aiClientBuildsChatRequestBody() throws {
     #expect(messages.first?["content"] as? String == "Be concise.")
     #expect(messages.last?["content"] as? String == "Hello")
 }
+
+@Test("AI client fetches and sorts model names through its HTTP loader")
+func aiClientFetchesModels() async throws {
+    let endpoint = try #require(URL(string: "https://api.example.com/v1/models"))
+    let response = try #require(HTTPURLResponse(url: endpoint, statusCode: 200, httpVersion: nil, headerFields: nil))
+    let body = Data(#"{"data":[{"id":"z-model"},{"id":"a-model"},{"id":"  "}]}"#.utf8)
+    let client = AIChatClient(
+        imageDataURLProvider: { _, _ in "" },
+        httpFailureLogger: { _, _, _ in },
+        httpDataLoader: { request in
+            #expect(request.httpMethod == "GET")
+            #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer test-key")
+            return (body, response)
+        }
+    )
+    var settings = AISettings.default
+    settings.apiKey = "test-key"
+
+    #expect(try await client.fetchModels(settings: settings) == ["a-model", "z-model"])
+}
+
+@Test("AI client parses a chat completion and rejects HTTP errors")
+func aiClientSendsAndParsesChatCompletion() async throws {
+    let endpoint = try #require(URL(string: "https://api.example.com/v1/chat/completions"))
+    let successResponse = try #require(HTTPURLResponse(url: endpoint, statusCode: 200, httpVersion: nil, headerFields: nil))
+    let completionBody = Data(#"{"choices":[{"message":{"content":"  answer  "}}]}"#.utf8)
+    let client = AIChatClient(
+        imageDataURLProvider: { _, _ in "" },
+        httpFailureLogger: { _, _, _ in },
+        httpDataLoader: { request in
+            #expect(request.httpMethod == "POST")
+            #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer test-key")
+            return (completionBody, successResponse)
+        }
+    )
+    var settings = AISettings.default
+    settings.apiKey = "test-key"
+
+    #expect(try await client.send(messages: [], settings: settings) == "answer")
+
+    let errorResponse = try #require(HTTPURLResponse(url: endpoint, statusCode: 401, httpVersion: nil, headerFields: nil))
+    let errorBody = Data(#"{"error":{"message":"unauthorized"}}"#.utf8)
+    let failingClient = AIChatClient(
+        imageDataURLProvider: { _, _ in "" },
+        httpFailureLogger: { _, _, _ in },
+        httpDataLoader: { _ in (errorBody, errorResponse) }
+    )
+    do {
+        _ = try await failingClient.send(messages: [], settings: settings)
+        Issue.record("Expected an HTTP status error")
+    } catch let error as AIChatError {
+        #expect(error == .requestFailed(statusCode: 401))
+    }
+}
