@@ -2,13 +2,13 @@
 import Foundation
 @preconcurrency import Vision
 
-struct ScrollingCaptureMatch: Equatable, Sendable {
-    let verticalOffset: Int
-    let confidence: Double
-    let rightMargin: Int
+public struct ScrollingCaptureMatch: Equatable, Sendable {
+    public let verticalOffset: Int
+    public let confidence: Double
+    public let rightMargin: Int
 }
 
-enum ScrollingCaptureMatcher {
+public enum ScrollingCaptureMatcher {
     private struct PixelBuffer {
         let width: Int
         let height: Int
@@ -56,7 +56,7 @@ enum ScrollingCaptureMatcher {
         }
     }
 
-    static func match(
+    public static func match(
         previous: CGImage,
         current: CGImage,
         frozenHeaderHeight: Int = 0
@@ -130,7 +130,7 @@ enum ScrollingCaptureMatcher {
         )
     }
 
-    static func framesAreStable(_ first: CGImage, _ second: CGImage) -> Bool {
+    public static func framesAreStable(_ first: CGImage, _ second: CGImage) -> Bool {
         guard first.width == second.width,
               first.height == second.height,
               let firstPixels = PixelBuffer(first),
@@ -157,7 +157,7 @@ enum ScrollingCaptureMatcher {
         return normalized < 0.0025
     }
 
-    static func frozenHeaderHeight(previous: CGImage, current: CGImage) -> Int {
+    public static func frozenHeaderHeight(previous: CGImage, current: CGImage) -> Int {
         guard previous.width == current.width,
               previous.height == current.height,
               let previousPixels = PixelBuffer(previous),

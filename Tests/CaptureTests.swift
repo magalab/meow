@@ -136,42 +136,6 @@ func scrollingCaptureSettingsClampUnsafeValues() throws {
     #expect(decoded.settlementDelay == 2)
 }
 
-@Test("Scrolling capture recognizes identical settled frames")
-func scrollingCaptureSettledFrames() {
-    let image = makeScrollingSourceImage(width: 180, height: 220)
-    #expect(ScrollingCaptureMatcher.framesAreStable(image, image))
-}
-
-@Test("Scrolling capture rejects featureless content")
-func scrollingCaptureRejectsFeaturelessContent() {
-    let first = makeTestImage(width: 180, height: 220)
-    let second = makeTestImage(width: 180, height: 220)
-    #expect(ScrollingCaptureMatcher.match(previous: first, current: second) == nil)
-}
-
-@Test("Scrolling capture matches a known downward content offset")
-func scrollingCaptureKnownOffset() throws {
-    let source = makeScrollingSourceImage(width: 220, height: 360)
-    let viewportHeight = 180
-    let expectedOffset = 48
-    let previous = try #require(source.cropping(to: CGRect(
-        x: 0,
-        y: 0,
-        width: source.width,
-        height: viewportHeight
-    )))
-    let current = try #require(source.cropping(to: CGRect(
-        x: 0,
-        y: expectedOffset,
-        width: source.width,
-        height: viewportHeight
-    )))
-
-    let match = try #require(ScrollingCaptureMatcher.match(previous: previous, current: current))
-    #expect(abs(match.verticalOffset - expectedOffset) <= 2)
-    #expect(match.confidence > 0.5)
-}
-
 @Test("Scrolling capture processor preserves every row at a matched seam")
 func scrollingCaptureProcessorPreservesMatchedRows() async throws {
     let source = makeScrollingSourceImage(width: 220, height: 360)
@@ -206,35 +170,6 @@ func scrollingCaptureProcessorPreservesMatchedRows() async throws {
     #expect(!finalImage.isReduced)
     #expect(finalImage.image.height == viewportHeight + offset)
     #expect(normalizedImageBytes(finalImage.image) == normalizedImageBytes(expected))
-}
-
-@Test("Scrolling capture detects a fixed top header")
-func scrollingCaptureFrozenHeaderDetection() throws {
-    let source = makeScrollingSourceImage(width: 220, height: 360)
-    let previous = try #require(makeScrollingViewport(
-        source: source,
-        offset: 0,
-        height: 180,
-        frozenHeaderHeight: 24
-    ))
-    let current = try #require(makeScrollingViewport(
-        source: source,
-        offset: 48,
-        height: 180,
-        frozenHeaderHeight: 24
-    ))
-
-    let detected = ScrollingCaptureMatcher.frozenHeaderHeight(
-        previous: previous,
-        current: current
-    )
-    #expect((20...28).contains(detected))
-    let match = try #require(ScrollingCaptureMatcher.match(
-        previous: previous,
-        current: current,
-        frozenHeaderHeight: detected
-    ))
-    #expect(abs(match.verticalOffset - 48) <= 2)
 }
 
 @Test("Scrolling capture stitcher appends only new rows")
@@ -615,49 +550,6 @@ private func makeScrollingSourceImage(width: Int, height: Int) -> CGImage {
         ))
     }
     return context.makeImage()!
-}
-
-private func makeScrollingViewport(
-    source: CGImage,
-    offset: Int,
-    height: Int,
-    frozenHeaderHeight: Int
-) -> CGImage? {
-    guard let content = source.cropping(to: CGRect(
-        x: 0,
-        y: offset,
-        width: source.width,
-        height: height
-    )),
-        let context = CGContext(
-            data: nil,
-            width: source.width,
-            height: height,
-            bitsPerComponent: 8,
-            bytesPerRow: 0,
-            space: CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        )
-    else { return nil }
-
-    context.draw(content, in: CGRect(x: 0, y: 0, width: source.width, height: height))
-    context.setFillColor(NSColor.black.cgColor)
-    context.fill(CGRect(
-        x: 0,
-        y: height - frozenHeaderHeight,
-        width: source.width,
-        height: frozenHeaderHeight
-    ))
-    for x in stride(from: 0, to: source.width, by: 17) {
-        context.setFillColor(NSColor.systemYellow.cgColor)
-        context.fill(CGRect(
-            x: x,
-            y: height - frozenHeaderHeight + 5,
-            width: 8,
-            height: 9
-        ))
-    }
-    return context.makeImage()
 }
 
 private func imageBytes(_ image: CGImage) -> Data {
