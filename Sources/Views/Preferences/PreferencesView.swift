@@ -1,4 +1,5 @@
 import AppKit
+import MeowClipboard
 import SwiftUI
 
 enum PreferenceSection: String, CaseIterable, Identifiable {

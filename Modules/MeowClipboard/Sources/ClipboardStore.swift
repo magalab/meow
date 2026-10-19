@@ -1,10 +1,9 @@
-import MeowClipboard
 import AppKit
 @preconcurrency import ApplicationServices
 import Combine
 import Foundation
 
-extension NSImage {
+public extension NSImage {
     func pngData() -> Data? {
         guard let cgImage = cgImage(forProposedRect: nil, context: nil, hints: nil) else { return nil }
         let bitmapRep = NSBitmapImageRep(cgImage: cgImage)
@@ -34,21 +33,21 @@ extension NSImage {
 }
 
 @MainActor
-final class ClipboardStore: ObservableObject {
+public final class ClipboardStore: ObservableObject {
     private struct PasteboardItemSnapshot {
         let values: [(type: NSPasteboard.PasteboardType, data: Data)]
     }
 
-    static let internalPasteboardType = NSPasteboard.PasteboardType("tech.lury.meow.internal")
-    static let sensitivePasteboardTypes: Set<NSPasteboard.PasteboardType> = [
+    public static let internalPasteboardType = NSPasteboard.PasteboardType("tech.lury.meow.internal")
+    public static let sensitivePasteboardTypes: Set<NSPasteboard.PasteboardType> = [
         .init("org.nspasteboard.ConcealedType"),
         .init("org.nspasteboard.TransientType"),
         .init("com.apple.is-sensitive"),
     ]
-    static let maxTextLength = 100_000
-    static let maxImageSourceBytes = 64 * 1_024 * 1_024
+    public static let maxTextLength = 100_000
+    public static let maxImageSourceBytes = 64 * 1_024 * 1_024
 
-    @Published private(set) var storageUsageBytes: Int64 = 0
+    @Published public private(set) var storageUsageBytes: Int64 = 0
 
     private let historyStore: ClipboardHistoryStore
     private let memoryWindow: Int
@@ -70,7 +69,7 @@ final class ClipboardStore: ObservableObject {
     private var imageStorageLimitMB = 512
     private var disabledBundleIDs: Set<String> = []
 
-    init(
+    public init(
         historyDirectory: URL? = nil,
         memoryWindow: Int = 1000,
         legacyCacheDirectory: URL? = nil,
@@ -87,11 +86,11 @@ final class ClipboardStore: ObservableObject {
         )
     }
 
-    var storageDirectoryURL: URL {
+    public var storageDirectoryURL: URL {
         historyStore.directoryURL
     }
 
-    func configure(
+    public func configure(
         retention: ClipboardRetention,
         imageStorageLimitMB: Int,
         disabledAppBundleIDs: [String]
@@ -116,7 +115,7 @@ final class ClipboardStore: ObservableObject {
         }
     }
 
-    func startMonitoring(onChange: @escaping () -> Void) {
+    public func startMonitoring(onChange: @escaping () -> Void) {
         stopMonitoring()
         self.onChange = onChange
         isMonitoring = true
@@ -147,7 +146,7 @@ final class ClipboardStore: ObservableObject {
         monitorTimer = timer
     }
 
-    func stopMonitoring() {
+    public func stopMonitoring() {
         isMonitoring = false
         invalidatePendingCaptures()
         monitorTimer?.invalidate()
@@ -158,11 +157,11 @@ final class ClipboardStore: ObservableObject {
         }
     }
 
-    func getEntries() -> [ClipboardEntry] {
+    public func getEntries() -> [ClipboardEntry] {
         entries
     }
 
-    func search(_ query: String, limit: Int = 200) async -> [ClipboardEntry] {
+    public func search(_ query: String, limit: Int = 200) async -> [ClipboardEntry] {
         await waitForPendingPersistence()
         guard !Task.isCancelled else { return [] }
         if let result = await historyStore.search(query, limit: limit) {
@@ -171,30 +170,38 @@ final class ClipboardStore: ObservableObject {
         return entries.filter { $0.content.searchText.localizedCaseInsensitiveContains(query) }
     }
 
-    func waitForPendingPersistence() async {
+    public func waitForPendingPersistence() async {
         await persistenceTask?.value
     }
 
-    func insertCapture(_ artifact: CaptureArtifact) {
+    public func insertCapture(
+        id: UUID,
+        imageURL: URL,
+        thumbnailURL: URL,
+        width: Int,
+        height: Int,
+        createdAt: Date,
+        sourceName: String
+    ) {
         let imageContent = ImageClipboardContent(
-            thumbnailPath: artifact.thumbnailURL.path,
-            originalPath: artifact.imageURL.path,
-            sourceName: L10n.screenshotClipboardName,
-            width: artifact.width,
-            height: artifact.height,
+            thumbnailPath: thumbnailURL.path,
+            originalPath: imageURL.path,
+            sourceName: sourceName,
+            width: width,
+            height: height,
             ownsCachedFiles: false
         )
         addEntry(
             ClipboardEntry(
-                id: artifact.id.uuidString,
+                id: id.uuidString,
                 content: .image(imageContent),
-                copiedAt: artifact.createdAt,
+                copiedAt: createdAt,
                 sourceBundleID: Bundle.main.bundleIdentifier
             )
         )
     }
 
-    func removeCaptureEntries(ids: Set<UUID>) {
+    public func removeCaptureEntries(ids: Set<UUID>) {
         let idStrings = Set(ids.map(\.uuidString))
         entries.removeAll { idStrings.contains($0.id) }
         let revision = recordLocalMutation()
@@ -204,33 +211,33 @@ final class ClipboardStore: ObservableObject {
         notifyChanged()
     }
 
-    func writeCaptureToPasteboard(_ artifact: CaptureArtifact) {
-        if artifact.kind == .scrolling {
-            writeScrollingCaptureToPasteboard(artifact)
+    public func writeCaptureToPasteboard(imageURL: URL, isScrolling: Bool) {
+        if isScrolling {
+            writeScrollingCaptureToPasteboard(imageURL: imageURL)
             return
         }
-        guard let image = NSImage(contentsOf: artifact.imageURL),
+        guard let image = NSImage(contentsOf: imageURL),
               let tiffData = image.tiffRepresentation
         else { return }
 
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setData(tiffData, forType: .tiff)
-        pasteboard.writeObjects([artifact.imageURL as NSURL])
+        pasteboard.writeObjects([imageURL as NSURL])
         markInternalWrite(on: pasteboard)
     }
 
-    private func writeScrollingCaptureToPasteboard(_ artifact: CaptureArtifact) {
+    private func writeScrollingCaptureToPasteboard(imageURL: URL) {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
-        if let pngData = try? Data(contentsOf: artifact.imageURL, options: .mappedIfSafe) {
+        if let pngData = try? Data(contentsOf: imageURL, options: .mappedIfSafe) {
             pasteboard.setData(pngData, forType: .png)
         }
-        pasteboard.writeObjects([artifact.imageURL as NSURL])
+        pasteboard.writeObjects([imageURL as NSURL])
         markInternalWrite(on: pasteboard)
     }
 
-    func delete(_ entry: ClipboardEntry) {
+    public func delete(_ entry: ClipboardEntry) {
         entries.removeAll { $0.id == entry.id }
         let revision = recordLocalMutation()
         enqueuePersistence(snapshotRevision: revision) { historyStore in
@@ -239,7 +246,7 @@ final class ClipboardStore: ObservableObject {
         notifyChanged()
     }
 
-    func clearAll() {
+    public func clearAll() {
         invalidatePendingCaptures()
         entries.removeAll()
         let revision = recordLocalMutation()
@@ -249,7 +256,7 @@ final class ClipboardStore: ObservableObject {
         notifyChanged()
     }
 
-    func togglePinned(_ entry: ClipboardEntry) {
+    public func togglePinned(_ entry: ClipboardEntry) {
         let updated = entry.isPinned
             ? entry.with(copiedAt: Date(), pinnedAt: nil)
             : entry.with(pinnedAt: Date())
@@ -263,7 +270,7 @@ final class ClipboardStore: ObservableObject {
         notifyChanged()
     }
 
-    func writeToPasteboard(_ entry: ClipboardEntry) {
+    public func writeToPasteboard(_ entry: ClipboardEntry) {
         let pasteboard = NSPasteboard.general
 
         switch entry.content {
@@ -292,7 +299,7 @@ final class ClipboardStore: ObservableObject {
         markInternalWrite(on: pasteboard)
     }
 
-    static func pasteboardImagePayload(
+    public static func pasteboardImagePayload(
         for imageContent: ImageClipboardContent
     ) -> (tiffData: Data, originalURL: URL?)? {
         if let originalPath = imageContent.originalPath,
@@ -307,14 +314,14 @@ final class ClipboardStore: ObservableObject {
         return (tiffData, nil)
     }
 
-    func writePrivateTextToPasteboard(_ text: String) {
+    public func writePrivateTextToPasteboard(_ text: String) {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setString(text, forType: .string)
         markInternalWrite(on: pasteboard)
     }
 
-    func removePrivateTextFromHistory(_ text: String) {
+    public func removePrivateTextFromHistory(_ text: String) {
         let normalized = text.trimmingCharacters(in: .whitespacesAndNewlines)
         let content = ClipboardContent.text(normalized)
         entries.removeAll { $0.content == content }
@@ -328,7 +335,7 @@ final class ClipboardStore: ObservableObject {
 
     /// Pastes text into the focused app without adding the temporary text to clipboard history.
     /// When Accessibility permission is unavailable, the text remains on the clipboard.
-    func performTemporaryTextPaste(_ text: String) -> Bool {
+    public func performTemporaryTextPaste(_ text: String) -> Bool {
         let pasteboard = NSPasteboard.general
         let snapshots = pasteboard.pasteboardItems?.compactMap { item -> PasteboardItemSnapshot? in
             let values = item.types.compactMap { type -> (NSPasteboard.PasteboardType, Data)? in
@@ -375,21 +382,21 @@ final class ClipboardStore: ObservableObject {
         return true
     }
 
-    static func containsSensitiveType(_ types: [NSPasteboard.PasteboardType]) -> Bool {
+    public static func containsSensitiveType(_ types: [NSPasteboard.PasteboardType]) -> Bool {
         !Set(types).isDisjoint(with: sensitivePasteboardTypes)
     }
 
-    static func shouldCapture(types: [NSPasteboard.PasteboardType]) -> Bool {
+    public static func shouldCapture(types: [NSPasteboard.PasteboardType]) -> Bool {
         !types.contains(internalPasteboardType) && !containsSensitiveType(types)
     }
 
-    static func isSensitiveText(_ text: String) -> Bool {
+    public static func isSensitiveText(_ text: String) -> Bool {
         let lowercased = text.lowercased()
         return lowercased.hasPrefix("otpauth://")
             || lowercased.hasPrefix("otpauth-migration://")
     }
 
-    static func normalizedTextForCapture(_ text: String) -> String? {
+    public static func normalizedTextForCapture(_ text: String) -> String? {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, !isSensitiveText(trimmed) else { return nil }
         return trimmed.count > maxTextLength
@@ -397,7 +404,7 @@ final class ClipboardStore: ObservableObject {
             : trimmed
     }
 
-    static func fallbackFileURL(from items: [NSPasteboardItem]) -> URL? {
+    public static func fallbackFileURL(from items: [NSPasteboardItem]) -> URL? {
         let type = NSPasteboard.PasteboardType("public.file-url")
         for item in items {
             guard let data = item.data(forType: type),
@@ -410,7 +417,7 @@ final class ClipboardStore: ObservableObject {
         return nil
     }
 
-    func isExcludedApplication(bundleID: String) -> Bool {
+    public func isExcludedApplication(bundleID: String) -> Bool {
         disabledBundleIDs.contains(bundleID.lowercased())
     }
 
