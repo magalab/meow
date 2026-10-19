@@ -1,4 +1,5 @@
 import Foundation
+import MeowAI
 
 enum SettingsSaveResult: Equatable {
     case saved
