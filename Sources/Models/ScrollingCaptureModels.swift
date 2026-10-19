@@ -1,5 +1,5 @@
-import CoreGraphics
 import Foundation
+import MeowCapture
 
 enum ScrollingCaptureSpeed: Int, Codable, CaseIterable, Identifiable, Sendable {
     case slow = 1
@@ -103,45 +103,6 @@ struct ScrollingCaptureSettings: Codable, Equatable, Sendable {
             forKey: .autoScrollSpeed
         ) ?? Self.default.autoScrollSpeed
     }
-}
-
-enum ScrollingCaptureState: Equatable, Sendable {
-    case idle
-    case preparing
-    case capturing
-    case paused
-    case finishing
-    case failed(String)
-}
-
-struct ScrollingCaptureProgress: Equatable, Sendable {
-    var receivedFrameCount: Int
-    var stitchedStripCount: Int
-    var pixelSize: CGSize
-    var latestMatchConfidence: Double
-    var isAutoScrolling: Bool
-    var state: ScrollingCaptureState
-
-    static let idle = ScrollingCaptureProgress(
-        receivedFrameCount: 0,
-        stitchedStripCount: 0,
-        pixelSize: .zero,
-        latestMatchConfidence: 0,
-        isAutoScrolling: false,
-        state: .idle
-    )
-}
-
-enum ScrollingCaptureStopReason: Equatable, Sendable {
-    case completed
-    case maximumHeight
-    case maximumPixels
-    case consecutiveMatchFailures
-}
-
-struct ScrollingCaptureFinalImage: @unchecked Sendable {
-    let image: CGImage
-    let isReduced: Bool
 }
 
 enum ScrollingCaptureSessionResult {

@@ -136,67 +136,6 @@ func scrollingCaptureSettingsClampUnsafeValues() throws {
     #expect(decoded.settlementDelay == 2)
 }
 
-@Test("Scrolling capture processor preserves every row at a matched seam")
-func scrollingCaptureProcessorPreservesMatchedRows() async throws {
-    let source = makeScrollingSourceImage(width: 220, height: 360)
-    let viewportHeight = 180
-    let offset = 48
-    let previous = try #require(source.cropping(to: CGRect(
-        x: 0,
-        y: 0,
-        width: source.width,
-        height: viewportHeight
-    )))
-    let current = try #require(source.cropping(to: CGRect(
-        x: 0,
-        y: offset,
-        width: source.width,
-        height: viewportHeight
-    )))
-    let expected = try #require(source.cropping(to: CGRect(
-        x: 0,
-        y: 0,
-        width: source.width,
-        height: viewportHeight + offset
-    )))
-    let processor = ScrollingCaptureProcessor(firstFrame: previous, settings: .default)
-
-    let outcome = await processor.process(current, isAutoScrolling: false)
-    guard case .appended = outcome else {
-        Issue.record("Expected the known-offset frame to be appended")
-        return
-    }
-    let finalImage = try #require(await processor.makeFinalImage())
-    #expect(!finalImage.isReduced)
-    #expect(finalImage.image.height == viewportHeight + offset)
-    #expect(normalizedImageBytes(finalImage.image) == normalizedImageBytes(expected))
-}
-
-@Test("Automatic scrolling completes after repeated stable frames")
-func scrollingCaptureAutomaticBottomDetection() async {
-    let frame = makeScrollingSourceImage(width: 160, height: 120)
-    let processor = ScrollingCaptureProcessor(firstFrame: frame, settings: .default)
-
-    _ = await processor.process(frame, isAutoScrolling: true)
-    _ = await processor.process(frame, isAutoScrolling: true)
-    let result = await processor.process(frame, isAutoScrolling: true)
-    guard case let .reachedLimit(reason, _) = result else {
-        Issue.record("Expected stable automatic capture to finish")
-        return
-    }
-    #expect(reason == .completed)
-}
-
-@Test("Scrolling capture proactively reduces an oversized final image")
-func scrollingCaptureProactivelyReducesFinalImage() async throws {
-    let frame = makeScrollingSourceImage(width: 100, height: 100)
-    let processor = ScrollingCaptureProcessor(firstFrame: frame, settings: .default)
-
-    let finalImage = try #require(await processor.makeFinalImage(maximumPixels: 5_000))
-    #expect(finalImage.isReduced)
-    #expect(finalImage.image.width * finalImage.image.height <= 5_100)
-}
-
 @Test("Manual scrolling is accepted only while the pointer is inside the capture region")
 func scrollingCaptureManualScrollRegionFilter() {
     let screenFrame = CGRect(x: -1_920, y: 200, width: 1_920, height: 1_080)
