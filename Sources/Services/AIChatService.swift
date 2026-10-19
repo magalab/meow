@@ -21,6 +21,12 @@ extension AIChatError: LocalizedError {
     }
 }
 
+extension AIChatHistoryError: LocalizedError {
+    public var errorDescription: String? {
+        L10n.aiErrorAttachmentStorageLimitExceeded
+    }
+}
+
 struct AIChatService: Sendable {
     private var client: AIChatClient {
         AIChatClient(
