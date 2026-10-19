@@ -403,6 +403,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         viewModel.onKeepAwakeCommand = { [weak self] in
             self?.keepAwakeCommandCoordinator.handleCommand()
         }
+        clipboardActionCoordinator.bindLauncherCommands(to: viewModel)
         keepAwakeService.onStateChanged = { [weak self] state in
             guard let self else { return }
             self.viewModel.updateKeepAwakeState(
@@ -416,35 +417,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self.keepAwakeService.state,
                 remainingMinutes: remainingMinutes
             )
-        }
-        viewModel.onUploadClipboard = { [weak self] in
-            self?.launcherCoordinator.hide()
-            self?.clipboardActionCoordinator.uploadFromClipboard()
-        }
-        viewModel.onPinClipboardImage = { [weak self] image in
-            self?.launcherCoordinator.hide()
-            self?.pinnedImageController.pin(image)
-        }
-        viewModel.onRecognizeClipboardImage = { [weak self] image in
-            self?.clipboardActionCoordinator.recognizeClipboardImage(image, translate: false)
-        }
-        viewModel.onTranslateClipboardImage = { [weak self] image in
-            self?.clipboardActionCoordinator.recognizeClipboardImage(image, translate: true)
-        }
-        viewModel.onScanClipboardImageQRCode = { [weak self] image in
-            self?.clipboardActionCoordinator.scanClipboardImageQRCode(image)
-        }
-        viewModel.onEditClipboardImage = { [weak self] image in
-            self?.clipboardActionCoordinator.editClipboardImage(image)
-        }
-        viewModel.onOpenClipboardImage = { [weak self] image in
-            self?.clipboardActionCoordinator.openClipboardImage(image)
-        }
-        viewModel.onSaveClipboardImage = { [weak self] image in
-            self?.clipboardActionCoordinator.saveClipboardImageAs(image)
-        }
-        viewModel.onSendClipboardImageToWhiteboard = { [weak self] image in
-            self?.clipboardActionCoordinator.sendImageToWhiteboard(image)
         }
         viewModel.onSettingsChanged = { [weak self] settings in
             self?.apply(settings: settings)
@@ -928,6 +900,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             },
             presentUploadError: { [weak self] error in
                 self?.mediaErrorPresenter.presentUploadError(error)
+            },
+            pinImage: { [weak self] image in
+                self?.pinnedImageController.pin(image)
             },
             importImageFileToWhiteboard: { [weak self] url, sourceName in
                 self?.whiteboardCoordinator.sendImageFile(at: url, sourceName: sourceName)
