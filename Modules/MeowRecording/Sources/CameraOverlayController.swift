@@ -1,10 +1,15 @@
-import MeowRecording
 import AppKit
 import AVFoundation
 
+public enum RecordingCameraOverlayFailure: Sendable {
+    case permissionDenied
+    case unavailable
+    case invalidConfiguration
+}
+
 @MainActor
-final class CameraOverlayController {
-    static let windowTitle = "Meow Camera Overlay"
+public final class CameraOverlayController {
+    public static let windowTitle = "Meow Camera Overlay"
 
     private var panel: NSPanel?
     private var sessionRunner: CameraSessionRunner?
@@ -13,10 +18,20 @@ final class CameraOverlayController {
     private var frameObserver: NSObjectProtocol?
     private var shape: RecordingCameraOverlayShape = .rounded
     private var startGeneration: UInt64 = 0
+    private let shapeTooltip: (RecordingCameraOverlayShape) -> String
+    private let makeFailure: (RecordingCameraOverlayFailure) -> Error
 
-    var windowID: CGWindowID? { panel.map { CGWindowID($0.windowNumber) } }
+    public init(
+        shapeTooltip: @escaping (RecordingCameraOverlayShape) -> String,
+        makeFailure: @escaping (RecordingCameraOverlayFailure) -> Error
+    ) {
+        self.shapeTooltip = shapeTooltip
+        self.makeFailure = makeFailure
+    }
 
-    static func devices() -> [AVCaptureDevice] {
+    public var windowID: CGWindowID? { panel.map { CGWindowID($0.windowNumber) } }
+
+    public static func devices() -> [AVCaptureDevice] {
         AVCaptureDevice.DiscoverySession(
             deviceTypes: [.builtInWideAngleCamera, .external],
             mediaType: .video,
@@ -24,7 +39,7 @@ final class CameraOverlayController {
         ).devices
     }
 
-    func start(
+    public func start(
         deviceID: String,
         shape: RecordingCameraOverlayShape,
         on screen: NSScreen?,
@@ -44,19 +59,19 @@ final class CameraOverlayController {
             granted = false
         }
         guard requestGeneration == startGeneration else { throw CancellationError() }
-        guard granted else { throw RecordingError.cameraDenied }
+        guard granted else { throw makeFailure(.permissionDenied) }
 
         let device = deviceID.isEmpty
             ? AVCaptureDevice.default(for: .video)
             : Self.devices().first { $0.uniqueID == deviceID }
-        guard let device else { throw RecordingError.cameraUnavailable }
+        guard let device else { throw makeFailure(.unavailable) }
 
         stop()
         let sessionGeneration = startGeneration
         let session = AVCaptureSession()
         session.sessionPreset = .high
         let input = try AVCaptureDeviceInput(device: device)
-        guard session.canAddInput(input) else { throw RecordingError.invalidConfiguration }
+        guard session.canAddInput(input) else { throw makeFailure(.invalidConfiguration) }
         session.addInput(input)
 
         let contentSize = Self.initialSize(for: shape)
@@ -83,7 +98,10 @@ final class CameraOverlayController {
             panel.setContentSize(previousFrame.size)
         }
 
-        let view = CameraOverlayContentView(frame: panel.contentView?.bounds ?? .zero)
+        let view = CameraOverlayContentView(
+            frame: panel.contentView?.bounds ?? .zero,
+            shapeTooltip: shapeTooltip
+        )
         view.wantsLayer = true
         view.layer?.backgroundColor = NSColor.clear.cgColor
         view.layer?.cornerRadius = Self.cornerRadius(for: shape, size: view.bounds.size)
@@ -160,12 +178,12 @@ final class CameraOverlayController {
         else { throw CancellationError() }
         guard started else {
             stop()
-            throw RecordingError.cameraUnavailable
+            throw makeFailure(.unavailable)
         }
         panel.orderFrontRegardless()
     }
 
-    func apply(shape: RecordingCameraOverlayShape) {
+    public func apply(shape: RecordingCameraOverlayShape) {
         guard let panel, let contentView else { return }
         self.shape = shape
         contentView.selectedShape = shape
@@ -214,7 +232,7 @@ final class CameraOverlayController {
         shape == .circle ? NSSize(width: 520, height: 520) : NSSize(width: 640, height: 480)
     }
 
-    func stop() {
+    public func stop() {
         startGeneration &+= 1
         if let frameObserver {
             NotificationCenter.default.removeObserver(frameObserver)
@@ -254,6 +272,7 @@ private final class CameraSessionRunner: @unchecked Sendable {
 }
 
 private final class CameraOverlayContentView: NSView {
+    private let shapeTooltip: (RecordingCameraOverlayShape) -> String
     var onShapeSelected: ((RecordingCameraOverlayShape) -> Void)?
     var selectedShape: RecordingCameraOverlayShape = .rounded {
         didSet { updateSelection() }
@@ -263,14 +282,18 @@ private final class CameraOverlayContentView: NSView {
     private var trackingAreaRef: NSTrackingArea?
     private var buttons: [RecordingCameraOverlayShape: NSButton] = [:]
 
-    override init(frame frameRect: NSRect) {
+    init(
+        frame frameRect: NSRect,
+        shapeTooltip: @escaping (RecordingCameraOverlayShape) -> String
+    ) {
+        self.shapeTooltip = shapeTooltip
         super.init(frame: frameRect)
         setupControls()
     }
 
+    @available(*, unavailable)
     required init?(coder: NSCoder) {
-        super.init(coder: coder)
-        setupControls()
+        nil
     }
 
     override func updateTrackingAreas() {
@@ -322,7 +345,7 @@ private final class CameraOverlayContentView: NSView {
 
         for shape in RecordingCameraOverlayShape.allCases {
             let button = NSButton(
-                image: Self.image(for: shape),
+                image: Self.image(for: shape, tooltip: shapeTooltip(shape)),
                 target: self,
                 action: #selector(selectShape(_:))
             )
@@ -331,7 +354,7 @@ private final class CameraOverlayContentView: NSView {
             button.isBordered = false
             button.imagePosition = .imageOnly
             button.contentTintColor = .white
-            button.toolTip = Self.tooltip(for: shape)
+            button.toolTip = shapeTooltip(shape)
             button.setButtonType(.momentaryChange)
             button.frame.size = NSSize(width: 24, height: 24)
             buttons[shape] = button
@@ -361,21 +384,13 @@ private final class CameraOverlayContentView: NSView {
         }
     }
 
-    private static func image(for shape: RecordingCameraOverlayShape) -> NSImage {
+    private static func image(for shape: RecordingCameraOverlayShape, tooltip: String) -> NSImage {
         let symbolName: String
         switch shape {
         case .rectangle: symbolName = "rectangle"
         case .rounded: symbolName = "rectangle.roundedtop"
         case .circle: symbolName = "circle"
         }
-        return NSImage(systemSymbolName: symbolName, accessibilityDescription: tooltip(for: shape)) ?? NSImage()
-    }
-
-    private static func tooltip(for shape: RecordingCameraOverlayShape) -> String {
-        switch shape {
-        case .rectangle: return L10n.recordingCameraShapeRectangle
-        case .rounded: return L10n.recordingCameraShapeRounded
-        case .circle: return L10n.recordingCameraShapeCircle
-        }
+        return NSImage(systemSymbolName: symbolName, accessibilityDescription: tooltip) ?? NSImage()
     }
 }
