@@ -18,6 +18,7 @@ struct AppMediaCommandRouterTests {
         var recordingRestored = 0
         var screenshotErrors = 0
         var recordingErrors = 0
+        var recordingStateUpdates = 0
         var audioModeSet = 0
         var uploadedURL: URL?
         let windowIDs: Set<CGWindowID> = [17]
@@ -43,6 +44,7 @@ struct AppMediaCommandRouterTests {
             restoreWhiteboardAfterRecording: { recordingRestored += 1 },
             activeScreen: { nil },
             setSystemAudioMode: { audioModeSet += 1 },
+            updateRecordingState: { _, _ in recordingStateUpdates += 1 },
             presentRecordingError: { _ in recordingErrors += 1 }
         ))
 
@@ -59,6 +61,7 @@ struct AppMediaCommandRouterTests {
         #expect(recording.prepareWhiteboard() == windowIDs)
         recording.restoreWhiteboard()
         recording.setSystemAudioMode()
+        recording.updateRecordingState(.recording(startedAt: Date()), 2)
         recording.presentError(error)
 
         #expect(hiddenPanels == 2)
@@ -68,6 +71,7 @@ struct AppMediaCommandRouterTests {
         #expect(recordingRestored == 1)
         #expect(screenshotErrors == 1)
         #expect(recordingErrors == 1)
+        #expect(recordingStateUpdates == 1)
         #expect(audioModeSet == 1)
         #expect(uploadedURL == URL(fileURLWithPath: "/tmp/capture.png"))
     }

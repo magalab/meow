@@ -182,7 +182,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var recordingService: RecordingService = {
         recordingServiceLoaded = true
         let service = RecordingService(store: recordingStore)
-        configureRecordingService(service)
         service.apply(settings: viewModel.settings)
         recordingNotificationService.requestAuthorization()
         return service
@@ -193,6 +192,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         recordingContentPickerController: recordingContentPickerController,
         recordingService: recordingService,
         recordingStore: recordingStore,
+        recordingNotificationService: recordingNotificationService,
         cameraOverlayController: cameraOverlayController,
         screenMagnifierController: screenMagnifierController,
         windowCoordinator: windowCoordinator,
@@ -524,36 +524,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func configureRecordingService(_ service: RecordingService) {
-        service.onCompleted = { [weak self] artifact in
-            self?.whiteboardCoordinator.restoreAfterRecording()
-            self?.recordingCoordinator.hideRecordingControl()
-            self?.cameraOverlayController.stop()
-            self?.screenMagnifierController.stop()
-            self?.recordingCoordinator.resetVisualOverlays()
-            self?.recordingNotificationService.notifyCompleted(artifact)
-            if self?.viewModel.settings.recording.showPreview == true {
-                self?.recordingCoordinator.showRecordingPreview(artifact)
-            }
-        }
-        service.onError = { [weak self] error in
-            self?.whiteboardCoordinator.restoreAfterRecording()
-            self?.recordingCoordinator.hideRecordingControl()
-            self?.cameraOverlayController.stop()
-            self?.screenMagnifierController.stop()
-            self?.recordingCoordinator.resetVisualOverlays()
-            self?.mediaErrorPresenter.presentRecordingError(error)
-        }
-        service.onStateChanged = { [weak self] state, elapsed in
-            self?.statusItemService.updateRecordingState(state, elapsed: elapsed)
-            if case .idle = state {
-                self?.whiteboardCoordinator.restoreAfterRecording()
-            } else if case .failed = state {
-                self?.whiteboardCoordinator.restoreAfterRecording()
-            }
-        }
-    }
-
     func applicationWillTerminate(_: Notification) {
         lifecycleCoordinator.applicationWillTerminate()
     }
@@ -811,6 +781,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             activeScreen: { [weak self] in self?.windowCoordinator.activeScreen() },
             setSystemAudioMode: { [weak self] in
                 self?.viewModel.settings.recording.audioMode = .system
+            },
+            updateRecordingState: { [weak self] state, elapsed in
+                self?.statusItemService.updateRecordingState(state, elapsed: elapsed)
             },
             presentRecordingError: { [weak self] error in
                 self?.mediaErrorPresenter.presentRecordingError(error)
