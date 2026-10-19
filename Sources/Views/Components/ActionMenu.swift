@@ -1,4 +1,5 @@
 import SwiftUI
+import MeowLauncher
 
 enum ActionMenuAction: String, Hashable {
     case open

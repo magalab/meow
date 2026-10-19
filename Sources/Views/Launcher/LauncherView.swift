@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import MeowLauncher
 
 extension Notification.Name {
     static let meowLauncherDidHide = Notification.Name("meow.launcher.didHide")
