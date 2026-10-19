@@ -450,6 +450,30 @@ func keystrokeVisualizerSettingsSchemaCompatibility() throws {
         == KeystrokeVisualizerSettings.default)
 }
 
+@Test("Authenticator settings retain their flat persisted keys")
+func authenticatorSettingsSchemaCompatibility() throws {
+    let legacyPayload = Data(
+        """
+        {
+          "authenticatorEnabled": true,
+          "authenticatorICloudSyncEnabled": true
+        }
+        """.utf8
+    )
+    let settings = try JSONDecoder().decode(AppSettings.self, from: legacyPayload)
+    #expect(settings.authenticator == AuthenticatorSettings(enabled: true, iCloudSyncEnabled: true))
+
+    let encoded = try JSONEncoder().encode(settings)
+    let payload = try #require(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+    #expect(payload["authenticator"] == nil)
+    #expect(payload["authenticatorEnabled"] as? Bool == true)
+    #expect(payload["authenticatorICloudSyncEnabled"] as? Bool == true)
+    #expect(try JSONDecoder().decode(AppSettings.self, from: encoded).authenticator == settings.authenticator)
+
+    let partial = try JSONDecoder().decode(AppSettings.self, from: Data("{}".utf8))
+    #expect(partial.authenticator == AuthenticatorSettings.default)
+}
+
 @Test("Partial whiteboard settings use safe opt-in defaults")
 func partialWhiteboardSettingsCompatibility() throws {
     let data = Data(
