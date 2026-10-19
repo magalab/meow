@@ -89,7 +89,19 @@ enum AppTheme: String, Codable, CaseIterable, Identifiable, Equatable, Sendable 
 }
 
 struct AppSettings: Codable {
-    var autoLaunch: Bool
+    var general: GeneralAppSettings
+    var autoLaunch: Bool {
+        get { general.autoLaunch }
+        set { general.autoLaunch = newValue }
+    }
+    var showStatusItem: Bool {
+        get { general.showStatusItem }
+        set { general.showStatusItem = newValue }
+    }
+    var showDockIcon: Bool {
+        get { general.showDockIcon }
+        set { general.showDockIcon = newValue }
+    }
     var appearance: AppearanceSettings
     var language: AppLanguage {
         get { appearance.language }
@@ -161,8 +173,6 @@ struct AppSettings: Codable {
         get { hotkeys.textActionsModifiers }
         set { hotkeys.textActionsModifiers = newValue }
     }
-    var showStatusItem: Bool
-    var showDockIcon: Bool
     var ai: AISettings
     var fileHosting: FileHostSettings
     var screenshot: ScreenshotSettings
@@ -266,7 +276,11 @@ struct AppSettings: Codable {
         keystrokeVisualizerHistoryCount: KeystrokeHistoryCount = .one,
         keystrokeVisualizerDisplayMode: KeystrokeDisplayMode = .shortcutsAndSpecialKeys
     ) {
-        self.autoLaunch = autoLaunch
+        self.general = GeneralAppSettings(
+            autoLaunch: autoLaunch,
+            showStatusItem: showStatusItem,
+            showDockIcon: showDockIcon
+        )
         self.appearance = AppearanceSettings(
             language: language,
             theme: theme,
@@ -290,8 +304,6 @@ struct AppSettings: Codable {
             textActionsKeyCode: textActionsHotkeyKeyCode,
             textActionsModifiers: textActionsHotkeyModifiers
         )
-        self.showStatusItem = showStatusItem
-        self.showDockIcon = showDockIcon
         self.ai = ai
         self.fileHosting = fileHosting
         self.screenshot = screenshot
@@ -387,7 +399,14 @@ extension AppSettings {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        autoLaunch = try container.decodeIfPresent(Bool.self, forKey: .autoLaunch) ?? Self.default.autoLaunch
+        general = GeneralAppSettings(
+            autoLaunch: try container.decodeIfPresent(Bool.self, forKey: .autoLaunch)
+                ?? GeneralAppSettings.default.autoLaunch,
+            showStatusItem: try container.decodeIfPresent(Bool.self, forKey: .showStatusItem)
+                ?? GeneralAppSettings.default.showStatusItem,
+            showDockIcon: try container.decodeIfPresent(Bool.self, forKey: .showDockIcon)
+                ?? GeneralAppSettings.default.showDockIcon
+        )
         clipboard = ClipboardSettings(
             historyEnabled: try container.decodeIfPresent(Bool.self, forKey: .clipboardHistoryEnabled)
                 ?? ClipboardSettings.default.historyEnabled,
@@ -402,8 +421,6 @@ extension AppSettings {
             imageStorageLimitMB: try container.decodeIfPresent(Int.self, forKey: .clipboardImageStorageLimitMB)
                 ?? ClipboardSettings.default.imageStorageLimitMB
         )
-        showStatusItem = try container.decodeIfPresent(Bool.self, forKey: .showStatusItem) ?? Self.default.showStatusItem
-        showDockIcon = try container.decodeIfPresent(Bool.self, forKey: .showDockIcon) ?? Self.default.showDockIcon
         hotkeys = HotkeySettings(
             launcherKeyCode: try container.decodeIfPresent(UInt32.self, forKey: .hotkeyKeyCode)
                 ?? HotkeySettings.default.launcherKeyCode,
