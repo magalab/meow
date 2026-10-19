@@ -17,14 +17,18 @@ final class CaptureStore: ObservableObject {
     @Published private(set) var artifacts: [CaptureArtifact] = []
     var onArtifactsRemoved: ((Set<UUID>) -> Void)?
 
-    init(fileManager: FileManager = .default) {
+    init(fileManager: FileManager = .default, capturesDirectory: URL? = nil) {
         self.fileManager = fileManager
-        let support = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        capturesDirectory = support
-            .appendingPathComponent("Meow", isDirectory: true)
-            .appendingPathComponent("Captures", isDirectory: true)
-        metadataURL = capturesDirectory.appendingPathComponent("index.json")
-        try? fileManager.createDirectory(at: capturesDirectory, withIntermediateDirectories: true)
+        if let capturesDirectory {
+            self.capturesDirectory = capturesDirectory
+        } else {
+            let support = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+            self.capturesDirectory = support
+                .appendingPathComponent("Meow", isDirectory: true)
+                .appendingPathComponent("Captures", isDirectory: true)
+        }
+        metadataURL = self.capturesDirectory.appendingPathComponent("index.json")
+        try? fileManager.createDirectory(at: self.capturesDirectory, withIntermediateDirectories: true)
         load()
     }
 

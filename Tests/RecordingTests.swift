@@ -29,6 +29,55 @@ func recordingSettingsCompatibility() throws {
     #expect(!settings.magnifierCircular)
 }
 
+@Test("Recording store loads legacy history metadata and preserves its schema")
+@MainActor
+func recordingStoreLegacyHistoryCompatibility() throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("meow-recording-legacy-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let id = UUID()
+    let fileURL = directory.appendingPathComponent("legacy.mp4")
+    try Data([1, 2, 3]).write(to: fileURL)
+    let legacyMetadata = Data(
+        """
+        [{
+          "id": "\(id.uuidString)",
+          "source": "display",
+          "createdAt": 790000000,
+          "duration": 42.5,
+          "fileURL": "\(fileURL.absoluteString)",
+          "width": 1920,
+          "height": 1080,
+          "fileSize": 3,
+          "hasSystemAudio": true,
+          "hasMicrophoneAudio": false
+        }]
+        """.utf8
+    )
+    try legacyMetadata.write(to: directory.appendingPathComponent("index.json"))
+
+    let store = RecordingStore(storageDirectory: directory)
+    let artifact = try #require(store.artifacts.first)
+    #expect(store.artifacts.count == 1)
+    #expect(artifact.id == id)
+    #expect(artifact.source == .display)
+    #expect(artifact.duration == 42.5)
+    #expect(artifact.fileURL == fileURL)
+    #expect(artifact.thumbnailURL == nil)
+    #expect(artifact.videoCodec == nil)
+
+    let rewritten = try Data(contentsOf: directory.appendingPathComponent("index.json"))
+    let records = try #require(JSONSerialization.jsonObject(with: rewritten) as? [[String: Any]])
+    #expect(records.count == 1)
+    #expect(Set(try #require(records.first).keys) == [
+        "id", "source", "createdAt", "duration", "fileURL", "width", "height", "fileSize",
+        "hasSystemAudio", "hasMicrophoneAudio",
+    ])
+    #expect(try JSONDecoder().decode([RecordingArtifact].self, from: rewritten) == [artifact])
+}
+
 @MainActor
 @Test("Canceling a recording countdown releases its state for the next recording")
 func recordingCountdownCancellationAllowsRestart() async throws {
