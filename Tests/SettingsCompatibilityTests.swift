@@ -326,6 +326,39 @@ func hotkeySettingsSchemaCompatibility() throws {
     #expect(empty.hotkeys == HotkeySettings.default)
 }
 
+@Test("General app settings retain legacy flat keys and accessors")
+func generalAppSettingsSchemaCompatibility() throws {
+    let legacyPayload = Data(
+        """
+        {
+          "autoLaunch": true,
+          "showStatusItem": false,
+          "showDockIcon": true
+        }
+        """.utf8
+    )
+    let settings = try JSONDecoder().decode(AppSettings.self, from: legacyPayload)
+    let expected = GeneralAppSettings(autoLaunch: true, showStatusItem: false, showDockIcon: true)
+    #expect(settings.general == expected)
+
+    let encoded = try JSONEncoder().encode(settings)
+    let payload = try #require(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+    #expect(payload["general"] == nil)
+    #expect(payload["autoLaunch"] as? Bool == true)
+    #expect(payload["showStatusItem"] as? Bool == false)
+    #expect(payload["showDockIcon"] as? Bool == true)
+    #expect(try JSONDecoder().decode(AppSettings.self, from: encoded).general == expected)
+
+    var legacyAccessors = AppSettings.default
+    legacyAccessors.autoLaunch = expected.autoLaunch
+    legacyAccessors.showStatusItem = expected.showStatusItem
+    legacyAccessors.showDockIcon = expected.showDockIcon
+    #expect(legacyAccessors.general == expected)
+
+    let partial = try JSONDecoder().decode(AppSettings.self, from: Data("{}".utf8))
+    #expect(partial.general == GeneralAppSettings.default)
+}
+
 @Test("Clipboard settings retain the flat persisted schema")
 func clipboardSettingsSchemaCompatibility() throws {
     #expect(ClipboardRetention.allCases.map(\.rawValue) == [1, 7, 30, 90, 180, 365, -1])
