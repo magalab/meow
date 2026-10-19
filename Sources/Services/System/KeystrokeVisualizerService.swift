@@ -46,12 +46,61 @@ final class KeystrokeOverlayPanel: NSPanel {
 
 @MainActor
 final class KeystrokeVisualizerService: ObservableObject {
+    struct EventTapDriver {
+        private struct Resources {
+            let tap: CFMachPort
+            let runLoopSource: CFRunLoopSource?
+        }
+
+        let start: @MainActor (KeystrokeVisualizerService) -> Any?
+        let stop: @MainActor (Any) -> Void
+        let reenable: @MainActor (Any) -> Void
+
+        static let appKit = EventTapDriver(
+            start: { service in
+                let mask =
+                    CGEventMask(1 << CGEventType.keyDown.rawValue) |
+                    CGEventMask(1 << CGEventType.flagsChanged.rawValue) |
+                    CGEventMask(1 << CGEventType.tapDisabledByTimeout.rawValue) |
+                    CGEventMask(1 << CGEventType.tapDisabledByUserInput.rawValue)
+
+                guard let tap = CGEvent.tapCreate(
+                    tap: .cgSessionEventTap,
+                    place: .headInsertEventTap,
+                    options: .listenOnly,
+                    eventsOfInterest: mask,
+                    callback: keystrokeEventTapCallback,
+                    userInfo: UnsafeMutableRawPointer(Unmanaged.passUnretained(service).toOpaque())
+                ) else { return nil }
+
+                let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
+                if let source {
+                    CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
+                }
+                CGEvent.tapEnable(tap: tap, enable: true)
+                return Resources(tap: tap, runLoopSource: source)
+            },
+            stop: { token in
+                guard let resources = token as? Resources else { return }
+                if let source = resources.runLoopSource {
+                    CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
+                }
+                CGEvent.tapEnable(tap: resources.tap, enable: false)
+            },
+            reenable: { token in
+                guard let resources = token as? Resources else { return }
+                CGEvent.tapEnable(tap: resources.tap, enable: true)
+            }
+        )
+    }
+
     var onOverlayPlacementChanged: ((KeystrokeOverlayPosition, KeystrokeOverlayPoint?) -> Void)?
     @Published private(set) var permissionState: KeystrokePermissionState = .unknown
 
     private let viewModel = KeystrokeOverlayViewModel()
-    private var eventTap: CFMachPort?
-    private var runLoopSource: CFRunLoopSource?
+    private var eventTapToken: Any?
+    private let eventTapDriver: EventTapDriver
+    private let permissionChecker: @MainActor (Bool) -> Bool
     private var overlayWindow: KeystrokeOverlayPanel?
     private var hostingController: NSHostingController<KeystrokeOverlayView>?
     private var hideWorkItem: DispatchWorkItem?
@@ -73,6 +122,18 @@ final class KeystrokeVisualizerService: ObservableObject {
         MainActor.assumeIsolated {
             stop()
         }
+    }
+
+    init(
+        eventTapDriver: EventTapDriver = .appKit,
+        permissionChecker: @escaping @MainActor (Bool) -> Bool = { prompt in
+            AXIsProcessTrustedWithOptions(
+                [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: prompt] as CFDictionary
+            )
+        }
+    ) {
+        self.eventTapDriver = eventTapDriver
+        self.permissionChecker = permissionChecker
     }
 
     func apply(settings: AppSettings) {
@@ -113,7 +174,7 @@ final class KeystrokeVisualizerService: ObservableObject {
             return
         }
 
-        if eventTap == nil {
+        if eventTapToken == nil {
             start()
         } else {
             refreshPermissionState(prompt: false)
@@ -129,57 +190,33 @@ final class KeystrokeVisualizerService: ObservableObject {
         viewModel.clear()
         overlayWindow?.orderOut(nil)
 
-        if let runLoopSource {
-            CFRunLoopRemoveSource(CFRunLoopGetMain(), runLoopSource, .commonModes)
-            self.runLoopSource = nil
-        }
-        if let eventTap {
-            CGEvent.tapEnable(tap: eventTap, enable: false)
-            self.eventTap = nil
+        if let eventTapToken {
+            eventTapDriver.stop(eventTapToken)
+            self.eventTapToken = nil
         }
     }
 
     private func start() {
         isEnabled = true
-        guard eventTap == nil else { return }
+        guard eventTapToken == nil else { return }
 
         guard requestPermission(prompt: true) else {
             permissionState = .denied
             return
         }
 
-        let mask =
-            CGEventMask(1 << CGEventType.keyDown.rawValue) |
-            CGEventMask(1 << CGEventType.flagsChanged.rawValue) |
-            CGEventMask(1 << CGEventType.tapDisabledByTimeout.rawValue) |
-            CGEventMask(1 << CGEventType.tapDisabledByUserInput.rawValue)
-
-        guard let tap = CGEvent.tapCreate(
-            tap: .cgSessionEventTap,
-            place: .headInsertEventTap,
-            options: .listenOnly,
-            eventsOfInterest: mask,
-            callback: keystrokeEventTapCallback,
-            userInfo: UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque())
-        ) else {
+        guard let token = eventTapDriver.start(self) else {
             permissionState = .unavailable
             MeowLog.system.error("Failed to create keystroke visualizer event tap")
             return
         }
 
-        eventTap = tap
-        runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
-        if let runLoopSource {
-            CFRunLoopAddSource(CFRunLoopGetMain(), runLoopSource, .commonModes)
-        }
-        CGEvent.tapEnable(tap: tap, enable: true)
+        eventTapToken = token
         permissionState = .trusted
     }
 
     private func requestPermission(prompt: Bool) -> Bool {
-        AXIsProcessTrustedWithOptions(
-            [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: prompt] as CFDictionary
-        )
+        permissionChecker(prompt)
     }
 
     fileprivate func handleEvent(type: CGEventType, keyCode: UInt32, flags: CGEventFlags) {
@@ -205,8 +242,8 @@ final class KeystrokeVisualizerService: ObservableObject {
             }
             scheduleModifierDisplay(label: label)
         case .tapDisabledByTimeout, .tapDisabledByUserInput:
-            if let eventTap {
-                CGEvent.tapEnable(tap: eventTap, enable: true)
+            if let eventTapToken {
+                eventTapDriver.reenable(eventTapToken)
             }
         default:
             break
