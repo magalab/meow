@@ -1,3 +1,4 @@
+import MeowClipboard
 import Foundation
 
 enum DateIconStyle: String, Codable, CaseIterable, Identifiable, Equatable, Sendable {

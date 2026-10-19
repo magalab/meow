@@ -1,3 +1,4 @@
+import MeowClipboard
 import AppKit
 @preconcurrency import ApplicationServices
 import AVFoundation

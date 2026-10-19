@@ -1,3 +1,4 @@
+import MeowClipboard
 import Foundation
 import Testing
 #if MEOW_VOICE

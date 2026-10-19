@@ -1,14 +1,14 @@
 import CryptoKit
 import Foundation
 
-struct ClipboardEntry: Identifiable, Hashable, Sendable {
-    let id: String
-    let content: ClipboardContent
-    let copiedAt: Date
-    let sourceBundleID: String?
-    let pinnedAt: Date?
+public struct ClipboardEntry: Identifiable, Hashable, Sendable {
+    public let id: String
+    public let content: ClipboardContent
+    public let copiedAt: Date
+    public let sourceBundleID: String?
+    public let pinnedAt: Date?
 
-    init(
+    public init(
         id: String,
         content: ClipboardContent,
         copiedAt: Date,
@@ -22,11 +22,11 @@ struct ClipboardEntry: Identifiable, Hashable, Sendable {
         self.pinnedAt = pinnedAt
     }
 
-    var isPinned: Bool {
+    public var isPinned: Bool {
         pinnedAt != nil
     }
 
-    func with(copiedAt: Date? = nil, pinnedAt: Date?) -> ClipboardEntry {
+    public func with(copiedAt: Date? = nil, pinnedAt: Date?) -> ClipboardEntry {
         ClipboardEntry(
             id: id,
             content: content,
@@ -36,23 +36,23 @@ struct ClipboardEntry: Identifiable, Hashable, Sendable {
         )
     }
 
-    var preview: String {
+    public var preview: String {
         content.preview
     }
 
-    var symbolName: String {
+    public var symbolName: String {
         content.symbolName
     }
 }
 
-enum ClipboardContent: Hashable, Sendable {
+public enum ClipboardContent: Hashable, Sendable {
     case text(String)
     case image(ImageClipboardContent)
     case file(FileClipboardContent)
     case url(URL)
     case audio(AudioClipboardContent)
 
-    var preview: String {
+    public var preview: String {
         switch self {
         case let .text(string):
             let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -73,7 +73,7 @@ enum ClipboardContent: Hashable, Sendable {
         }
     }
 
-    var symbolName: String {
+    public var symbolName: String {
         switch self {
         case .text:
             return "doc.text"
@@ -88,7 +88,7 @@ enum ClipboardContent: Hashable, Sendable {
         }
     }
 
-    var aiContextText: String {
+    public var aiContextText: String {
         switch self {
         case let .text(string):
             return string
@@ -106,7 +106,7 @@ enum ClipboardContent: Hashable, Sendable {
         }
     }
 
-    var searchText: String {
+    public var searchText: String {
         switch self {
         case let .text(string):
             return string
@@ -121,7 +121,7 @@ enum ClipboardContent: Hashable, Sendable {
         }
     }
 
-    var persistenceHash: String {
+    public var persistenceHash: String {
         let value: String
         switch self {
         case let .text(string):
@@ -141,22 +141,22 @@ enum ClipboardContent: Hashable, Sendable {
         return Self.sha256(value.data(using: .utf8) ?? Data())
     }
 
-    static func sha256(_ data: Data) -> String {
+    public static func sha256(_ data: Data) -> String {
         SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 }
 
-struct ImageClipboardContent: Hashable, Sendable {
-    let thumbnailPath: String // Path to thumbnail on disk
-    let originalPath: String? // Path to original image on disk (nil if too large)
-    let sourceName: String // Original file name or "Screenshot" for captures
-    let width: Int
-    let height: Int
-    let previewText: String
-    let ownsCachedFiles: Bool
-    let contentHash: String?
+public struct ImageClipboardContent: Hashable, Sendable {
+    public let thumbnailPath: String
+    public let originalPath: String?
+    public let sourceName: String
+    public let width: Int
+    public let height: Int
+    public let previewText: String
+    public let ownsCachedFiles: Bool
+    public let contentHash: String?
 
-    init(
+    public init(
         thumbnailPath: String,
         originalPath: String?,
         sourceName: String,
@@ -176,18 +176,23 @@ struct ImageClipboardContent: Hashable, Sendable {
     }
 }
 
-struct FileClipboardContent: Hashable, Sendable {
-    let url: URL
-    let name: String
+public struct FileClipboardContent: Hashable, Sendable {
+    public let url: URL
+    public let name: String
+
+    public init(url: URL, name: String) {
+        self.url = url
+        self.name = name
+    }
 }
 
-struct AudioClipboardContent: Hashable, Sendable {
-    let cachePath: String
-    let name: String
-    let duration: TimeInterval?
-    let ownsCachedFile: Bool
+public struct AudioClipboardContent: Hashable, Sendable {
+    public let cachePath: String
+    public let name: String
+    public let duration: TimeInterval?
+    public let ownsCachedFile: Bool
 
-    init(
+    public init(
         cachePath: String,
         name: String,
         duration: TimeInterval?,

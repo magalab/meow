@@ -1,3 +1,4 @@
+import MeowClipboard
 import AppKit
 import SwiftUI
 

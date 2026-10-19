@@ -1,3 +1,4 @@
+import MeowClipboard
 extension ClipboardRetention {
     var displayName: String {
         switch self {
