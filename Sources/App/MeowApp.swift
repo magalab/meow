@@ -88,6 +88,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             skipBreak: { [weak self] in self?.healthReminderService.skipBreak() }
         )
     )
+    private lazy var keepAwakeCommandCoordinator = AppKeepAwakeCommandCoordinator(
+        actions: AppKeepAwakeCommandCoordinator.Actions(
+            hideLauncher: { [weak self] in self?.launcherCoordinator.hide() },
+            toggleKeepAwake: { [weak self] in
+                guard let self else { throw CancellationError() }
+                try await self.keepAwakeService.toggle()
+            },
+            presentError: { [weak self] in self?.presentKeepAwakeError($0) }
+        )
+    )
     private var keepAwakeService: KeepAwakeService { serviceRegistry.keepAwakeService }
     private var clipboardStore: ClipboardStore { serviceRegistry.clipboardStore }
     private var screenCaptureService: ScreenCaptureService { serviceRegistry.screenCaptureService }
@@ -367,7 +377,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.whiteboardCoordinator.handle(command)
         }
         viewModel.onKeepAwakeCommand = { [weak self] in
-            self?.handleKeepAwakeCommand()
+            self?.keepAwakeCommandCoordinator.handleCommand()
         }
         keepAwakeService.onStateChanged = { [weak self] state in
             guard let self else { return }
@@ -997,20 +1007,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 )
             }
         )
-    }
-
-    private func handleKeepAwakeCommand() {
-        launcherCoordinator.hide()
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            do {
-                try await keepAwakeService.toggle()
-            } catch is CancellationError {
-                // An in-flight start can be invalidated by a user stop or replacement.
-            } catch {
-                presentKeepAwakeError(error)
-            }
-        }
     }
 
     private func sendImageToWhiteboard(_ image: ImageClipboardContent) {
