@@ -79,6 +79,35 @@ final class AppRecordingCoordinator {
         regionBorderController.stop()
     }
 
+    func handle(_ command: RecordingCommand) {
+        switch command {
+        case .recordDisplay:
+            triggerRecording(mode: .display)
+        case .recordRegion:
+            triggerRecording(mode: .region)
+        case .recordWindow:
+            triggerRecording(mode: .window)
+        case .recordWindows:
+            triggerMultipleWindowRecording()
+        case .recordApplication:
+            triggerApplicationRecording()
+        case .recordSystemAudio:
+            triggerSystemAudioRecording()
+        case .recordMobileDevice:
+            triggerMobileDeviceRecording()
+        case .pauseResume:
+            pauseOrResume()
+        case .stop:
+            stop()
+        case .saveCurrentFrame:
+            saveCurrentFrame()
+        case .toggleMagnifier:
+            toggleMagnifier()
+        case .openHistory:
+            showRecordingHistory()
+        }
+    }
+
     func resetVisualOverlays() {
         allowsVisualOverlays = false
         cameraChangeGeneration &+= 1

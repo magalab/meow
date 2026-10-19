@@ -347,10 +347,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.handleHealthCommand(command)
         }
         viewModel.onScreenshotCommand = { [weak self] command in
-            self?.handleScreenshotCommand(command)
+            self?.captureCoordinator.handle(command)
         }
         viewModel.onRecordingCommand = { [weak self] command in
-            self?.handleRecordingCommand(command)
+            self?.recordingCoordinator.handle(command)
         }
         viewModel.onWhiteboardCommand = { [weak self] command in
             self?.whiteboardCoordinator.handle(command)
@@ -711,6 +711,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func makeMediaCommandRouterActions() -> AppMediaCommandRouter.Actions {
         AppMediaCommandRouter.Actions(
             settings: { [weak self] in self?.viewModel.settings ?? .default },
+            hideLauncher: { [weak self] in self?.launcherCoordinator.hide() },
             hideTransientPanels: { [weak self] in
                 self?.launcherCoordinator.hide()
                 self?.textActionCoordinator.hideTranslationPanel()
@@ -945,22 +946,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             openFinder: { [weak self] in self?.launcherCoordinator.openFinder() },
             translate: { [weak self] in self?.textActionCoordinator.triggerTranslation() },
             textActions: { [weak self] in self?.textActionCoordinator.triggerTextActions() },
-            scrollingScreenshot: { [weak self] in self?.triggerScrollingCapture() },
+            scrollingScreenshot: { [weak self] in self?.captureCoordinator.triggerScrollingCapture() },
             screenshot: { [weak self] mode, editAfterCapture, uploadAfterCapture in
-                self?.triggerScreenshot(
+                self?.captureCoordinator.triggerScreenshot(
                     mode: mode,
                     editAfterCapture: editAfterCapture,
                     uploadAfterCapture: uploadAfterCapture
                 )
             },
-            recording: { [weak self] mode in self?.triggerRecording(mode: mode) },
+            recording: { [weak self] mode in self?.recordingCoordinator.triggerRecording(mode: mode) },
             pauseRecording: { [weak self] in self?.recordingService.pauseOrResume() },
             stopRecording: { [weak self] in
                 guard let self else { return }
                 Task { await self.recordingService.stop() }
             },
-            saveRecordingFrame: { [weak self] in self?.saveRecordingFrame() },
-            toggleRecordingMagnifier: { [weak self] in self?.toggleRecordingMagnifier() },
+            saveRecordingFrame: { [weak self] in self?.recordingCoordinator.saveCurrentFrame() },
+            toggleRecordingMagnifier: { [weak self] in self?.recordingCoordinator.toggleMagnifier() },
             toggleWhiteboard: { [weak self] in self?.whiteboardFeatureController.toggleEditing() },
             speechPressed: { [weak self] in
                 #if MEOW_VOICE
@@ -1029,83 +1030,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         clipboardActionCoordinator.sendImageToWhiteboard(image)
     }
 
-    private func handleScreenshotCommand(_ command: ScreenshotCommand) {
-        switch command {
-        case .captureRegion:
-            triggerScreenshot(mode: .region)
-        case .captureScrolling:
-            triggerScrollingCapture()
-        case .captureAndEdit:
-            triggerScreenshot(
-                mode: viewModel.settings.screenshot.defaultCaptureMode,
-                editAfterCapture: true
-            )
-        case .captureWindow:
-            triggerScreenshot(mode: .window)
-        case .captureDisplay:
-            triggerScreenshot(mode: .display)
-        case .openHistory:
-            showCaptureHistory()
-        }
-    }
-
-    private func handleRecordingCommand(_ command: RecordingCommand) {
-        switch command {
-        case .recordDisplay:
-            triggerRecording(mode: .display)
-        case .recordRegion:
-            triggerRecording(mode: .region)
-        case .recordWindow:
-            triggerRecording(mode: .window)
-        case .recordWindows:
-            triggerMultipleWindowRecording()
-        case .recordApplication:
-            triggerApplicationRecording()
-        case .recordSystemAudio:
-            triggerSystemAudioRecording()
-        case .recordMobileDevice:
-            triggerMobileDeviceRecording()
-        case .pauseResume:
-            recordingCoordinator.pauseOrResume()
-        case .stop:
-            recordingCoordinator.stop()
-        case .saveCurrentFrame:
-            saveRecordingFrame()
-        case .toggleMagnifier:
-            toggleRecordingMagnifier()
-        case .openHistory:
-            showRecordingHistory()
-        }
-    }
-
-    private func triggerRecording(mode: ScreenshotCaptureMode) {
-        recordingCoordinator.triggerRecording(mode: mode)
-    }
-
-    private func triggerApplicationRecording() {
-        recordingCoordinator.triggerApplicationRecording()
-    }
-
-    private func triggerMultipleWindowRecording() {
-        recordingCoordinator.triggerMultipleWindowRecording()
-    }
-
-    private func triggerSystemAudioRecording() {
-        recordingCoordinator.triggerSystemAudioRecording()
-    }
-
-    private func triggerMobileDeviceRecording() {
-        recordingCoordinator.triggerMobileDeviceRecording()
-    }
-
-    private func toggleRecordingMagnifier() {
-        recordingCoordinator.toggleMagnifier()
-    }
-
-    private func saveRecordingFrame() {
-        recordingCoordinator.saveCurrentFrame()
-    }
-
 
 
     private var recordingStateShowsControls: Bool {
@@ -1123,10 +1047,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func showRecordingPreview(_ artifact: RecordingArtifact) {
         recordingCoordinator.showRecordingPreview(artifact)
-    }
-
-    private func showRecordingHistory() {
-        recordingCoordinator.showRecordingHistory()
     }
 
     private func showRecordingTrimmer(for url: URL) {
@@ -1156,26 +1076,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
     }
-
-    private func triggerScreenshot(
-        mode: ScreenshotCaptureMode,
-        editAfterCapture: Bool = false,
-        uploadAfterCapture: Bool = false
-    ) {
-        captureCoordinator.triggerScreenshot(
-            mode: mode,
-            editAfterCapture: editAfterCapture,
-            uploadAfterCapture: uploadAfterCapture
-        )
-    }
-
-
-
-    private func triggerScrollingCapture() {
-        captureCoordinator.triggerScrollingCapture()
-    }
-
-
 
     private func presentScrollingCaptureAccessibilityPrompt() {
         let alert = NSAlert()
@@ -1225,11 +1125,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         {
             NSWorkspace.shared.open(url)
         }
-    }
-
-    private func showCaptureHistory() {
-        launcherCoordinator.hide()
-        captureCoordinator.showCaptureHistory()
     }
 
     private func makeCaptureHistoryView(theme: AppTheme) -> CaptureHistoryView {
