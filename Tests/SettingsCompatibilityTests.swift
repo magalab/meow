@@ -173,6 +173,36 @@ func settingsStoreRecoversFromCorruptData() throws {
     #expect(recovered.ai.endpoint == AppSettings.default.ai.endpoint)
 }
 
+@Test("Unknown settings fields are ignored while known values round trip")
+func unknownSettingsFieldsRemainForwardCompatible() throws {
+    let legacyAndFuturePayload = Data(
+        """
+        {
+          "theme": "mist-blue",
+          "fileHosting": {
+            "linkFormat": "markdown",
+            "futureHostSetting": { "enabled": true }
+          },
+          "futureTopLevelSetting": ["value"]
+        }
+        """.utf8
+    )
+
+    let settings = try JSONDecoder().decode(AppSettings.self, from: legacyAndFuturePayload)
+    #expect(settings.theme == .mistBlue)
+    #expect(settings.fileHosting.linkFormat == .markdown)
+
+    let encoded = try JSONEncoder().encode(settings)
+    let payload = try #require(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+    let encodedFileHosting = try #require(payload["fileHosting"] as? [String: Any])
+    #expect(payload["futureTopLevelSetting"] == nil)
+    #expect(encodedFileHosting["futureHostSetting"] == nil)
+
+    let decodedAgain = try JSONDecoder().decode(AppSettings.self, from: encoded)
+    #expect(decodedAgain.theme == settings.theme)
+    #expect(decodedAgain.fileHosting.linkFormat == settings.fileHosting.linkFormat)
+}
+
 @Test("Settings store keeps a legacy API key when Keychain is unavailable")
 func settingsStoreKeepsLegacyAPIKeyOnKeychainFailure() throws {
     let suiteName = "Meow-SettingsKeychainFailureTests-\(UUID().uuidString)"
