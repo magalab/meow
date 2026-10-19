@@ -14,6 +14,7 @@ final class AppRecordingCoordinator {
         let restoreWhiteboard: @MainActor () -> Void
         let activeScreen: @MainActor () -> NSScreen?
         let setSystemAudioMode: @MainActor () -> Void
+        let updateRecordingState: @MainActor (RecordingState, TimeInterval) -> Void
         let presentError: @MainActor (Error) -> Void
     }
 
@@ -22,6 +23,7 @@ final class AppRecordingCoordinator {
     private let recordingContentPickerController: RecordingContentPickerController
     private let recordingService: RecordingService
     private let recordingStore: RecordingStore
+    private let recordingNotificationService: RecordingNotificationService
     private let cameraOverlayController: CameraOverlayController
     private let screenMagnifierController: ScreenMagnifierController
     private let regionBorderController = RecordingRegionBorderController()
@@ -46,6 +48,7 @@ final class AppRecordingCoordinator {
         recordingContentPickerController: RecordingContentPickerController,
         recordingService: RecordingService,
         recordingStore: RecordingStore,
+        recordingNotificationService: RecordingNotificationService,
         cameraOverlayController: CameraOverlayController,
         screenMagnifierController: ScreenMagnifierController,
         windowCoordinator: AppWindowCoordinator,
@@ -56,6 +59,7 @@ final class AppRecordingCoordinator {
         self.recordingContentPickerController = recordingContentPickerController
         self.recordingService = recordingService
         self.recordingStore = recordingStore
+        self.recordingNotificationService = recordingNotificationService
         self.cameraOverlayController = cameraOverlayController
         self.screenMagnifierController = screenMagnifierController
         self.windowCoordinator = windowCoordinator
@@ -71,6 +75,40 @@ final class AppRecordingCoordinator {
         }
         screenMagnifierController.onPosition = { [weak recordingService] frame in
             recordingService?.setMagnifierPosition(frame)
+        }
+        configureRecordingServiceCallbacks()
+    }
+
+    private func configureRecordingServiceCallbacks() {
+        recordingService.onCompleted = { [weak self] artifact in
+            guard let self else { return }
+            actions.restoreWhiteboard()
+            hideRecordingControl()
+            cameraOverlayController.stop()
+            screenMagnifierController.stop()
+            resetVisualOverlays()
+            recordingNotificationService.notifyCompleted(artifact)
+            if actions.settings().recording.showPreview {
+                showRecordingPreview(artifact)
+            }
+        }
+        recordingService.onError = { [weak self] error in
+            guard let self else { return }
+            actions.restoreWhiteboard()
+            hideRecordingControl()
+            cameraOverlayController.stop()
+            screenMagnifierController.stop()
+            resetVisualOverlays()
+            actions.presentError(error)
+        }
+        recordingService.onStateChanged = { [weak self] state, elapsed in
+            guard let self else { return }
+            actions.updateRecordingState(state, elapsed)
+            if case .idle = state {
+                actions.restoreWhiteboard()
+            } else if case .failed = state {
+                actions.restoreWhiteboard()
+            }
         }
     }
 
