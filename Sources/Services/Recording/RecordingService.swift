@@ -538,7 +538,14 @@ final class RecordingService: NSObject, ObservableObject {
             let captureID = UUID()
             let microphone = RecordingMicrophoneCapture(
                 deviceID: settings.microphoneDeviceID,
-                queue: writer.queue
+                queue: writer.queue,
+                findDevice: Self.microphoneDevice(for:),
+                makeFailure: { failure in
+                    switch failure {
+                    case .unavailable: RecordingError.microphoneUnavailable
+                    case .invalidConfiguration: RecordingError.invalidConfiguration
+                    }
+                }
             ) { [weak self, weak writer] sampleBuffer, level in
                 writer?.appendMicrophone(sampleBuffer)
                 guard let level else { return }
@@ -1466,86 +1473,6 @@ private final class RecordingWriter: NSObject, SCStreamOutput, SCStreamDelegate,
             settings[AVEncoderBitRateKey] = 192_000
         }
         return settings
-    }
-}
-
-private final class RecordingMicrophoneCapture: NSObject, AVCaptureAudioDataOutputSampleBufferDelegate {
-    private let deviceID: String
-    private let queue: DispatchQueue
-    private let handler: (CMSampleBuffer, Float?) -> Void
-    private let onIssue: @Sendable () -> Void
-    private let session = AVCaptureSession()
-    private var lastLevelUpdate = Date.distantPast
-    private var observers: [NSObjectProtocol] = []
-
-    init(
-        deviceID: String,
-        queue: DispatchQueue,
-        handler: @escaping (CMSampleBuffer, Float?) -> Void,
-        onIssue: @escaping @Sendable () -> Void
-    ) {
-        self.deviceID = deviceID
-        self.queue = queue
-        self.handler = handler
-        self.onIssue = onIssue
-    }
-
-    func start() throws {
-        guard let device = RecordingService.microphoneDevice(for: deviceID) else {
-            throw RecordingError.microphoneUnavailable
-        }
-        let input = try AVCaptureDeviceInput(device: device)
-        guard session.canAddInput(input) else { throw RecordingError.invalidConfiguration }
-        session.addInput(input)
-        let output = AVCaptureAudioDataOutput()
-        output.setSampleBufferDelegate(self, queue: queue)
-        guard session.canAddOutput(output) else { throw RecordingError.invalidConfiguration }
-        session.addOutput(output)
-        session.startRunning()
-        guard session.isRunning else { throw RecordingError.microphoneUnavailable }
-        observers = [
-            NotificationCenter.default.addObserver(
-                forName: AVCaptureSession.wasInterruptedNotification,
-                object: session,
-                queue: .main
-            ) { [onIssue] _ in onIssue() },
-            NotificationCenter.default.addObserver(
-                forName: AVCaptureSession.runtimeErrorNotification,
-                object: session,
-                queue: .main
-            ) { [onIssue] notification in
-                if let error = notification.userInfo?[AVCaptureSessionErrorKey] as? Error {
-                    MeowLog.recording.error(
-                        "Microphone capture interrupted: \(error.localizedDescription, privacy: .public)"
-                    )
-                }
-                onIssue()
-            },
-        ]
-    }
-
-    func stop() {
-        observers.forEach(NotificationCenter.default.removeObserver)
-        observers.removeAll()
-        if session.isRunning {
-            session.stopRunning()
-        }
-    }
-
-    func captureOutput(
-        _ output: AVCaptureOutput,
-        didOutput sampleBuffer: CMSampleBuffer,
-        from connection: AVCaptureConnection
-    ) {
-        let now = Date()
-        guard now.timeIntervalSince(lastLevelUpdate) >= 0.1 else {
-            handler(sampleBuffer, nil)
-            return
-        }
-        lastLevelUpdate = now
-        let decibels = connection.audioChannels.map(\.averagePowerLevel).max() ?? -60
-        let level = decibels.isFinite ? min(1, max(0, (decibels + 60) / 60)) : 0
-        handler(sampleBuffer, level)
     }
 }
 
