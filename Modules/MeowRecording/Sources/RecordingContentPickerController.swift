@@ -6,10 +6,14 @@ private struct SelectedRecordingContent: @unchecked Sendable {
 }
 
 @MainActor
-final class RecordingContentPickerController: NSObject, @preconcurrency SCContentSharingPickerObserver {
+public final class RecordingContentPickerController: NSObject, @preconcurrency SCContentSharingPickerObserver {
     private var continuation: CheckedContinuation<SelectedRecordingContent, Never>?
 
-    func selectMultipleWindows() async -> SCContentFilter? {
+    public override init() {
+        super.init()
+    }
+
+    public func selectMultipleWindows() async -> SCContentFilter? {
         guard continuation == nil else { return nil }
         let picker = SCContentSharingPicker.shared
         var configuration = SCContentSharingPickerConfiguration()
@@ -28,14 +32,14 @@ final class RecordingContentPickerController: NSObject, @preconcurrency SCConten
         return selected.filter
     }
 
-    func contentSharingPicker(
+    public func contentSharingPicker(
         _ picker: SCContentSharingPicker,
         didCancelFor stream: SCStream?
     ) {
         finish(nil, picker: picker)
     }
 
-    func contentSharingPicker(
+    public func contentSharingPicker(
         _ picker: SCContentSharingPicker,
         didUpdateWith filter: SCContentFilter,
         for stream: SCStream?
@@ -43,7 +47,7 @@ final class RecordingContentPickerController: NSObject, @preconcurrency SCConten
         finish(filter, picker: picker)
     }
 
-    func contentSharingPickerStartDidFailWithError(_ error: Error) {
+    public func contentSharingPickerStartDidFailWithError(_ error: Error) {
         finish(nil, picker: .shared)
     }
 
