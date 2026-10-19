@@ -1,4 +1,5 @@
 import MeowRecording
+import MeowAI
 import AppKit
 import MeowClipboard
 import SwiftUI
