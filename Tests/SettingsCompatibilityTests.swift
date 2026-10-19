@@ -271,6 +271,8 @@ func finderHotkeySettingsRoundTrip() throws {
 
 @Test("Clipboard settings retain the flat persisted schema")
 func clipboardSettingsSchemaCompatibility() throws {
+    #expect(ClipboardRetention.allCases.map(\.rawValue) == [1, 7, 30, 90, 180, 365, -1])
+
     var settings = AppSettings.default
     settings.clipboardHistoryEnabled = false
     settings.clipboardShowImagePreviews = false
