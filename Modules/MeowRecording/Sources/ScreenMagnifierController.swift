@@ -1,17 +1,21 @@
-import MeowRecording
 import AppKit
 import CoreImage
 import CoreGraphics
 import CoreMedia
+import os
 @preconcurrency import ScreenCaptureKit
 
-@MainActor
-final class ScreenMagnifierController: NSObject, SCStreamOutput, SCStreamDelegate {
-    static let windowTitle = "Meow Screen Magnifier"
+public enum RecordingMagnifierError: Error {
+    case unavailable
+}
 
-    var onError: ((Error) -> Void)?
-    var onFrame: ((CGImage?, CGRect, CGPoint, Int, Bool) -> Void)?
-    var onPosition: ((CGRect) -> Void)?
+@MainActor
+public final class ScreenMagnifierController: NSObject, SCStreamOutput, SCStreamDelegate {
+    public static let windowTitle = "Meow Screen Magnifier"
+
+    public var onError: ((Error) -> Void)?
+    public var onFrame: ((CGImage?, CGRect, CGPoint, Int, Bool) -> Void)?
+    public var onPosition: ((CGRect) -> Void)?
 
     private var settings = RecordingSettings.default
     private var panel: NSPanel?
@@ -26,10 +30,15 @@ final class ScreenMagnifierController: NSObject, SCStreamOutput, SCStreamDelegat
     private var generation: UInt64 = 0
     private let ciContext = CIContext()
     private var hasLoggedFrame = false
+    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "tech.lury.meow", category: "Recording")
 
-    var isVisible: Bool { panel?.isVisible == true }
+    public override init() {
+        super.init()
+    }
 
-    func apply(settings: RecordingSettings) {
+    public var isVisible: Bool { panel?.isVisible == true }
+
+    public func apply(settings: RecordingSettings) {
         let updated = settings.normalized()
         let presentationChanged = updated.magnifierZoom != self.settings.magnifierZoom
             || updated.magnifierWindowWidth != self.settings.magnifierWindowWidth
@@ -41,7 +50,7 @@ final class ScreenMagnifierController: NSObject, SCStreamOutput, SCStreamDelegat
         positionPanel(near: NSEvent.mouseLocation)
     }
 
-    func toggle() async throws {
+    public func toggle() async throws {
         if panel != nil || isStarting {
             stop()
         } else {
@@ -49,7 +58,7 @@ final class ScreenMagnifierController: NSObject, SCStreamOutput, SCStreamDelegat
         }
     }
 
-    func start() async throws {
+    public func start() async throws {
         guard panel == nil, !isStarting else { return }
         generation &+= 1
         let currentGeneration = generation
@@ -89,7 +98,7 @@ final class ScreenMagnifierController: NSObject, SCStreamOutput, SCStreamDelegat
             try await refreshShareableContent(generation: currentGeneration)
             guard generation == currentGeneration else { return }
             guard let displayID = Self.displayID(at: NSEvent.mouseLocation) else {
-                throw RecordingError.magnifierUnavailable
+                throw RecordingMagnifierError.unavailable
             }
             try await startCapture(on: displayID, generation: currentGeneration)
             guard generation == currentGeneration else { return }
@@ -134,7 +143,7 @@ final class ScreenMagnifierController: NSObject, SCStreamOutput, SCStreamDelegat
         }
     }
 
-    func stop() {
+    public func stop() {
         generation &+= 1
         isStarting = false
         timer?.invalidate()
@@ -170,7 +179,7 @@ final class ScreenMagnifierController: NSObject, SCStreamOutput, SCStreamDelegat
         guard generation == currentGeneration,
               let display = displays[displayID],
               let ownApplication
-        else { throw RecordingError.magnifierUnavailable }
+        else { throw RecordingMagnifierError.unavailable }
         let previousStream = captureStream
         captureStream = nil
         captureDisplayID = nil
@@ -207,7 +216,7 @@ final class ScreenMagnifierController: NSObject, SCStreamOutput, SCStreamDelegat
         }
     }
 
-    nonisolated func stream(
+    public nonisolated func stream(
         _ stream: SCStream,
         didOutputSampleBuffer sampleBuffer: CMSampleBuffer,
         of outputType: SCStreamOutputType
@@ -219,7 +228,7 @@ final class ScreenMagnifierController: NSObject, SCStreamOutput, SCStreamDelegat
         }
     }
 
-    nonisolated func stream(_ stream: SCStream, didStopWithError error: Error) {
+    public nonisolated func stream(_ stream: SCStream, didStopWithError error: Error) {
         Task { @MainActor in
             guard captureStream === stream else { return }
             stop()
@@ -266,8 +275,8 @@ final class ScreenMagnifierController: NSObject, SCStreamOutput, SCStreamDelegat
         contentView?.marker = marker
         if !hasLoggedFrame {
             hasLoggedFrame = true
-            MeowLog.recording.notice(
-                "Magnifier captured first stream frame; pixels=\(snapshot.width, privacy: .public)x\(snapshot.height, privacy: .public), panelFrame=\(String(describing: panel.frame), privacy: .public)"
+            logger.notice(
+                "Magnifier captured first stream frame; pixels=\(snapshot.width)x\(snapshot.height), panelFrame=\(String(describing: panel.frame))"
             )
         }
         onFrame?(snapshot, panel.frame, marker, zoom, circular)
@@ -302,7 +311,7 @@ final class ScreenMagnifierController: NSObject, SCStreamOutput, SCStreamDelegat
         }
     }
 
-    static func panelFrame(
+    public static func panelFrame(
         near pointer: CGPoint,
         visibleFrame: CGRect,
         preferredSize: CGSize
@@ -341,7 +350,7 @@ final class ScreenMagnifierController: NSObject, SCStreamOutput, SCStreamDelegat
         return CGDirectDisplayID(number.uint32Value)
     }
 
-    static func streamCropRect(
+    public static func streamCropRect(
         centeredAt pointer: CGPoint,
         in screenFrame: CGRect,
         imageSize: CGSize,

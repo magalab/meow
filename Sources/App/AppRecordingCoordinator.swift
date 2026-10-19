@@ -198,6 +198,8 @@ final class AppRecordingCoordinator {
         Task {
             do {
                 try await screenMagnifierController.toggle()
+            } catch is RecordingMagnifierError {
+                actions.presentError(RecordingError.magnifierUnavailable)
             } catch {
                 actions.presentError(error)
             }
