@@ -1,5 +1,6 @@
 import MeowClipboard
 import Foundation
+import MeowLauncher
 
 struct CalculationEntry: Identifiable, Hashable {
     let expression: String
