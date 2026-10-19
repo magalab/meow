@@ -22,7 +22,22 @@ final class AppServiceRegistry {
     let scrollingCaptureHUDController = ScrollingCaptureHUDController()
     lazy var recordingStore = RecordingStore()
     lazy var recordingNotificationService = RecordingNotificationService()
-    let cameraOverlayController = CameraOverlayController()
+    let cameraOverlayController = CameraOverlayController(
+        shapeTooltip: { shape in
+            switch shape {
+            case .rectangle: return L10n.recordingCameraShapeRectangle
+            case .rounded: return L10n.recordingCameraShapeRounded
+            case .circle: return L10n.recordingCameraShapeCircle
+            }
+        },
+        makeFailure: { failure in
+            switch failure {
+            case .permissionDenied: return RecordingError.cameraDenied
+            case .unavailable: return RecordingError.cameraUnavailable
+            case .invalidConfiguration: return RecordingError.invalidConfiguration
+            }
+        }
+    )
     let screenMagnifierController = ScreenMagnifierController()
     let uploadSuccessHUDController = UploadSuccessHUDController()
     lazy var pinnedImageController = PinnedImageController()
