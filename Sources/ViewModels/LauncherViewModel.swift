@@ -677,17 +677,16 @@ final class LauncherViewModel: ObservableObject {
     ) -> [SearchItem] {
         let matchedCommands = commands.compactMap { command -> LauncherSearchMatch? in
             let hay = ([command.title, command.subtitle] + command.keywords).joined(separator: " ").lowercased()
-            guard hay.contains(q) else { return nil }
+            guard let baseScore = LauncherSearchScorer.scoreIfMatching(text: hay, query: q) else { return nil }
             return LauncherSearchMatch(
                 item: .command(command),
-                score: LauncherSearchScorer.score(text: hay, query: q) + 15
+                score: baseScore + 15
             )
         }
 
         let matchedApps = apps.compactMap { app -> LauncherSearchMatch? in
             let hay = [app.name, app.bundleId ?? ""].joined(separator: " ").lowercased()
-            guard hay.contains(q) else { return nil }
-            let base = LauncherSearchScorer.score(text: hay, query: q)
+            guard let base = LauncherSearchScorer.scoreIfMatching(text: hay, query: q) else { return nil }
             let history = launchHistoryStore.score(for: app.id)
             return LauncherSearchMatch(item: .app(app), score: base + history)
         }
