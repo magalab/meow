@@ -11,18 +11,6 @@ enum ClipboardRetention: Int, Codable, CaseIterable, Identifiable, Sendable {
 
     var id: Int { rawValue }
 
-    var displayName: String {
-        switch self {
-        case .day: return L10n.clipboardRetentionDay
-        case .week: return L10n.clipboardRetentionWeek
-        case .month: return L10n.clipboardRetentionMonth
-        case .threeMonths: return L10n.clipboardRetentionThreeMonths
-        case .sixMonths: return L10n.clipboardRetentionSixMonths
-        case .year: return L10n.clipboardRetentionYear
-        case .forever: return L10n.clipboardRetentionForever
-        }
-    }
-
     var cutoffDate: Date? {
         guard self != .forever else { return nil }
         return Date().addingTimeInterval(-TimeInterval(rawValue) * 86_400)
