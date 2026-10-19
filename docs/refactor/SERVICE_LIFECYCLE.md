@@ -14,7 +14,7 @@ contract. Permission recovery and manual checks remain platform-dependent.
 | Keystroke visualizer | `AppSettingsCoordinator` applies settings; the service starts its event tap when enabled | Setting disabled, app termination, or deinit | `start()` guards an existing event tap; `stop()` removes the run-loop source and disables the tap. Meow/Miao tests verify repeated enable/stop owns one tap and permission recovery starts after a grant. Permission revoke behavior and actual macOS event tap recovery still need manual verification. |
 | Health reminder | `AppSettingsCoordinator` applies settings; enabled state starts the timer and work interval | Setting disabled or app termination | `startTimerIfNeeded` owns a single timer; `stop` invalidates it and hides the break panel. Meow/Miao tests verify repeated apply reuses one timer, disable invalidates it, and pause/resume invalidates/recreates the timer while preserving the phase. Termination with a visible break panel remains a manual check. |
 | Keep Awake | `AppSettingsCoordinator` applies settings; user action starts an IOKit assertion, while settings disable, sleep, expiration, or app termination release it | Explicit stop, disabled setting, sleep transition, expiration, or app termination | Async start/stop use operation tokens, settle pending release tasks, and retry failed releases. Wake reconciliation is implemented. Tests cover driver failures and sleep/wake; retain those checks when changing lifecycle ownership. |
-| Dock icon calendar observer | `AppDelegate` starts `DockIconService` during initial setup; settings update its style | App termination | `start()` now keeps a single day-change observer, and `stop()` removes it. A repeated start/stop test verifies one callback and no callback after stopping. |
+| Dock icon calendar observer | `AppCompositionRoot` starts `DockIconService` during initial setup; settings update its style | App termination | `start()` now keeps a single day-change observer, and `stop()` removes it. A repeated start/stop test verifies one callback and no callback after stopping. |
 | Status item date refresh | `StatusItemService.setup` creates the item and schedules a midnight timer; wake refresh reschedules it | App termination via `StatusItemService.stop()` | Scheduling invalidates the prior timer before replacing it. `stop()` now invalidates the timer, removes the status item, and releases menu/drop references. The termination test verifies shutdown invokes this owner. |
 | App event monitors | `AppWindowCoordinator` installs launcher, translation, AI, and global/local input monitors | App termination or coordinator removal | Repeated install/remove and post-removal handler behavior are unit tested. Permission-dependent global monitor behavior still needs manual verification. |
 | Hotkeys | `AppHotkeyCoordinator` applies registrations when settings change | Registration replacement, unregister, or app termination | Registration conflicts are surfaced and restored on settings changes. Manual conflict and restoration checks remain. |
@@ -23,8 +23,9 @@ contract. Permission recovery and manual checks remain platform-dependent.
 
 ## Lifecycle ownership notes
 
-- `AppServiceRegistry` owns long-lived service instances; `AppDelegate` composes
-  their coordinators and supplies lifecycle actions.
+- `AppServiceRegistry` owns long-lived service instances; `AppCompositionRoot`
+  composes their coordinators and supplies lifecycle actions. `AppDelegate`
+  forwards the AppKit lifecycle callbacks to that root.
 - `AppSettingsCoordinator` is the settings-driven start/stop dispatcher. A
   setting change should not instantiate an optional service unless the feature
   is enabled or the service was already loaded.
