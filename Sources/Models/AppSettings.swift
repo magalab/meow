@@ -128,22 +128,41 @@ struct AppSettings: Codable {
         get { clipboard.imageStorageLimitMB }
         set { clipboard.imageStorageLimitMB = max(128, newValue) }
     }
+    var hotkeys: HotkeySettings
+    var hotkeyKeyCode: UInt32 {
+        get { hotkeys.launcherKeyCode }
+        set { hotkeys.launcherKeyCode = newValue }
+    }
+    var hotkeyModifiers: UInt32 {
+        get { hotkeys.launcherModifiers }
+        set { hotkeys.launcherModifiers = newValue }
+    }
+    var finderHotkeyKeyCode: UInt32 {
+        get { hotkeys.finderKeyCode }
+        set { hotkeys.finderKeyCode = newValue }
+    }
+    var finderHotkeyModifiers: UInt32 {
+        get { hotkeys.finderModifiers }
+        set { hotkeys.finderModifiers = newValue }
+    }
+    var translateHotkeyKeyCode: UInt32 {
+        get { hotkeys.translateKeyCode }
+        set { hotkeys.translateKeyCode = newValue }
+    }
+    var translateHotkeyModifiers: UInt32 {
+        get { hotkeys.translateModifiers }
+        set { hotkeys.translateModifiers = newValue }
+    }
+    var textActionsHotkeyKeyCode: UInt32 {
+        get { hotkeys.textActionsKeyCode }
+        set { hotkeys.textActionsKeyCode = newValue }
+    }
+    var textActionsHotkeyModifiers: UInt32 {
+        get { hotkeys.textActionsModifiers }
+        set { hotkeys.textActionsModifiers = newValue }
+    }
     var showStatusItem: Bool
     var showDockIcon: Bool
-    var hotkeyKeyCode: UInt32
-    var hotkeyModifiers: UInt32
-    /// Key code for the Finder hotkey (default: 14 = kVK_ANSI_E).
-    var finderHotkeyKeyCode: UInt32
-    /// Carbon modifier flags for the Finder hotkey (default: 2048 = optionKey = ⌥E).
-    var finderHotkeyModifiers: UInt32
-    /// Key code for the translate-selection hotkey (default: 2 = kVK_ANSI_D).
-    var translateHotkeyKeyCode: UInt32
-    /// Carbon modifier flags for the translate-selection hotkey (default: 2048 = optionKey = ⌥D).
-    var translateHotkeyModifiers: UInt32
-    /// Key code for the selected-text actions hotkey (default: 7 = kVK_ANSI_X).
-    var textActionsHotkeyKeyCode: UInt32
-    /// Carbon modifier flags for the selected-text actions hotkey (default: 2048 = optionKey = ⌥X).
-    var textActionsHotkeyModifiers: UInt32
     var ai: AISettings
     var fileHosting: FileHostSettings
     var screenshot: ScreenshotSettings
@@ -261,16 +280,18 @@ struct AppSettings: Codable {
             disabledAppBundleIDs: clipboardDisabledAppBundleIDs,
             imageStorageLimitMB: clipboardImageStorageLimitMB
         )
+        self.hotkeys = HotkeySettings(
+            launcherKeyCode: hotkeyKeyCode,
+            launcherModifiers: hotkeyModifiers,
+            finderKeyCode: finderHotkeyKeyCode,
+            finderModifiers: finderHotkeyModifiers,
+            translateKeyCode: translateHotkeyKeyCode,
+            translateModifiers: translateHotkeyModifiers,
+            textActionsKeyCode: textActionsHotkeyKeyCode,
+            textActionsModifiers: textActionsHotkeyModifiers
+        )
         self.showStatusItem = showStatusItem
         self.showDockIcon = showDockIcon
-        self.hotkeyKeyCode = hotkeyKeyCode
-        self.hotkeyModifiers = hotkeyModifiers
-        self.finderHotkeyKeyCode = finderHotkeyKeyCode
-        self.finderHotkeyModifiers = finderHotkeyModifiers
-        self.translateHotkeyKeyCode = translateHotkeyKeyCode
-        self.translateHotkeyModifiers = translateHotkeyModifiers
-        self.textActionsHotkeyKeyCode = textActionsHotkeyKeyCode
-        self.textActionsHotkeyModifiers = textActionsHotkeyModifiers
         self.ai = ai
         self.fileHosting = fileHosting
         self.screenshot = screenshot
@@ -383,22 +404,24 @@ extension AppSettings {
         )
         showStatusItem = try container.decodeIfPresent(Bool.self, forKey: .showStatusItem) ?? Self.default.showStatusItem
         showDockIcon = try container.decodeIfPresent(Bool.self, forKey: .showDockIcon) ?? Self.default.showDockIcon
-        hotkeyKeyCode = try container.decodeIfPresent(UInt32.self, forKey: .hotkeyKeyCode) ?? Self.default.hotkeyKeyCode
-        hotkeyModifiers = try container.decodeIfPresent(UInt32.self, forKey: .hotkeyModifiers) ?? Self.default.hotkeyModifiers
-        finderHotkeyKeyCode = try container.decodeIfPresent(UInt32.self, forKey: .finderHotkeyKeyCode)
-            ?? Self.default.finderHotkeyKeyCode
-        finderHotkeyModifiers = try container.decodeIfPresent(UInt32.self, forKey: .finderHotkeyModifiers)
-            ?? Self.default.finderHotkeyModifiers
-        translateHotkeyKeyCode = try container.decodeIfPresent(UInt32.self, forKey: .translateHotkeyKeyCode) ?? Self.default.translateHotkeyKeyCode
-        translateHotkeyModifiers = try container.decodeIfPresent(UInt32.self, forKey: .translateHotkeyModifiers) ?? Self.default.translateHotkeyModifiers
-        textActionsHotkeyKeyCode = try container.decodeIfPresent(
-            UInt32.self,
-            forKey: .textActionsHotkeyKeyCode
-        ) ?? Self.default.textActionsHotkeyKeyCode
-        textActionsHotkeyModifiers = try container.decodeIfPresent(
-            UInt32.self,
-            forKey: .textActionsHotkeyModifiers
-        ) ?? Self.default.textActionsHotkeyModifiers
+        hotkeys = HotkeySettings(
+            launcherKeyCode: try container.decodeIfPresent(UInt32.self, forKey: .hotkeyKeyCode)
+                ?? HotkeySettings.default.launcherKeyCode,
+            launcherModifiers: try container.decodeIfPresent(UInt32.self, forKey: .hotkeyModifiers)
+                ?? HotkeySettings.default.launcherModifiers,
+            finderKeyCode: try container.decodeIfPresent(UInt32.self, forKey: .finderHotkeyKeyCode)
+                ?? HotkeySettings.default.finderKeyCode,
+            finderModifiers: try container.decodeIfPresent(UInt32.self, forKey: .finderHotkeyModifiers)
+                ?? HotkeySettings.default.finderModifiers,
+            translateKeyCode: try container.decodeIfPresent(UInt32.self, forKey: .translateHotkeyKeyCode)
+                ?? HotkeySettings.default.translateKeyCode,
+            translateModifiers: try container.decodeIfPresent(UInt32.self, forKey: .translateHotkeyModifiers)
+                ?? HotkeySettings.default.translateModifiers,
+            textActionsKeyCode: try container.decodeIfPresent(UInt32.self, forKey: .textActionsHotkeyKeyCode)
+                ?? HotkeySettings.default.textActionsKeyCode,
+            textActionsModifiers: try container.decodeIfPresent(UInt32.self, forKey: .textActionsHotkeyModifiers)
+                ?? HotkeySettings.default.textActionsModifiers
+        )
         appearance = AppearanceSettings(
             language: try container.decodeIfPresent(AppLanguage.self, forKey: .language)
                 ?? AppearanceSettings.default.language,
