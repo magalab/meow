@@ -11,6 +11,13 @@ struct LauncherSearchScorerTests {
     }
 
     @Test
+    func onlyScoresCandidateTextThatContainsTheQuery() {
+        #expect(LauncherSearchScorer.scoreIfMatching(text: "settings", query: "settings") == 120)
+        #expect(LauncherSearchScorer.scoreIfMatching(text: "open settings", query: "settings") == 70)
+        #expect(LauncherSearchScorer.scoreIfMatching(text: "system", query: "settings") == nil)
+    }
+
+    @Test
     func ranksByScoreThenPrimaryTextAndAppliesTheResultLimit() {
         let matches = [
             LauncherSearchMatch(
