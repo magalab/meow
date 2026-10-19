@@ -110,7 +110,7 @@ final class RecordingService: NSObject, ObservableObject {
         theme = settings.theme
         mouseClickHighlighter.apply(settings: settings)
         reconcileMouseClickHighlighter()
-        writer?.setMouseClickHighlight(enabled: self.settings.highlightMouseClicks, theme: settings.theme)
+        writer?.setMouseClickHighlight(enabled: self.settings.highlightMouseClicks, color: settings.theme.recordingHighlightColor)
         if previousSettings.preventSleep != self.settings.preventSleep {
             switch state {
             case .recording, .paused:
@@ -506,7 +506,7 @@ final class RecordingService: NSObject, ObservableObject {
             source: source.kind,
             configuration: configuration,
             captureRect: Self.captureRect(for: currentSource),
-            theme: theme,
+            highlightColor: theme.recordingHighlightColor,
             settings: settings,
             onStreamStopped: { [weak self] error in
                 Task { @MainActor in
@@ -1084,7 +1084,7 @@ private final class RecordingWriter: NSObject, SCStreamOutput, SCStreamDelegate,
         source: RecordingSourceKind,
         configuration: SCStreamConfiguration,
         captureRect: CGRect?,
-        theme: AppTheme,
+        highlightColor: RecordingHighlightColor,
         settings: RecordingSettings,
         onStreamStopped: @escaping @Sendable (Error) -> Void
     ) throws {
@@ -1095,7 +1095,7 @@ private final class RecordingWriter: NSObject, SCStreamOutput, SCStreamDelegate,
         mouseClickCompositor = RecordingMouseClickCompositor(
             captureRect: captureRect,
             enabled: settings.highlightMouseClicks,
-            theme: theme
+            color: highlightColor
         )
         magnifierCompositor = RecordingMagnifierCompositor(captureRect: captureRect)
         let outputFileType: AVFileType
@@ -1192,9 +1192,9 @@ private final class RecordingWriter: NSObject, SCStreamOutput, SCStreamDelegate,
         }
     }
 
-    func setMouseClickHighlight(enabled: Bool, theme: AppTheme) {
+    func setMouseClickHighlight(enabled: Bool, color: RecordingHighlightColor) {
         queue.async {
-            self.mouseClickCompositor.apply(enabled: enabled, theme: theme)
+            self.mouseClickCompositor.apply(enabled: enabled, color: color)
         }
     }
 
@@ -1704,5 +1704,16 @@ private final class RecordingMobileDeviceCapture: NSObject, AVCaptureFileOutputR
     private func resumeStop(throwing error: Error) {
         session.stopRunning()
         takeContinuation()?.resume(throwing: error)
+    }
+}
+
+private extension AppTheme {
+    var recordingHighlightColor: RecordingHighlightColor {
+        switch self {
+        case .gingerCat: return RecordingHighlightColor(red: 0.85, green: 0.47, blue: 0.24)
+        case .mistBlue: return RecordingHighlightColor(red: 0.23, green: 0.31, blue: 0.54)
+        case .graphiteAmber: return RecordingHighlightColor(red: 0.77, green: 0.54, blue: 0.23)
+        case .mossInk: return RecordingHighlightColor(red: 0.29, green: 0.42, blue: 0.34)
+        }
     }
 }
