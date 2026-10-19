@@ -96,7 +96,8 @@ let targets: [Target] = [
             .target(name: "MeowClipboard"),
             .target(name: "MeowCapture"),
             .target(name: "MeowRecording"),
-            .target(name: "MeowAI")
+            .target(name: "MeowAI"),
+            .target(name: "MeowLauncher")
         ],
         path: "Tests",
         exclude: ["MeowS3Tests"],
