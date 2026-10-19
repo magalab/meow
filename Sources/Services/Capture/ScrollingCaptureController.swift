@@ -2,6 +2,7 @@ import AppKit
 @preconcurrency import ApplicationServices
 @preconcurrency import CoreGraphics
 import Foundation
+import MeowCapture
 @preconcurrency import ScreenCaptureKit
 
 enum ScrollingCaptureAutoScrollResult {
