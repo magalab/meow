@@ -3,6 +3,7 @@ import MeowClipboard
 import MeowCapture
 import AppKit
 import MeowAI
+import MeowLauncher
 @preconcurrency import ApplicationServices
 import AVFoundation
 @preconcurrency import ScreenCaptureKit

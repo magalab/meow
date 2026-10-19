@@ -3,6 +3,7 @@ import AppKit
 import MeowClipboard
 import MeowCapture
 import WhiteboardFeature
+import MeowLauncher
 
 @MainActor
 final class AppServiceRegistry {
