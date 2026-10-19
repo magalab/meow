@@ -139,8 +139,15 @@ struct AppSettings: Codable {
     var speech: SpeechSettings
     var healthReminder: HealthReminderSettings
     var keepAwake: KeepAwakeSettings
-    var authenticatorEnabled: Bool
-    var authenticatorICloudSyncEnabled: Bool
+    var authenticator: AuthenticatorSettings
+    var authenticatorEnabled: Bool {
+        get { authenticator.enabled }
+        set { authenticator.enabled = newValue }
+    }
+    var authenticatorICloudSyncEnabled: Bool {
+        get { authenticator.iCloudSyncEnabled }
+        set { authenticator.iCloudSyncEnabled = newValue }
+    }
     var systemMonitor: SystemMonitorSettings
     var keystrokeVisualizer: KeystrokeVisualizerSettings
     var keystrokeVisualizerEnabled: Bool {
@@ -257,8 +264,10 @@ struct AppSettings: Codable {
         self.speech = speech
         self.healthReminder = healthReminder
         self.keepAwake = keepAwake
-        self.authenticatorEnabled = authenticatorEnabled
-        self.authenticatorICloudSyncEnabled = authenticatorICloudSyncEnabled
+        self.authenticator = AuthenticatorSettings(
+            enabled: authenticatorEnabled,
+            iCloudSyncEnabled: authenticatorICloudSyncEnabled
+        )
         self.systemMonitor = systemMonitor.normalized
         self.keystrokeVisualizer = KeystrokeVisualizerSettings(
             enabled: keystrokeVisualizerEnabled,
@@ -402,14 +411,14 @@ extension AppSettings {
             KeepAwakeSettings.self,
             forKey: .keepAwake
         ) ?? Self.default.keepAwake
-        authenticatorEnabled = try container.decodeIfPresent(
-            Bool.self,
-            forKey: .authenticatorEnabled
-        ) ?? Self.default.authenticatorEnabled
-        authenticatorICloudSyncEnabled = try container.decodeIfPresent(
-            Bool.self,
-            forKey: .authenticatorICloudSyncEnabled
-        ) ?? Self.default.authenticatorICloudSyncEnabled
+        authenticator = AuthenticatorSettings(
+            enabled: try container.decodeIfPresent(Bool.self, forKey: .authenticatorEnabled)
+                ?? AuthenticatorSettings.default.enabled,
+            iCloudSyncEnabled: try container.decodeIfPresent(
+                Bool.self,
+                forKey: .authenticatorICloudSyncEnabled
+            ) ?? AuthenticatorSettings.default.iCloudSyncEnabled
+        )
         systemMonitor = (try container.decodeIfPresent(
             SystemMonitorSettings.self,
             forKey: .systemMonitor
