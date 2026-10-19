@@ -16,6 +16,7 @@ let voiceSources = [
 
 var executableDependencies: [Target.Dependency] = [
     .target(name: "WhiteboardFeature"),
+    .target(name: "MeowClipboard"),
     .target(name: "MeowS3"),
     .product(name: "GRDB", package: "GRDB.swift"),
 ]
@@ -44,6 +45,10 @@ if isVoiceEdition {
 
 let targets: [Target] = [
     .target(
+        name: "MeowClipboard",
+        path: "Modules/MeowClipboard/Sources"
+    ),
+    .target(
         name: "WhiteboardFeature",
         path: "Modules/WhiteboardFeature/Sources",
         resources: [.process("Resources")]
@@ -64,7 +69,8 @@ let targets: [Target] = [
     .testTarget(
         name: "MeowTests",
         dependencies: [
-            .target(name: executableName)
+            .target(name: executableName),
+            .target(name: "MeowClipboard")
         ],
         path: "Tests",
         exclude: ["MeowS3Tests"],
@@ -74,6 +80,11 @@ let targets: [Target] = [
         name: "WhiteboardFeatureTests",
         dependencies: ["WhiteboardFeature"],
         path: "Modules/WhiteboardFeature/Tests"
+    ),
+    .testTarget(
+        name: "MeowClipboardTests",
+        dependencies: ["MeowClipboard"],
+        path: "Modules/MeowClipboard/Tests"
     ),
     .testTarget(
         name: "MeowS3Tests",
