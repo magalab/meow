@@ -1,6 +1,7 @@
 import AppKit
 @preconcurrency import AVFoundation
 import Foundation
+import MeowClipboard
 import MeowSpeechCore
 
 enum SpeechPermissionState: Equatable, Sendable {

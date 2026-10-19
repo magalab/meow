@@ -1,4 +1,5 @@
 import AppKit
+import MeowClipboard
 import SwiftUI
 
 @MainActor
