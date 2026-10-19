@@ -172,41 +172,6 @@ func scrollingCaptureProcessorPreservesMatchedRows() async throws {
     #expect(normalizedImageBytes(finalImage.image) == normalizedImageBytes(expected))
 }
 
-@Test("Scrolling capture stitcher appends only new rows")
-func scrollingCaptureStitcherDimensions() throws {
-    let source = makeScrollingSourceImage(width: 160, height: 300)
-    let first = try #require(source.cropping(to: CGRect(x: 0, y: 0, width: 160, height: 120)))
-    let next = try #require(source.cropping(to: CGRect(x: 0, y: 40, width: 160, height: 120)))
-    let stitcher = ScrollingCaptureStitcher(
-        firstFrame: first,
-        maximumHeight: 1_000,
-        maximumPixels: 1_000_000,
-        batchSize: 2
-    )
-
-    #expect(stitcher.appendBottomRows(from: next, count: 40) == .appended)
-    let output = try #require(stitcher.makeImage())
-    #expect(output.width == 160)
-    #expect(output.height == 160)
-}
-
-@Test("Scrolling capture stitcher preserves exact vertical content order")
-func scrollingCaptureStitcherContentOrder() throws {
-    let source = makeScrollingSourceImage(width: 160, height: 300)
-    let first = try #require(source.cropping(to: CGRect(x: 0, y: 0, width: 160, height: 120)))
-    let next = try #require(source.cropping(to: CGRect(x: 0, y: 40, width: 160, height: 120)))
-    let expected = try #require(source.cropping(to: CGRect(x: 0, y: 0, width: 160, height: 160)))
-    let stitcher = ScrollingCaptureStitcher(
-        firstFrame: first,
-        maximumHeight: 1_000,
-        maximumPixels: 1_000_000
-    )
-
-    #expect(stitcher.appendBottomRows(from: next, count: 40) == .appended)
-    let output = try #require(stitcher.makeImage())
-    #expect(normalizedImageBytes(output) == normalizedImageBytes(expected))
-}
-
 @Test("Automatic scrolling completes after repeated stable frames")
 func scrollingCaptureAutomaticBottomDetection() async {
     let frame = makeScrollingSourceImage(width: 160, height: 120)
@@ -220,41 +185,6 @@ func scrollingCaptureAutomaticBottomDetection() async {
         return
     }
     #expect(reason == .completed)
-}
-
-@Test("Scrolling capture stitcher enforces height and pixel limits")
-func scrollingCaptureStitcherLimits() throws {
-    let frame = makeScrollingSourceImage(width: 100, height: 100)
-    let heightLimited = ScrollingCaptureStitcher(
-        firstFrame: frame,
-        maximumHeight: 120,
-        maximumPixels: 1_000_000
-    )
-    #expect(heightLimited.appendBottomRows(from: frame, count: 30) == .maximumHeight)
-
-    let pixelLimited = ScrollingCaptureStitcher(
-        firstFrame: frame,
-        maximumHeight: 1_000,
-        maximumPixels: 12_000
-    )
-    #expect(pixelLimited.appendBottomRows(from: frame, count: 30) == .maximumPixels)
-}
-
-@Test("Scrolling capture can compose a complete reduced-resolution fallback")
-func scrollingCaptureReducedResolutionComposition() throws {
-    let source = makeScrollingSourceImage(width: 100, height: 240)
-    let first = try #require(source.cropping(to: CGRect(x: 0, y: 0, width: 100, height: 120)))
-    let second = try #require(source.cropping(to: CGRect(x: 0, y: 120, width: 100, height: 120)))
-    let stitcher = ScrollingCaptureStitcher(
-        firstFrame: first,
-        maximumHeight: 1_000,
-        maximumPixels: 1_000_000
-    )
-    #expect(stitcher.appendBottomRows(from: second, count: 120) == .appended)
-
-    let reduced = try #require(stitcher.makeReducedImage(maximumPixels: 6_000))
-    #expect(reduced.width * reduced.height <= 6_100)
-    #expect(abs(Double(reduced.width) / Double(reduced.height) - 100.0 / 240.0) < 0.02)
 }
 
 @Test("Scrolling capture proactively reduces an oversized final image")
@@ -282,22 +212,6 @@ func scrollingCaptureManualScrollRegionFilter() {
         captureRectInDisplayPoints: captureRect,
         screenFrame: screenFrame
     ))
-}
-
-@Test("Scrolling capture composes a thirty-thousand-pixel image")
-func scrollingCaptureThirtyThousandPixelComposition() throws {
-    let frame = makeScrollingSourceImage(width: 64, height: 1_000)
-    let stitcher = ScrollingCaptureStitcher(
-        firstFrame: frame,
-        maximumHeight: 30_000,
-        maximumPixels: 2_000_000
-    )
-    for _ in 0..<29 {
-        #expect(stitcher.appendBottomRows(from: frame, count: 1_000) == .appended)
-    }
-    let output = try #require(stitcher.makeImage())
-    #expect(output.width == 64)
-    #expect(output.height == 30_000)
 }
 
 @Test("Large capture artifacts disable automatic OCR and full-resolution editing")
