@@ -397,20 +397,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         launcherCoordinator.bindOutputCommands()
         launcherCommandRouter.bind(to: viewModel)
         clipboardActionCoordinator.bindLauncherCommands(to: viewModel)
-        keepAwakeService.onStateChanged = { [weak self] state in
-            guard let self else { return }
-            self.viewModel.updateKeepAwakeState(
-                state,
-                remainingMinutes: self.keepAwakeService.remainingMinutes
-            )
-        }
-        keepAwakeService.onRemainingTimeChanged = { [weak self] remainingMinutes in
-            guard let self else { return }
-            self.viewModel.updateKeepAwakeState(
-                self.keepAwakeService.state,
-                remainingMinutes: remainingMinutes
-            )
-        }
+        launcherCoordinator.bindKeepAwakeStateUpdates()
         viewModel.onSettingsChanged = { [weak self] settings in
             self?.apply(settings: settings)
         }

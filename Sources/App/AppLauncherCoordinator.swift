@@ -50,6 +50,23 @@ final class AppLauncherCoordinator {
         }
     }
 
+    func bindKeepAwakeStateUpdates() {
+        keepAwakeService.onStateChanged = { [weak self] state in
+            guard let self else { return }
+            viewModel.updateKeepAwakeState(
+                state,
+                remainingMinutes: keepAwakeService.remainingMinutes
+            )
+        }
+        keepAwakeService.onRemainingTimeChanged = { [weak self] remainingMinutes in
+            guard let self else { return }
+            viewModel.updateKeepAwakeState(
+                keepAwakeService.state,
+                remainingMinutes: remainingMinutes
+            )
+        }
+    }
+
     func show() {
         viewModel.updateKeepAwakeState(
             keepAwakeService.state,
