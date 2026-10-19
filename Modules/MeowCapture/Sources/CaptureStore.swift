@@ -1,24 +1,20 @@
-import MeowCapture
 import AppKit
+import Combine
 import Foundation
 
-enum CaptureStoreError: LocalizedError {
+public enum CaptureStoreError: Error {
     case imageEncodingFailed
-
-    var errorDescription: String? {
-        L10n.screenshotErrorEncoding
-    }
 }
 
 @MainActor
-final class CaptureStore: ObservableObject {
+public final class CaptureStore: ObservableObject {
     private let fileManager: FileManager
     private let capturesDirectory: URL
     private let metadataURL: URL
-    @Published private(set) var artifacts: [CaptureArtifact] = []
-    var onArtifactsRemoved: ((Set<UUID>) -> Void)?
+    @Published public private(set) var artifacts: [CaptureArtifact] = []
+    public var onArtifactsRemoved: ((Set<UUID>) -> Void)?
 
-    init(fileManager: FileManager = .default, capturesDirectory: URL? = nil) {
+    public init(fileManager: FileManager = .default, capturesDirectory: URL? = nil) {
         self.fileManager = fileManager
         if let capturesDirectory {
             self.capturesDirectory = capturesDirectory
@@ -33,7 +29,7 @@ final class CaptureStore: ObservableObject {
         load()
     }
 
-    func saveInternal(
+    public func saveInternal(
         image: CGImage,
         kind: CaptureArtifactKind,
         historyLimit: Int = 100,
@@ -78,7 +74,7 @@ final class CaptureStore: ObservableObject {
         return artifact
     }
 
-    func applyRetention(
+    public func applyRetention(
         historyLimit: Int,
         retentionDays: Int,
         maxStorageMB: Int
@@ -91,14 +87,14 @@ final class CaptureStore: ObservableObject {
         persist()
     }
 
-    func updateOCRText(_ text: String, for id: UUID) {
+    public func updateOCRText(_ text: String, for id: UUID) {
         guard let index = artifacts.firstIndex(where: { $0.id == id }) else { return }
         let sanitized = Self.sanitizedOCRText(text)
         artifacts[index].ocrText = sanitized.isEmpty ? nil : sanitized
         persist()
     }
 
-    static func sanitizedOCRText(_ text: String) -> String {
+    public static func sanitizedOCRText(_ text: String) -> String {
         text
             .split(separator: "\n", omittingEmptySubsequences: false)
             .map(String.init)
@@ -107,37 +103,37 @@ final class CaptureStore: ObservableObject {
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    func saveExternal(
+    public func saveExternal(
         image: CGImage,
-        settings: ScreenshotSettings,
+        options: CaptureExportOptions,
         createdAt: Date = Date()
     ) throws -> URL {
-        let directory = resolvedSaveDirectory(settings.saveDirectory)
+        let directory = resolvedSaveDirectory(options.saveDirectory)
         try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
 
-        let baseName = Self.expandedFileName(template: settings.fileNameTemplate, date: createdAt)
+        let baseName = Self.expandedFileName(template: options.fileNameTemplate, date: createdAt)
         let uniqueURL = uniqueFileURL(
             directory: directory,
             baseName: baseName,
-            extension: settings.imageFormat.fileExtension
+            extension: options.imageFormat.fileExtension
         )
         let data = try encodedData(
             image: image,
-            format: settings.imageFormat,
-            jpegQuality: settings.jpegQuality
+            format: options.imageFormat,
+            jpegQuality: options.jpegQuality
         )
         try data.write(to: uniqueURL, options: .atomic)
         return uniqueURL
     }
 
-    func delete(_ artifact: CaptureArtifact) {
+    public func delete(_ artifact: CaptureArtifact) {
         artifacts.removeAll { $0.id == artifact.id }
         try? fileManager.removeItem(at: artifact.imageURL)
         try? fileManager.removeItem(at: artifact.thumbnailURL)
         persist()
     }
 
-    func clear() {
+    public func clear() {
         for artifact in artifacts {
             try? fileManager.removeItem(at: artifact.imageURL)
             try? fileManager.removeItem(at: artifact.thumbnailURL)
@@ -146,9 +142,9 @@ final class CaptureStore: ObservableObject {
         persist()
     }
 
-    static func expandedFileName(template: String, date: Date) -> String {
+    public static func expandedFileName(template: String, date: Date) -> String {
         let trimmed = template.trimmingCharacters(in: .whitespacesAndNewlines)
-        let source = trimmed.isEmpty ? ScreenshotSettings.default.fileNameTemplate : trimmed
+        let source = trimmed.isEmpty ? "Meow Screenshot yyyy-MM-dd HH.mm.ss" : trimmed
         let tokenFormats = [
             ("yyyy", "yyyy"),
             ("MM", "MM"),
@@ -223,7 +219,7 @@ final class CaptureStore: ObservableObject {
         }
     }
 
-    static func retainedArtifactIDs(
+    public static func retainedArtifactIDs(
         _ artifacts: [CaptureArtifact],
         historyLimit: Int,
         retentionDays: Int,
@@ -295,7 +291,7 @@ final class CaptureStore: ObservableObject {
         case .jpeg:
             data = bitmap.representation(
                 using: .jpeg,
-                properties: [.compressionFactor: jpegQuality.clamped(to: 0.1...1)]
+                properties: [.compressionFactor: min(max(jpegQuality, 0.1), 1)]
             )
         }
         guard let data else { throw CaptureStoreError.imageEncodingFailed }
