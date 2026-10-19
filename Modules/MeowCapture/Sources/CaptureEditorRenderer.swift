@@ -2,20 +2,13 @@ import AppKit
 import CoreImage
 import Foundation
 
-enum CaptureEditorRenderError: LocalizedError {
+public enum CaptureEditorRenderError: Error {
     case contextCreationFailed
     case imageCreationFailed
-
-    var errorDescription: String? {
-        switch self {
-        case .contextCreationFailed: return L10n.editorErrorContext
-        case .imageCreationFailed: return L10n.editorErrorImage
-        }
-    }
 }
 
-enum CaptureEditorRenderer {
-    static func render(
+public enum CaptureEditorRenderer {
+    public static func render(
         source: CGImage,
         commands: [CaptureEditorCommand],
         cropRect: CGRect?,
@@ -55,7 +48,7 @@ enum CaptureEditorRenderer {
         return image
     }
 
-    static func drawPreview(
+    public static func drawPreview(
         source: CGImage,
         commands: [CaptureEditorCommand],
         cropRect: CGRect?,
