@@ -17,6 +17,12 @@ final class AppWhiteboardCoordinator {
     init(controller: WhiteboardFeatureController, actions: Actions) {
         self.controller = controller
         self.actions = actions
+        controller.onError = { [weak self] error in
+            MeowLog.whiteboard.error(
+                "Whiteboard error: \(error.localizedDescription, privacy: .private(mask: .hash))"
+            )
+            self?.presentError(error.localizedDescription)
+        }
     }
 
     func apply(_ settings: WhiteboardSettings) {

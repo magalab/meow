@@ -414,12 +414,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         viewModel.onSettingsChanged = { [weak self] settings in
             self?.apply(settings: settings)
         }
-        whiteboardFeatureController.onError = { [weak self] error in
-            MeowLog.whiteboard.error(
-                "Whiteboard error: \(error.localizedDescription, privacy: .private(mask: .hash))"
-            )
-            self?.whiteboardCoordinator.presentError(error.localizedDescription)
-        }
         keystrokeVisualizerService.onOverlayPlacementChanged = { [weak self] position, point in
             guard let self else { return }
             guard self.viewModel.settings.keystrokeVisualizerOverlayPosition != position ||
