@@ -214,6 +214,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     )
 
     private let windowCoordinator = AppWindowCoordinator()
+    private lazy var launcherCoordinator = AppLauncherCoordinator(
+        viewModel: viewModel,
+        keepAwakeService: keepAwakeService,
+        windowCoordinator: windowCoordinator
+    )
     private lazy var lifecycleCoordinator = AppLifecycleCoordinator(
         actions: makeLifecycleActions(),
         startupActions: AppLifecycleCoordinator.StartupActions(
@@ -318,7 +323,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.openAIChat(input)
         }
         viewModel.onOpenAuthenticator = { [weak self] in
-            self?.hideLauncher()
+            self?.launcherCoordinator.hide()
             self?.authenticatorService.showPanel()
         }
         viewModel.onHealthCommand = { [weak self] command in
@@ -351,11 +356,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             )
         }
         viewModel.onUploadClipboard = { [weak self] in
-            self?.hideLauncher()
+            self?.launcherCoordinator.hide()
             self?.clipboardActionCoordinator.uploadFromClipboard()
         }
         viewModel.onPinClipboardImage = { [weak self] image in
-            self?.hideLauncher()
+            self?.launcherCoordinator.hide()
             self?.pinnedImageController.pin(image)
         }
         viewModel.onRecognizeClipboardImage = { [weak self] image in
@@ -399,21 +404,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         viewModel.onPasteClipboard = { [weak self] entry in
             guard let self else { return }
             // Hide launcher first so target app becomes frontmost
-            self.hideLauncher()
+            self.launcherCoordinator.hide()
             // Small delay to let hide complete
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 self.clipboardStore.writeToPasteboard(entry)
-                self.simulatePaste()
+                self.launcherCoordinator.simulatePaste()
             }
         }
         viewModel.onCopyText = { [weak self] text in
             guard let self else { return }
-            self.hideLauncher()
+            self.launcherCoordinator.hide()
             self.clipboardStore.writePrivateTextToPasteboard(text)
         }
         viewModel.onLaunchApplication = { [weak self] app in
             guard let self else { return }
-            self.hideLauncher()
+            self.launcherCoordinator.hide()
             DispatchQueue.main.async {
                 NSWorkspace.shared.openApplication(
                     at: app.url,
@@ -513,7 +518,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItemService.setup(
             initialSettings: viewModel.settings,
             toggleLauncher: { [weak self] in
-                self?.toggleLauncher()
+                self?.launcherCoordinator.toggle()
             },
             openPreferences: { [weak self] in
                 self?.showPreferences()
@@ -686,7 +691,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         AppMediaCommandRouter.Actions(
             settings: { [weak self] in self?.viewModel.settings ?? .default },
             hideTransientPanels: { [weak self] in
-                self?.hideLauncher()
+                self?.launcherCoordinator.hide()
                 self?.textActionCoordinator.hideTranslationPanel()
             },
             prepareWhiteboardForCapture: { [weak self] in
@@ -872,7 +877,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         AppClipboardActionCoordinator.Actions(
             settings: { [weak self] in self?.viewModel.settings ?? .default },
             hideLauncher: { [weak self] in
-                self?.hideLauncher()
+                self?.launcherCoordinator.hide()
             },
             presentTranslation: { [weak self] text, axPermissionDenied, sourceImagePath in
                 self?.textActionCoordinator.presentTranslationPanel(
@@ -915,8 +920,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         AppHotkeyRouter.Actions(
             settings: { [weak self] in self?.viewModel.settings ?? .default },
             updateSettings: { [weak self] settings in self?.viewModel.settings = settings },
-            toggleLauncher: { [weak self] in self?.toggleLauncher() },
-            openFinder: { [weak self] in self?.openFinder() },
+            toggleLauncher: { [weak self] in self?.launcherCoordinator.toggle() },
+            openFinder: { [weak self] in self?.launcherCoordinator.openFinder() },
             translate: { [weak self] in self?.textActionCoordinator.triggerTranslation() },
             textActions: { [weak self] in self?.textActionCoordinator.triggerTextActions() },
             scrollingScreenshot: { [weak self] in self?.triggerScrollingCapture() },
@@ -986,7 +991,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func handleKeepAwakeCommand() {
-        hideLauncher()
+        launcherCoordinator.hide()
         Task { @MainActor [weak self] in
             guard let self else { return }
             do {
@@ -1034,7 +1039,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func handleWhiteboardCommand(_ command: WhiteboardCommand) {
         guard viewModel.settings.whiteboard.enabled else { return }
-        hideLauncher()
+        launcherCoordinator.hide()
         switch command {
         case .show:
             whiteboardFeatureController.showBoard()
@@ -1310,7 +1315,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func showCaptureHistory() {
-        hideLauncher()
+        launcherCoordinator.hide()
         captureCoordinator.showCaptureHistory()
     }
 
@@ -1318,85 +1323,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         captureCoordinator.makeCaptureHistoryView(theme: theme)
     }
 
-    private func showLauncher() {
-        viewModel.updateKeepAwakeState(
-            keepAwakeService.state,
-            remainingMinutes: keepAwakeService.remainingMinutes
-        )
-        // Keep app list fresh so newly installed apps appear without restarting Meow.
-        if !viewModel.refreshInstalledApps() {
-            viewModel.refresh()
-        }
-        windowCoordinator.showLauncher { [weak self] in
-            guard let self else { return NSViewController() }
-            return NSHostingController(
-                rootView: LauncherView(
-                    viewModel: self.viewModel,
-                    onDismiss: { [weak self] in
-                        self?.hideLauncher()
-                    },
-                    onLauncherHeightChange: { [weak self] height in
-                        self?.windowCoordinator.setLauncherHeight(height)
-                    }
-                )
-            )
-        }
-    }
-
-    private func hideLauncher() {
-        windowCoordinator.hideLauncher()
-        viewModel.resetForHide()
-        NotificationCenter.default.post(name: .meowLauncherDidHide, object: nil)
-    }
-
-    private func toggleLauncher() {
-        if windowCoordinator.isLauncherVisible {
-            hideLauncher()
-        } else {
-            showLauncher()
-        }
-    }
-
-    private func openFinder() {
-        hideLauncher()
-        let homeDirectory = FileManager.default.homeDirectoryForCurrentUser
-        guard NSWorkspace.shared.open(homeDirectory) else {
-            MeowLog.app.error(
-                "Failed to open Finder at \(homeDirectory.path, privacy: .private(mask: .hash))"
-            )
-            return
-        }
-    }
-
-    /// Simulates Cmd+V to paste the clipboard content into the frontmost app.
-    private func simulatePaste() {
-        // Check accessibility permissions
-        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
-        let trusted = AXIsProcessTrustedWithOptions(options)
-
-        guard trusted else {
-            // If not trusted, the system will show a prompt for permission
-            // Try anyway - if the user approved in the prompt, it might work
-            MeowLog.app.warning("Accessibility permission not granted; paste may not work")
-            return
-        }
-
-        let source = CGEventSource(stateID: .hidSystemState)
-
-        let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true) // V key
-        keyDown?.flags = .maskCommand
-
-        let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false) // V key
-        keyUp?.flags = .maskCommand
-
-        keyDown?.post(tap: .cghidEventTap)
-        keyUp?.post(tap: .cghidEventTap)
-    }
-
     private func setupOutsideClickDismissMonitor() {
         windowCoordinator.installEventMonitors(
             actions: AppWindowCoordinator.EventMonitorActions(
-                dismissLauncher: { [weak self] in self?.hideLauncher() },
+                dismissLauncher: { [weak self] in self?.launcherCoordinator.hide() },
                 dismissTranslation: { [weak self] in self?.textActionCoordinator.hideTranslationPanel() },
                 dismissTextActions: { [weak self] in self?.textActionCoordinator.hideTextActionsPanel() },
                 dismissCalendarPopover: { [weak self] in self?.windowCoordinator.dismissCalendarPopover() },
@@ -1433,7 +1363,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             )
         )
-        hideLauncher()
+        launcherCoordinator.hide()
         windowCoordinator.showAIChat(
             contentViewController: NSHostingController(
                 rootView: LocalizedRootView { view }
@@ -1571,7 +1501,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func showPreferences(section: PreferenceSection? = nil, animated: Bool = true) {
-        hideLauncher()
+        launcherCoordinator.hide()
         preferencesCoordinator.show(section: section, animated: animated)
     }
 
