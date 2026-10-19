@@ -2,48 +2,48 @@ import CoreGraphics
 import Foundation
 @preconcurrency import ScreenCaptureKit
 
-enum RecordingVideoFormat: String, Codable, CaseIterable, Identifiable, Sendable {
+public enum RecordingVideoFormat: String, Codable, CaseIterable, Identifiable, Sendable {
     case mp4
     case mov
 
-    var id: String { rawValue }
-    var fileExtension: String { rawValue }
+    public var id: String { rawValue }
+    public var fileExtension: String { rawValue }
 }
 
-enum RecordingVideoCodec: String, Codable, CaseIterable, Identifiable, Sendable {
+public enum RecordingVideoCodec: String, Codable, CaseIterable, Identifiable, Sendable {
     case h264
     case hevc
     case hevcWithAlpha
 
-    var id: String { rawValue }
+    public var id: String { rawValue }
 }
 
-enum RecordingAudioMode: String, Codable, CaseIterable, Identifiable, Sendable {
+public enum RecordingAudioMode: String, Codable, CaseIterable, Identifiable, Sendable {
     case none
     case system
     case microphone
     case systemAndMicrophone
 
-    var id: String { rawValue }
+    public var id: String { rawValue }
 
-    var capturesSystemAudio: Bool {
+    public var capturesSystemAudio: Bool {
         self == .system || self == .systemAndMicrophone
     }
 
-    var capturesMicrophone: Bool {
+    public var capturesMicrophone: Bool {
         self == .microphone || self == .systemAndMicrophone
     }
 }
 
-enum RecordingAudioFormat: String, Codable, CaseIterable, Identifiable, Sendable {
+public enum RecordingAudioFormat: String, Codable, CaseIterable, Identifiable, Sendable {
     case aac
     case alac
     case flac
     case opus
 
-    var id: String { rawValue }
+    public var id: String { rawValue }
 
-    var fileExtension: String {
+    public var fileExtension: String {
         switch self {
         case .aac, .alac: return "m4a"
         case .flac, .opus: return "caf"
@@ -51,14 +51,14 @@ enum RecordingAudioFormat: String, Codable, CaseIterable, Identifiable, Sendable
     }
 }
 
-enum RecordingQuality: String, Codable, CaseIterable, Identifiable, Sendable {
+public enum RecordingQuality: String, Codable, CaseIterable, Identifiable, Sendable {
     case compact
     case balanced
     case high
 
-    var id: String { rawValue }
+    public var id: String { rawValue }
 
-    var bitrateMultiplier: Double {
+    public var bitrateMultiplier: Double {
         switch self {
         case .compact: return 0.08
         case .balanced: return 0.14
@@ -67,74 +67,74 @@ enum RecordingQuality: String, Codable, CaseIterable, Identifiable, Sendable {
     }
 }
 
-enum RecordingBackgroundStyle: String, Codable, CaseIterable, Identifiable, Sendable {
+public enum RecordingBackgroundStyle: String, Codable, CaseIterable, Identifiable, Sendable {
     case desktop
     case transparent
     case solidColor
 
-    var id: String { rawValue }
+    public var id: String { rawValue }
 }
 
-enum RecordingCameraOverlayShape: String, Codable, CaseIterable, Identifiable, Sendable {
+public enum RecordingCameraOverlayShape: String, Codable, CaseIterable, Identifiable, Sendable {
     case rectangle
     case rounded
     case circle
 
-    var id: String { rawValue }
+    public var id: String { rawValue }
 }
 
-struct RecordingSettings: Codable, Equatable, Sendable {
-    var enabled: Bool
-    var videoFormat: RecordingVideoFormat
-    var videoCodec: RecordingVideoCodec
-    var quality: RecordingQuality
-    var frameRate: Int
-    var captureRetinaResolution: Bool
-    var audioMode: RecordingAudioMode
-    var audioFormat: RecordingAudioFormat
-    var microphoneDeviceID: String
-    var keepAudioTracksSeparate: Bool
-    var showCursor: Bool
-    var highlightMouseClicks: Bool
-    var includeMenuBar: Bool
-    var excludeMeow: Bool
-    var excludedApplicationBundleIDs: [String]
-    var excludeDesktopIcons: Bool
-    var excludeSystemOverlays: Bool
-    var countdownSeconds: Int
-    var preventSleep: Bool
-    var showFloatingControls: Bool
-    var showPreview: Bool
-    var cameraOverlayEnabled: Bool
-    var cameraDeviceID: String
-    var cameraOverlayShape: RecordingCameraOverlayShape
-    var recordHDR: Bool
-    var backgroundStyle: RecordingBackgroundStyle
-    var backgroundColorHex: String
-    var saveDirectory: String
-    var fileNameTemplate: String
-    var historyLimit: Int
-    var retentionDays: Int
-    var maxStorageMB: Int
-    var displayHotkeyKeyCode: UInt32
-    var displayHotkeyModifiers: UInt32
-    var regionHotkeyKeyCode: UInt32
-    var regionHotkeyModifiers: UInt32
-    var windowHotkeyKeyCode: UInt32
-    var windowHotkeyModifiers: UInt32
-    var pauseHotkeyKeyCode: UInt32
-    var pauseHotkeyModifiers: UInt32
-    var stopHotkeyKeyCode: UInt32
-    var stopHotkeyModifiers: UInt32
-    var frameHotkeyKeyCode: UInt32
-    var frameHotkeyModifiers: UInt32
-    var magnifierHotkeyKeyCode: UInt32
-    var magnifierHotkeyModifiers: UInt32
-    var magnifierZoom: Int
-    var magnifierWindowWidth: Int
-    var magnifierCircular: Bool
+public struct RecordingSettings: Codable, Equatable, Sendable {
+    public var enabled: Bool
+    public var videoFormat: RecordingVideoFormat
+    public var videoCodec: RecordingVideoCodec
+    public var quality: RecordingQuality
+    public var frameRate: Int
+    public var captureRetinaResolution: Bool
+    public var audioMode: RecordingAudioMode
+    public var audioFormat: RecordingAudioFormat
+    public var microphoneDeviceID: String
+    public var keepAudioTracksSeparate: Bool
+    public var showCursor: Bool
+    public var highlightMouseClicks: Bool
+    public var includeMenuBar: Bool
+    public var excludeMeow: Bool
+    public var excludedApplicationBundleIDs: [String]
+    public var excludeDesktopIcons: Bool
+    public var excludeSystemOverlays: Bool
+    public var countdownSeconds: Int
+    public var preventSleep: Bool
+    public var showFloatingControls: Bool
+    public var showPreview: Bool
+    public var cameraOverlayEnabled: Bool
+    public var cameraDeviceID: String
+    public var cameraOverlayShape: RecordingCameraOverlayShape
+    public var recordHDR: Bool
+    public var backgroundStyle: RecordingBackgroundStyle
+    public var backgroundColorHex: String
+    public var saveDirectory: String
+    public var fileNameTemplate: String
+    public var historyLimit: Int
+    public var retentionDays: Int
+    public var maxStorageMB: Int
+    public var displayHotkeyKeyCode: UInt32
+    public var displayHotkeyModifiers: UInt32
+    public var regionHotkeyKeyCode: UInt32
+    public var regionHotkeyModifiers: UInt32
+    public var windowHotkeyKeyCode: UInt32
+    public var windowHotkeyModifiers: UInt32
+    public var pauseHotkeyKeyCode: UInt32
+    public var pauseHotkeyModifiers: UInt32
+    public var stopHotkeyKeyCode: UInt32
+    public var stopHotkeyModifiers: UInt32
+    public var frameHotkeyKeyCode: UInt32
+    public var frameHotkeyModifiers: UInt32
+    public var magnifierHotkeyKeyCode: UInt32
+    public var magnifierHotkeyModifiers: UInt32
+    public var magnifierZoom: Int
+    public var magnifierWindowWidth: Int
+    public var magnifierCircular: Bool
 
-    init(
+    public init(
         enabled: Bool,
         videoFormat: RecordingVideoFormat,
         videoCodec: RecordingVideoCodec,
@@ -236,7 +236,7 @@ struct RecordingSettings: Codable, Equatable, Sendable {
         self.magnifierCircular = magnifierCircular
     }
 
-    static let `default` = RecordingSettings(
+    public static let `default` = RecordingSettings(
         enabled: false,
         videoFormat: .mp4,
         videoCodec: .h264,
@@ -304,7 +304,7 @@ struct RecordingSettings: Codable, Equatable, Sendable {
         case magnifierZoom, magnifierWindowWidth, magnifierCircular
     }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let defaults = Self.default
         enabled = try container.decodeIfPresent(Bool.self, forKey: .enabled) ?? defaults.enabled
@@ -376,7 +376,7 @@ struct RecordingSettings: Codable, Equatable, Sendable {
         magnifierCircular = try container.decodeIfPresent(Bool.self, forKey: .magnifierCircular) ?? defaults.magnifierCircular
     }
 
-    func normalized(for source: RecordingSourceKind? = nil) -> RecordingSettings {
+    public func normalized(for source: RecordingSourceKind? = nil) -> RecordingSettings {
         var value = self
         value.frameRate = min(120, max(1, frameRate))
         value.countdownSeconds = max(0, countdownSeconds)
@@ -419,7 +419,7 @@ struct RecordingSettings: Codable, Equatable, Sendable {
     }
 }
 
-enum RecordingSourceKind: String, Codable, CaseIterable, Identifiable, Sendable {
+public enum RecordingSourceKind: String, Codable, CaseIterable, Identifiable, Sendable {
     case display
     case region
     case window
@@ -427,10 +427,10 @@ enum RecordingSourceKind: String, Codable, CaseIterable, Identifiable, Sendable 
     case systemAudio
     case mobileDevice
 
-    var id: String { rawValue }
+    public var id: String { rawValue }
 }
 
-enum RecordingSource {
+public enum RecordingSource {
     case display(SCDisplay)
     case region(display: SCDisplay, rectInDisplayPoints: CGRect, scale: CGFloat)
     case window(SCWindow)
@@ -439,7 +439,7 @@ enum RecordingSource {
     case systemAudio(SCDisplay)
     case mobileDevice(String)
 
-    var kind: RecordingSourceKind {
+    public var kind: RecordingSourceKind {
         switch self {
         case .display: return .display
         case .region: return .region
@@ -452,7 +452,7 @@ enum RecordingSource {
     }
 }
 
-enum RecordingState: Equatable, Sendable {
+public enum RecordingState: Equatable, Sendable {
     case idle
     case preparing
     case countdown(Int)
@@ -461,7 +461,7 @@ enum RecordingState: Equatable, Sendable {
     case finishing
     case failed(String)
 
-    var isActive: Bool {
+    public var isActive: Bool {
         switch self {
         case .idle, .failed, .finishing: return false
         default: return true
@@ -469,32 +469,80 @@ enum RecordingState: Equatable, Sendable {
     }
 }
 
-struct RecordingArtifact: Identifiable, Codable, Equatable, Sendable {
-    let id: UUID
-    let source: RecordingSourceKind
-    let createdAt: Date
-    let duration: TimeInterval
-    let fileURL: URL
-    let thumbnailURL: URL?
-    let width: Int
-    let height: Int
-    let fileSize: Int64
-    let videoCodec: RecordingVideoCodec?
-    let hasSystemAudio: Bool
-    let hasMicrophoneAudio: Bool
+public struct RecordingArtifact: Identifiable, Codable, Equatable, Sendable {
+    public let id: UUID
+    public let source: RecordingSourceKind
+    public let createdAt: Date
+    public let duration: TimeInterval
+    public let fileURL: URL
+    public let thumbnailURL: URL?
+    public let width: Int
+    public let height: Int
+    public let fileSize: Int64
+    public let videoCodec: RecordingVideoCodec?
+    public let hasSystemAudio: Bool
+    public let hasMicrophoneAudio: Bool
+
+
+    public init(
+        id: UUID,
+        source: RecordingSourceKind,
+        createdAt: Date,
+        duration: TimeInterval,
+        fileURL: URL,
+        thumbnailURL: URL?,
+        width: Int,
+        height: Int,
+        fileSize: Int64,
+        videoCodec: RecordingVideoCodec?,
+        hasSystemAudio: Bool,
+        hasMicrophoneAudio: Bool
+    ) {
+        self.id = id
+        self.source = source
+        self.createdAt = createdAt
+        self.duration = duration
+        self.fileURL = fileURL
+        self.thumbnailURL = thumbnailURL
+        self.width = width
+        self.height = height
+        self.fileSize = fileSize
+        self.videoCodec = videoCodec
+        self.hasSystemAudio = hasSystemAudio
+        self.hasMicrophoneAudio = hasMicrophoneAudio
+    }
 }
 
-struct RecordingCapabilities: Equatable, Sendable {
-    let supportsHEVC: Bool
-    let supportsHEVCWithAlpha: Bool
-    let supportsHDR: Bool
-    let supportsPresenterOverlay: Bool
-    let hasCamera: Bool
-    let hasMicrophone: Bool
-    let hasMobileCaptureDevice: Bool
+public struct RecordingCapabilities: Equatable, Sendable {
+    public let supportsHEVC: Bool
+    public let supportsHEVCWithAlpha: Bool
+    public let supportsHDR: Bool
+    public let supportsPresenterOverlay: Bool
+    public let hasCamera: Bool
+    public let hasMicrophone: Bool
+    public let hasMobileCaptureDevice: Bool
+
+
+    public init(
+        supportsHEVC: Bool,
+        supportsHEVCWithAlpha: Bool,
+        supportsHDR: Bool,
+        supportsPresenterOverlay: Bool,
+        hasCamera: Bool,
+        hasMicrophone: Bool,
+        hasMobileCaptureDevice: Bool
+    ) {
+        self.supportsHEVC = supportsHEVC
+        self.supportsHEVCWithAlpha = supportsHEVCWithAlpha
+        self.supportsHDR = supportsHDR
+        self.supportsPresenterOverlay = supportsPresenterOverlay
+        self.hasCamera = hasCamera
+        self.hasMicrophone = hasMicrophone
+        self.hasMobileCaptureDevice = hasMobileCaptureDevice
+    }
 }
 
-enum RecordingCommand: Equatable {
+public enum RecordingCommand: Equatable {
     case recordDisplay
     case recordRegion
     case recordWindow
