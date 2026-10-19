@@ -127,7 +127,14 @@ final class ScrollingCaptureController {
             let firstFrame = try await captureSettledFrame()
             try Task.checkCancellation()
             guard continuation != nil else { return }
-            let processor = ScrollingCaptureProcessor(firstFrame: firstFrame, settings: settings)
+            let processor = ScrollingCaptureProcessor(
+                firstFrame: firstFrame,
+                configuration: ScrollingCaptureProcessorConfiguration(
+                    maximumHeightPixels: settings.maximumHeightPixels,
+                    maximumTotalPixels: settings.maximumTotalPixels,
+                    automaticallyDetectFrozenHeader: settings.automaticallyDetectFrozenHeader
+                )
+            )
             self.processor = processor
             targetApplicationPID = resolveTargetApplicationPID()
             activateTargetApplication()
