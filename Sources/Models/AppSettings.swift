@@ -1,6 +1,6 @@
 import Foundation
 
-enum DateIconStyle: String, Codable, CaseIterable, Identifiable {
+enum DateIconStyle: String, Codable, CaseIterable, Identifiable, Equatable, Sendable {
     case outlinedDay
     case roundedOutlineDay
     case pawPrint
@@ -34,7 +34,7 @@ enum DateIconStyle: String, Codable, CaseIterable, Identifiable {
     }
 }
 
-enum DockIconStyle: String, Codable, CaseIterable, Identifiable {
+enum DockIconStyle: String, Codable, CaseIterable, Identifiable, Equatable, Sendable {
     case `default`
     case calendar
     case flat
@@ -50,7 +50,7 @@ enum DockIconStyle: String, Codable, CaseIterable, Identifiable {
     }
 }
 
-enum AppLanguage: String, Codable, CaseIterable, Identifiable {
+enum AppLanguage: String, Codable, CaseIterable, Identifiable, Equatable, Sendable {
     case system
     case english = "en"
     case chinese = "zh-Hans"
@@ -68,7 +68,7 @@ enum AppLanguage: String, Codable, CaseIterable, Identifiable {
     }
 }
 
-enum AppTheme: String, Codable, CaseIterable, Identifiable, Sendable {
+enum AppTheme: String, Codable, CaseIterable, Identifiable, Equatable, Sendable {
     case gingerCat = "ginger-cat"
     case mistBlue = "mist-blue"
     case graphiteAmber = "graphite-amber"
@@ -90,6 +90,23 @@ enum AppTheme: String, Codable, CaseIterable, Identifiable, Sendable {
 
 struct AppSettings: Codable {
     var autoLaunch: Bool
+    var appearance: AppearanceSettings
+    var language: AppLanguage {
+        get { appearance.language }
+        set { appearance.language = newValue }
+    }
+    var theme: AppTheme {
+        get { appearance.theme }
+        set { appearance.theme = newValue }
+    }
+    var dateIconStyle: DateIconStyle {
+        get { appearance.dateIconStyle }
+        set { appearance.dateIconStyle = newValue }
+    }
+    var dockIconStyle: DockIconStyle {
+        get { appearance.dockIconStyle }
+        set { appearance.dockIconStyle = newValue }
+    }
     var clipboard: ClipboardSettings
     var clipboardHistoryEnabled: Bool {
         get { clipboard.historyEnabled }
@@ -127,10 +144,6 @@ struct AppSettings: Codable {
     var textActionsHotkeyKeyCode: UInt32
     /// Carbon modifier flags for the selected-text actions hotkey (default: 2048 = optionKey = ⌥X).
     var textActionsHotkeyModifiers: UInt32
-    var language: AppLanguage
-    var theme: AppTheme
-    var dateIconStyle: DateIconStyle
-    var dockIconStyle: DockIconStyle
     var ai: AISettings
     var fileHosting: FileHostSettings
     var screenshot: ScreenshotSettings
@@ -235,6 +248,12 @@ struct AppSettings: Codable {
         keystrokeVisualizerDisplayMode: KeystrokeDisplayMode = .shortcutsAndSpecialKeys
     ) {
         self.autoLaunch = autoLaunch
+        self.appearance = AppearanceSettings(
+            language: language,
+            theme: theme,
+            dateIconStyle: dateIconStyle,
+            dockIconStyle: dockIconStyle
+        )
         self.clipboard = ClipboardSettings(
             historyEnabled: clipboardHistoryEnabled,
             showImagePreviews: clipboardShowImagePreviews,
@@ -252,10 +271,6 @@ struct AppSettings: Codable {
         self.translateHotkeyModifiers = translateHotkeyModifiers
         self.textActionsHotkeyKeyCode = textActionsHotkeyKeyCode
         self.textActionsHotkeyModifiers = textActionsHotkeyModifiers
-        self.language = language
-        self.theme = theme
-        self.dateIconStyle = dateIconStyle
-        self.dockIconStyle = dockIconStyle
         self.ai = ai
         self.fileHosting = fileHosting
         self.screenshot = screenshot
@@ -384,10 +399,16 @@ extension AppSettings {
             UInt32.self,
             forKey: .textActionsHotkeyModifiers
         ) ?? Self.default.textActionsHotkeyModifiers
-        language = try container.decodeIfPresent(AppLanguage.self, forKey: .language) ?? Self.default.language
-        theme = try container.decodeIfPresent(AppTheme.self, forKey: .theme) ?? Self.default.theme
-        dateIconStyle = try container.decodeIfPresent(DateIconStyle.self, forKey: .dateIconStyle) ?? Self.default.dateIconStyle
-        dockIconStyle = try container.decodeIfPresent(DockIconStyle.self, forKey: .dockIconStyle) ?? Self.default.dockIconStyle
+        appearance = AppearanceSettings(
+            language: try container.decodeIfPresent(AppLanguage.self, forKey: .language)
+                ?? AppearanceSettings.default.language,
+            theme: try container.decodeIfPresent(AppTheme.self, forKey: .theme)
+                ?? AppearanceSettings.default.theme,
+            dateIconStyle: try container.decodeIfPresent(DateIconStyle.self, forKey: .dateIconStyle)
+                ?? AppearanceSettings.default.dateIconStyle,
+            dockIconStyle: try container.decodeIfPresent(DockIconStyle.self, forKey: .dockIconStyle)
+                ?? AppearanceSettings.default.dockIconStyle
+        )
         ai = try container.decodeIfPresent(AISettings.self, forKey: .ai) ?? Self.default.ai
         fileHosting = try container.decodeIfPresent(FileHostSettings.self, forKey: .fileHosting) ?? Self.default.fileHosting
         screenshot = try container.decodeIfPresent(
