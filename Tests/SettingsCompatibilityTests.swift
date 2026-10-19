@@ -58,6 +58,44 @@ func aiAPIKeysAreNotEncodedInSettings() throws {
     #expect(ai["apiKey"] == nil)
 }
 
+@Test("AI settings preserve the legacy decode and encode schema")
+func aiSettingsSchemaCompatibility() throws {
+    let legacyData = Data(
+        """
+        {
+          "endpoint": "https://legacy.example/v1",
+          "apiKey": "legacy-secret",
+          "model": "legacy-model",
+          "systemPrompt": "legacy prompt",
+          "chatHistoryEnabled": false
+        }
+        """.utf8
+    )
+    let decoded = try JSONDecoder().decode(AISettings.self, from: legacyData)
+
+    #expect(decoded.endpoint == "https://legacy.example/v1")
+    #expect(decoded.apiKey == "legacy-secret")
+    #expect(decoded.model == "legacy-model")
+    #expect(decoded.systemPrompt == "legacy prompt")
+    #expect(!decoded.chatHistoryEnabled)
+    #expect(decoded.supportsVision == AISettings.default.supportsVision)
+    #expect(decoded.imageMaxDimension == AISettings.default.imageMaxDimension)
+    #expect(decoded.imageJPEGQuality == AISettings.default.imageJPEGQuality)
+
+    let encoded = try JSONEncoder().encode(decoded)
+    let payload = try #require(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+    #expect(Set(payload.keys) == [
+        "endpoint",
+        "model",
+        "systemPrompt",
+        "chatHistoryEnabled",
+        "supportsVision",
+        "imageMaxDimension",
+        "imageJPEGQuality",
+    ])
+    #expect(payload["apiKey"] == nil)
+}
+
 @Test("Settings store migrates legacy AI API keys to Keychain")
 func settingsStoreMigratesLegacyAIAPIKey() throws {
     let suiteName = "Meow-SettingsTests-\(UUID().uuidString)"
