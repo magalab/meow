@@ -425,7 +425,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         viewModel.load()
 
         textServiceProvider.onProcessText = { [weak self] text in
-            self?.presentTextActions(for: text)
+            self?.textActionCoordinator.presentTextActions(for: text)
         }
         NSApp.servicesProvider = textServiceProvider
     }
@@ -687,7 +687,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             settings: { [weak self] in self?.viewModel.settings ?? .default },
             hideTransientPanels: { [weak self] in
                 self?.hideLauncher()
-                self?.hideTranslationPanel()
+                self?.textActionCoordinator.hideTranslationPanel()
             },
             prepareWhiteboardForCapture: { [weak self] in
                 self?.prepareWhiteboardForCapture() ?? []
@@ -875,7 +875,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.hideLauncher()
             },
             presentTranslation: { [weak self] text, axPermissionDenied, sourceImagePath in
-                self?.presentTranslationPanel(
+                self?.textActionCoordinator.presentTranslationPanel(
                     text: text,
                     axPermissionDenied: axPermissionDenied,
                     sourceImagePath: sourceImagePath
@@ -917,8 +917,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             updateSettings: { [weak self] settings in self?.viewModel.settings = settings },
             toggleLauncher: { [weak self] in self?.toggleLauncher() },
             openFinder: { [weak self] in self?.openFinder() },
-            translate: { [weak self] in self?.triggerTranslation() },
-            textActions: { [weak self] in self?.triggerTextActions() },
+            translate: { [weak self] in self?.textActionCoordinator.triggerTranslation() },
+            textActions: { [weak self] in self?.textActionCoordinator.triggerTextActions() },
             scrollingScreenshot: { [weak self] in self?.triggerScrollingCapture() },
             screenshot: { [weak self] mode, editAfterCapture, uploadAfterCapture in
                 self?.triggerScreenshot(
@@ -953,7 +953,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.viewModel.setWhiteboardHotkeyRegistrationError($0)
             },
             presentTextActionsHotkeyConflict: { [weak self] keyCode, modifiers in
-                self?.presentTextActionsHotkeyConflict(keyCode: keyCode, modifiers: modifiers)
+                self?.textActionCoordinator.presentTextActionsHotkeyConflict(
+                    keyCode: keyCode,
+                    modifiers: modifiers
+                )
             }
         )
     }
@@ -1394,8 +1397,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         windowCoordinator.installEventMonitors(
             actions: AppWindowCoordinator.EventMonitorActions(
                 dismissLauncher: { [weak self] in self?.hideLauncher() },
-                dismissTranslation: { [weak self] in self?.hideTranslationPanel() },
-                dismissTextActions: { [weak self] in self?.hideTextActionsPanel() },
+                dismissTranslation: { [weak self] in self?.textActionCoordinator.hideTranslationPanel() },
+                dismissTextActions: { [weak self] in self?.textActionCoordinator.hideTextActionsPanel() },
                 dismissCalendarPopover: { [weak self] in self?.windowCoordinator.dismissCalendarPopover() },
                 statusItemButton: { [weak self] in self?.statusItemService.statusItemButton },
                 cancelSpeechIfActive: { [weak self] in
@@ -1417,27 +1420,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func removeEventMonitors() {
         windowCoordinator.removeEventMonitors()
-    }
-
-    // MARK: - Translation panel
-
-    private func presentTextActionsHotkeyConflict(keyCode: UInt32, modifiers: UInt32) {
-        textActionCoordinator.presentTextActionsHotkeyConflict(
-            keyCode: keyCode,
-            modifiers: modifiers
-        )
-    }
-
-    private func triggerTextActions() {
-        textActionCoordinator.triggerTextActions()
-    }
-
-    private func presentTextActions(for text: String) {
-        textActionCoordinator.presentTextActions(for: text)
-    }
-
-    private func hideTextActionsPanel() {
-        textActionCoordinator.hideTextActionsPanel()
     }
 
     private func showAIChat(initialInput: AIChatInitialInput?) {
@@ -1505,22 +1487,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             )
             return input
         }
-    }
-
-    private func triggerTranslation() {
-        textActionCoordinator.triggerTranslation()
-    }
-
-    private func presentTranslationPanel(
-        text: String,
-        axPermissionDenied: Bool,
-        sourceImagePath: String? = nil
-    ) {
-        textActionCoordinator.presentTranslationPanel(
-            text: text,
-            axPermissionDenied: axPermissionDenied,
-            sourceImagePath: sourceImagePath
-        )
     }
 
     private func presentUploadError(_ error: Error) {
@@ -1602,10 +1568,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             pasteboard.clearContents()
             pasteboard.setString(payload, forType: .string)
         }
-    }
-
-    private func hideTranslationPanel() {
-        windowCoordinator.hideTranslation()
     }
 
     private func showPreferences(section: PreferenceSection? = nil, animated: Bool = true) {
