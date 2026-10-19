@@ -1,22 +1,22 @@
 import Foundation
 
-struct AISettings: Codable, Equatable, Sendable {
-    var endpoint: String
-    var apiKey: String
-    var model: String
-    var systemPrompt: String
-    var chatHistoryEnabled: Bool
-    var supportsVision: Bool
-    var imageMaxDimension: Int
-    var imageJPEGQuality: Double
+public struct AISettings: Codable, Equatable, Sendable {
+    public var endpoint: String
+    public var apiKey: String
+    public var model: String
+    public var systemPrompt: String
+    public var chatHistoryEnabled: Bool
+    public var supportsVision: Bool
+    public var imageMaxDimension: Int
+    public var imageJPEGQuality: Double
 
-    var isConfigured: Bool {
+    public var isConfigured: Bool {
         !endpoint.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
             !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
             !model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    static let `default` = AISettings(
+    public static let `default` = AISettings(
         endpoint: "https://api.openai.com/v1/chat/completions",
         apiKey: "",
         model: "gpt-4o-mini",
@@ -26,6 +26,26 @@ struct AISettings: Codable, Equatable, Sendable {
         imageMaxDimension: 1600,
         imageJPEGQuality: 0.82
     )
+
+    public init(
+        endpoint: String,
+        apiKey: String,
+        model: String,
+        systemPrompt: String,
+        chatHistoryEnabled: Bool,
+        supportsVision: Bool,
+        imageMaxDimension: Int,
+        imageJPEGQuality: Double
+    ) {
+        self.endpoint = endpoint
+        self.apiKey = apiKey
+        self.model = model
+        self.systemPrompt = systemPrompt
+        self.chatHistoryEnabled = chatHistoryEnabled
+        self.supportsVision = supportsVision
+        self.imageMaxDimension = imageMaxDimension
+        self.imageJPEGQuality = imageJPEGQuality
+    }
 }
 
 extension AISettings {
@@ -42,7 +62,7 @@ extension AISettings {
         case imageJPEGQuality
     }
 
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         endpoint = try container.decodeIfPresent(String.self, forKey: .endpoint) ?? Self.default.endpoint
         apiKey = try container.decodeIfPresent(String.self, forKey: .apiKey) ?? Self.default.apiKey
@@ -63,7 +83,7 @@ extension AISettings {
         ) ?? Self.default.imageJPEGQuality
     }
 
-    func encode(to encoder: Encoder) throws {
+    public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(endpoint, forKey: .endpoint)
         try container.encode(model, forKey: .model)
