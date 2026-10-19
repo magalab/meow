@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import MeowCapture
 @preconcurrency import ScreenCaptureKit
 
 enum ScreenshotOutputMode: String, Codable, CaseIterable, Identifiable {
@@ -14,21 +15,6 @@ enum ScreenshotOutputMode: String, Codable, CaseIterable, Identifiable {
         case .copy: return L10n.screenshotOutputCopy
         case .save: return L10n.screenshotOutputSave
         case .copyAndSave: return L10n.screenshotOutputCopyAndSave
-        }
-    }
-}
-
-enum ScreenshotImageFormat: String, Codable, CaseIterable, Identifiable {
-    case png
-    case jpeg
-
-    var id: String { rawValue }
-    var fileExtension: String { rawValue == "jpeg" ? "jpg" : rawValue }
-
-    var displayName: String {
-        switch self {
-        case .png: return "PNG"
-        case .jpeg: return "JPEG"
         }
     }
 }

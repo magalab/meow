@@ -1,5 +1,6 @@
 import AppKit
 import MeowClipboard
+import MeowCapture
 import WhiteboardFeature
 
 @MainActor
