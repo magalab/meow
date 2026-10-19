@@ -1,35 +1,6 @@
 import AppKit
 import Foundation
-
-enum AIChatRole: String, Codable, Hashable, Sendable {
-    case system
-    case user
-    case assistant
-}
-
-struct AIChatMessage: Identifiable, Codable, Hashable, Sendable {
-    let id: UUID
-    let role: AIChatRole
-    var content: String
-    var imagePath: String?
-
-    init(id: UUID = UUID(), role: AIChatRole, content: String, imagePath: String? = nil) {
-        self.id = id
-        self.role = role
-        self.content = content
-        self.imagePath = imagePath
-    }
-}
-
-struct AIChatInitialInput: Sendable {
-    let text: String
-    let imagePath: String?
-
-    init(text: String, imagePath: String? = nil) {
-        self.text = text
-        self.imagePath = imagePath
-    }
-}
+import MeowAI
 
 enum AIChatError: LocalizedError, Sendable {
     case notConfigured

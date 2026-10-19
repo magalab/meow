@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import MeowAI
 
 struct AIChatPanelView: View {
     @ObservedObject private var lang = LanguageManager.shared

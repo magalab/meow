@@ -1,4 +1,5 @@
 import Foundation
+import MeowAI
 
 enum AIChatHistoryError: LocalizedError, Sendable {
     case attachmentStorageLimitExceeded

@@ -1,6 +1,7 @@
 import MeowRecording
 import MeowClipboard
 import Foundation
+import MeowAI
 
 enum DateIconStyle: String, Codable, CaseIterable, Identifiable, Equatable, Sendable {
     case outlinedDay

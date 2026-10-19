@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import Testing
+import MeowAI
 #if MEOW_VOICE
 @testable import Miao
 #else
