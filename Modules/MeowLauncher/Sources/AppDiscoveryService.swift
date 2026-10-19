@@ -1,10 +1,13 @@
 import AppKit
 import Foundation
 
-final class AppDiscoveryService {
+@MainActor
+public final class AppDiscoveryService {
     private let manager = FileManager.default
 
-    func discoverApplications() -> [AppEntry] {
+    public init() {}
+
+    public func discoverApplications() -> [AppEntry] {
         let roots = [
             URL(fileURLWithPath: "/Applications", isDirectory: true),
             URL(fileURLWithPath: "/System/Applications", isDirectory: true),
