@@ -4,15 +4,41 @@ import QuartzCore
 
 @MainActor
 final class MouseClickHighlighterController {
+    struct EventMonitorDriver {
+        let addGlobal: @MainActor (NSEvent.EventTypeMask, @escaping (NSEvent) -> Void) -> Any?
+        let addLocal: @MainActor (NSEvent.EventTypeMask, @escaping (NSEvent) -> NSEvent?) -> Any?
+        let remove: @MainActor (Any) -> Void
+
+        static let appKit = EventMonitorDriver(
+            addGlobal: { mask, handler in
+                NSEvent.addGlobalMonitorForEvents(matching: mask, handler: handler)
+            },
+            addLocal: { mask, handler in
+                NSEvent.addLocalMonitorForEvents(matching: mask, handler: handler)
+            },
+            remove: { monitor in NSEvent.removeMonitor(monitor) }
+        )
+    }
+
     static let windowTitle = "Meow Mouse Click Highlighter"
     var onClick: ((NSPoint) -> Void)?
 
+    private let eventMonitorDriver: EventMonitorDriver
+    private let preparePanelForMonitoring: (@MainActor () -> Void)?
     private var globalMonitor: Any?
     private var localMonitor: Any?
     private var panel: NSPanel?
     private var ringLayer: CAShapeLayer?
     private var theme: AppTheme = .gingerCat
     private var generation: UInt64 = 0
+
+    init(
+        eventMonitorDriver: EventMonitorDriver = .appKit,
+        preparePanelForMonitoring: (@MainActor () -> Void)? = nil
+    ) {
+        self.eventMonitorDriver = eventMonitorDriver
+        self.preparePanelForMonitoring = preparePanelForMonitoring
+    }
 
     var windowID: CGWindowID? { panel.map { CGWindowID($0.windowNumber) } }
 
@@ -72,17 +98,21 @@ final class MouseClickHighlighterController {
 
     func start() {
         guard globalMonitor == nil, localMonitor == nil else { return }
-        prepareForRecording()
+        if let preparePanelForMonitoring {
+            preparePanelForMonitoring()
+        } else {
+            prepareForRecording()
+        }
         generation &+= 1
         let currentGeneration = generation
         let mask: NSEvent.EventTypeMask = [.leftMouseDown, .rightMouseDown, .otherMouseDown]
-        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: mask) { [weak self] _ in
+        globalMonitor = eventMonitorDriver.addGlobal(mask) { [weak self] _ in
             Task { @MainActor in
                 guard let self, self.generation == currentGeneration else { return }
                 self.show(at: NSEvent.mouseLocation)
             }
         }
-        localMonitor = NSEvent.addLocalMonitorForEvents(matching: mask) { [weak self] event in
+        localMonitor = eventMonitorDriver.addLocal(mask) { [weak self] event in
             Task { @MainActor in
                 guard let self, self.generation == currentGeneration else { return }
                 self.show(at: NSEvent.mouseLocation)
@@ -94,11 +124,11 @@ final class MouseClickHighlighterController {
     func pause() {
         generation &+= 1
         if let globalMonitor {
-            NSEvent.removeMonitor(globalMonitor)
+            eventMonitorDriver.remove(globalMonitor)
             self.globalMonitor = nil
         }
         if let localMonitor {
-            NSEvent.removeMonitor(localMonitor)
+            eventMonitorDriver.remove(localMonitor)
             self.localMonitor = nil
         }
         ringLayer?.removeAllAnimations()
