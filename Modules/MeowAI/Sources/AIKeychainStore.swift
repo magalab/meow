@@ -1,17 +1,19 @@
 import Foundation
 import Security
 
-protocol AIKeychainStoring {
+public protocol AIKeychainStoring {
     func read() throws -> String?
     func save(_ value: String) throws
     func delete() throws
 }
 
-struct AIKeychainStore: AIKeychainStoring, Sendable {
+public struct AIKeychainStore: AIKeychainStoring, Sendable {
     private static let service = "tech.lury.meow.ai"
     private static let account = "default"
 
-    func read() throws -> String? {
+    public init() {}
+
+    public func read() throws -> String? {
         var query = baseQuery
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
@@ -28,7 +30,7 @@ struct AIKeychainStore: AIKeychainStoring, Sendable {
         return value
     }
 
-    func save(_ value: String) throws {
+    public func save(_ value: String) throws {
         let data = Data(value.utf8)
         let updateAttributes: [String: Any] = [
             kSecValueData as String: data,
@@ -52,7 +54,7 @@ struct AIKeychainStore: AIKeychainStoring, Sendable {
         }
     }
 
-    func delete() throws {
+    public func delete() throws {
         let status = SecItemDelete(baseQuery as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else {
             throw AIKeychainError.unavailable(status)
