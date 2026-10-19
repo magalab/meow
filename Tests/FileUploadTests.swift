@@ -229,6 +229,50 @@ private struct SlowUploader: FileUploader {
     func shareURL(for _: String) async throws -> URL { url }
 }
 
+private final class UploadShutdownState: @unchecked Sendable {
+    private let lock = NSLock()
+    private var recordedEvents: [String] = []
+
+    func record(_ event: String) {
+        lock.withLock { recordedEvents.append(event) }
+    }
+
+    var events: [String] {
+        lock.withLock { recordedEvents }
+    }
+}
+
+private struct UploadShutdownFactory: UploaderCreating {
+    let state: UploadShutdownState
+    let url: URL
+
+    func makeUploader(config _: S3Config, secretAccessKey _: String) throws -> any FileUploader {
+        UploadShutdownUploader(state: state, url: url)
+    }
+}
+
+private struct UploadShutdownUploader: FileUploader {
+    let state: UploadShutdownState
+    let url: URL
+
+    func upload(_ request: UploadRequest, progress _: @escaping @Sendable (UploadProgress) -> Void) async throws -> UploadResult {
+        state.record("uploadStarted")
+        do {
+            try await Task.sleep(for: .seconds(60))
+        } catch is CancellationError {
+            state.record("uploadCancelled")
+            throw CancellationError()
+        }
+        return .init(objectKey: request.objectKey, shareURL: url, fileSize: request.fileSize, mimeType: request.mimeType)
+    }
+
+    func shareURL(for _: String) async throws -> URL { url }
+
+    func shutdown() async throws {
+        state.record("uploaderShutdown")
+    }
+}
+
 private struct FailingUploader: FileUploader {
     func upload(_: UploadRequest, progress _: @escaping @Sendable (UploadProgress) -> Void) async throws -> UploadResult {
         throw UploadError.networkError("offline")
@@ -390,6 +434,36 @@ func uploadServiceCancellation() async throws {
     try await Task.sleep(for: .milliseconds(20))
     service.cancel()
     await #expect(throws: UploadError.cancelled) { try await task.value }
+    #expect(!service.isUploading)
+}
+
+@Test("Upload shutdown cancels and awaits active transfer before shutting down the uploader")
+@MainActor
+func uploadServiceShutdownWaitsForActiveTransfer() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let file = root.appendingPathComponent("file.txt")
+    try Data("hello".utf8).write(to: file)
+    let state = UploadShutdownState()
+    let service = FileUploadService(
+        historyStore: UploadHistoryStore(directoryURL: root.appendingPathComponent("history")),
+        settings: { configuredSettings() },
+        credentials: TestCredentialStore(value: "secret"),
+        factory: UploadShutdownFactory(state: state, url: URL(string: "https://example.com/a")!),
+        notifySuccess: { _ in }
+    )
+
+    let uploadTask = Task { try await service.upload(fileURL: file) }
+    for _ in 0..<100 where !state.events.contains("uploadStarted") {
+        try await Task.sleep(for: .milliseconds(1))
+    }
+    #expect(state.events == ["uploadStarted"])
+
+    await service.shutdown()
+    await #expect(throws: UploadError.cancelled) { try await uploadTask.value }
+
+    #expect(state.events == ["uploadStarted", "uploadCancelled", "uploaderShutdown"])
     #expect(!service.isUploading)
 }
 
