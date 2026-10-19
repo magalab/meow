@@ -1,3 +1,4 @@
+import MeowCapture
 import MeowClipboard
 import Foundation
 import Testing

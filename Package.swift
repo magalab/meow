@@ -17,6 +17,7 @@ let voiceSources = [
 var executableDependencies: [Target.Dependency] = [
     .target(name: "WhiteboardFeature"),
     .target(name: "MeowClipboard"),
+    .target(name: "MeowCapture"),
     .target(name: "MeowS3"),
 ]
 if isVoiceEdition {
@@ -51,6 +52,10 @@ let targets: [Target] = [
         path: "Modules/MeowClipboard/Sources"
     ),
     .target(
+        name: "MeowCapture",
+        path: "Modules/MeowCapture/Sources"
+    ),
+    .target(
         name: "WhiteboardFeature",
         path: "Modules/WhiteboardFeature/Sources",
         resources: [.process("Resources")]
@@ -72,7 +77,8 @@ let targets: [Target] = [
         name: "MeowTests",
         dependencies: [
             .target(name: executableName),
-            .target(name: "MeowClipboard")
+            .target(name: "MeowClipboard"),
+            .target(name: "MeowCapture")
         ],
         path: "Tests",
         exclude: ["MeowS3Tests"],
@@ -87,6 +93,11 @@ let targets: [Target] = [
         name: "MeowClipboardTests",
         dependencies: ["MeowClipboard"],
         path: "Modules/MeowClipboard/Tests"
+    ),
+    .testTarget(
+        name: "MeowCaptureTests",
+        dependencies: ["MeowCapture"],
+        path: "Modules/MeowCapture/Tests"
     ),
     .testTarget(
         name: "MeowS3Tests",
