@@ -6,7 +6,7 @@ import Darwin
 
 /// Composites the on-screen magnifier snapshot into the encoded frame. Access is
 /// confined to RecordingWriter's serial queue.
-final class RecordingMagnifierCompositor {
+public final class RecordingMagnifierCompositor {
     private struct Overlay {
         let pixels: [UInt8] // premultiplied BGRA, top row first
         let width: Int
@@ -14,22 +14,22 @@ final class RecordingMagnifierCompositor {
         var frame: CGRect
     }
 
-    let captureRect: CGRect?
+    public let captureRect: CGRect?
     private var overlay: Overlay?
-    private(set) var lastFailureReason: String?
+    public private(set) var lastFailureReason: String?
 
-    var isActive: Bool { overlay != nil }
-    var overlayFrame: CGRect? { overlay?.frame }
+    public var isActive: Bool { overlay != nil }
+    public var overlayFrame: CGRect? { overlay?.frame }
 
-    init(captureRect: CGRect?) {
+    public init(captureRect: CGRect?) {
         self.captureRect = captureRect
     }
 
-    func setFrame(_ frame: CGRect) {
+    public func setFrame(_ frame: CGRect) {
         overlay?.frame = frame
     }
 
-    func setSnapshot(
+    public func setSnapshot(
         _ image: CGImage?, frame: CGRect, marker: CGPoint, zoom: Int, circular: Bool
     ) {
         guard let image, frame.width > 0, frame.height > 0 else {
@@ -105,7 +105,7 @@ final class RecordingMagnifierCompositor {
         setImage(context.makeImage(), frame: frame)
     }
 
-    func setImage(_ image: CGImage?, frame: CGRect) {
+    public func setImage(_ image: CGImage?, frame: CGRect) {
         guard let image, frame.width > 0, frame.height > 0 else {
             overlay = nil
             return
@@ -131,7 +131,7 @@ final class RecordingMagnifierCompositor {
         overlay = created ? Overlay(pixels: pixels, width: width, height: height, frame: frame) : nil
     }
 
-    func composite(_ sample: CMSampleBuffer) -> CMSampleBuffer {
+    public func composite(_ sample: CMSampleBuffer) -> CMSampleBuffer {
         lastFailureReason = nil
         guard let overlay, let captureRect else { return sample }
         guard overlay.frame.intersects(captureRect) else { return fail("outside capture area", sample) }
