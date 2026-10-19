@@ -402,6 +402,54 @@ func systemMonitorSettingsSchemaCompatibility() throws {
     #expect(partial.enabledModules == SystemMonitorSettings.default.enabledModules)
 }
 
+@Test("Keystroke visualizer settings preserve flat keys and custom-position migration")
+func keystrokeVisualizerSettingsSchemaCompatibility() throws {
+    let legacyPayload = Data(
+        """
+        {
+          "keystrokeVisualizerEnabled": true,
+          "keystrokeVisualizerShowModifierOnly": false,
+          "keystrokeVisualizerOverlayPosition": "topLeft",
+          "keystrokeVisualizerOverlayPoint": {"x": 0.35, "y": 0.75},
+          "keystrokeVisualizerStyle": "prominent",
+          "keystrokeVisualizerDisplayDuration": "long",
+          "keystrokeVisualizerCustomDisplayDuration": 2.25,
+          "keystrokeVisualizerOpacity": 0.65,
+          "keystrokeVisualizerHistoryCount": 3,
+          "keystrokeVisualizerDisplayMode": "allKeys"
+        }
+        """.utf8
+    )
+    let settings = try JSONDecoder().decode(AppSettings.self, from: legacyPayload)
+    let expected = KeystrokeVisualizerSettings(
+        enabled: true,
+        showModifierOnly: false,
+        overlayPosition: .topLeft,
+        overlayPoint: KeystrokeOverlayPoint(x: 0.35, y: 0.75),
+        style: .prominent,
+        displayDuration: .long,
+        customDisplayDuration: 2.25,
+        opacity: 0.65,
+        historyCount: .three,
+        displayMode: .allKeys
+    )
+    #expect(settings.keystrokeVisualizer == expected)
+
+    let encoded = try JSONEncoder().encode(settings)
+    let payload = try #require(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+    #expect(payload["keystrokeVisualizer"] == nil)
+    #expect(payload["keystrokeVisualizerOverlayPoint"] as? [String: Double] == ["x": 0.35, "y": 0.75])
+    #expect(try JSONDecoder().decode(AppSettings.self, from: encoded).keystrokeVisualizer == expected)
+
+    let pointOnly = try JSONDecoder().decode(
+        AppSettings.self,
+        from: Data("{\"keystrokeVisualizerOverlayPoint\":{\"x\":0.5,\"y\":0.5}}".utf8)
+    )
+    #expect(pointOnly.keystrokeVisualizer.overlayPosition == .custom)
+    #expect(try JSONDecoder().decode(AppSettings.self, from: Data("{}".utf8)).keystrokeVisualizer
+        == KeystrokeVisualizerSettings.default)
+}
+
 @Test("Partial whiteboard settings use safe opt-in defaults")
 func partialWhiteboardSettingsCompatibility() throws {
     let data = Data(
