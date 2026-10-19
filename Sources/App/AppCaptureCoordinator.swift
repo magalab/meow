@@ -9,6 +9,7 @@ import SwiftUI
 final class AppCaptureCoordinator {
     struct Actions {
         let settings: @MainActor () -> AppSettings
+        let hideLauncher: @MainActor () -> Void
         let hideTransientPanels: @MainActor () -> Void
         let prepareWhiteboard: @MainActor () -> Set<CGWindowID>
         let restoreWhiteboard: @MainActor () -> Void
@@ -74,6 +75,23 @@ final class AppCaptureCoordinator {
         captureTask?.cancel()
         scrollingCaptureController?.cancel()
         scrollingCaptureHUDController.close()
+    }
+
+    func handle(_ command: ScreenshotCommand) {
+        switch command {
+        case .captureRegion:
+            triggerScreenshot(mode: .region)
+        case .captureScrolling:
+            triggerScrollingCapture()
+        case .captureAndEdit:
+            triggerScreenshot(mode: actions.settings().screenshot.defaultCaptureMode, editAfterCapture: true)
+        case .captureWindow:
+            triggerScreenshot(mode: .window)
+        case .captureDisplay:
+            triggerScreenshot(mode: .display)
+        case .openHistory:
+            showCaptureHistory()
+        }
     }
 
     func triggerScreenshot(
@@ -314,6 +332,7 @@ final class AppCaptureCoordinator {
     }
 
     func showCaptureHistory() {
+        actions.hideLauncher()
         let content = makeCaptureHistoryView(theme: actions.settings().theme)
         windowCoordinator.showCaptureHistory(
             contentViewController: NSHostingController(

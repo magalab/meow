@@ -6,6 +6,7 @@ import ApplicationServices
 struct AppMediaCommandRouter {
     struct Actions {
         let settings: @MainActor () -> AppSettings
+        let hideLauncher: @MainActor () -> Void
         let hideTransientPanels: @MainActor () -> Void
         let prepareWhiteboardForCapture: @MainActor () -> Set<CGWindowID>
         let restoreWhiteboardAfterCapture: @MainActor () -> Void
@@ -37,6 +38,7 @@ struct AppMediaCommandRouter {
     func makeCaptureActions() -> AppCaptureCoordinator.Actions {
         AppCaptureCoordinator.Actions(
             settings: actions.settings,
+            hideLauncher: actions.hideLauncher,
             hideTransientPanels: actions.hideTransientPanels,
             prepareWhiteboard: actions.prepareWhiteboardForCapture,
             restoreWhiteboard: actions.restoreWhiteboardAfterCapture,
