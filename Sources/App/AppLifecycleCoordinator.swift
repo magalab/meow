@@ -107,6 +107,13 @@ final class AppLifecycleCoordinator {
         guard !terminationShutdownStarted else { return .terminateNow }
         terminationShutdownStarted = true
         Task { @MainActor [weak self, weak sender] in
+            if let self,
+               self.actions.recordingServiceLoaded(),
+               self.actions.recordingServiceIsActive()
+            {
+                self.actions.cancelRecording()
+                await self.actions.stopRecording()
+            }
             await self?.actions.stopKeepAwake()
             await self?.actions.shutdownUploads()
             if let sender {

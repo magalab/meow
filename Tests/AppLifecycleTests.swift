@@ -93,6 +93,48 @@ func lifecycleTerminationWaitsForShutdownAndRejectsRepeatedRequest() async {
 }
 
 @MainActor
+@Test("Termination waits for active recording teardown before allowing the app to exit")
+func lifecycleTerminationWaitsForRecordingStop() async {
+    var calls: [String] = []
+    var stopContinuation: CheckedContinuation<Void, Never>?
+    var replyContinuation: CheckedContinuation<Void, Never>?
+    let coordinator = AppLifecycleCoordinator(
+        actions: makeLifecycleTestActions(
+            recordingServiceLoaded: { true },
+            cancelRecording: { calls.append("cancelRecording") },
+            recordingServiceIsActive: { true },
+            stopRecording: {
+                calls.append("stopRecording")
+                await withCheckedContinuation { stopContinuation = $0 }
+            },
+            stopKeepAwake: { calls.append("keepAwake") },
+            shutdownUploads: { calls.append("uploads") },
+            replyToTermination: { _ in
+                calls.append("reply")
+                replyContinuation?.resume()
+                replyContinuation = nil
+            }
+        ),
+        startupActions: noOpStartupActions(),
+        workspaceNotificationCenter: NotificationCenter()
+    )
+
+    let terminationTask = Task {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            replyContinuation = continuation
+            #expect(coordinator.applicationShouldTerminate(NSApplication.shared) == .terminateLater)
+        }
+    }
+    for _ in 0..<10 where stopContinuation == nil { await Task.yield() }
+
+    #expect(calls == ["cancelRecording", "stopRecording"])
+    stopContinuation?.resume()
+    await terminationTask.value
+
+    #expect(calls == ["cancelRecording", "stopRecording", "keepAwake", "uploads", "reply"])
+}
+
+@MainActor
 @Test("Application termination cancels active feature work before removing monitors")
 func lifecycleTerminationCancelsFeaturesBeforeMonitors() {
     var calls: [String] = []
