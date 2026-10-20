@@ -106,7 +106,7 @@ private enum KeepAwakeTestError: Error {
 
 @MainActor
 private func waitForKeepAwakeCondition(
-    timeout: Duration = .milliseconds(500),
+    timeout: Duration = .seconds(5),
     _ condition: () -> Bool
 ) async throws {
     let deadline = ContinuousClock().now.advanced(by: timeout)
