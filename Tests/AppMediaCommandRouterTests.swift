@@ -23,6 +23,7 @@ struct AppMediaCommandRouterTests {
         let windowIDs: Set<CGWindowID> = [17]
         let router = AppMediaCommandRouter(actions: .init(
             settings: { .default },
+            hideLauncher: {},
             hideTransientPanels: { hiddenPanels += 1 },
             prepareWhiteboardForCapture: { capturePrepared += 1; return windowIDs },
             restoreWhiteboardAfterCapture: { captureRestored += 1 },
