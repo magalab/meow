@@ -269,15 +269,29 @@ final class AppCaptureCoordinator {
         }
 
         if actions.settings().clipboardHistoryEnabled {
-            clipboardStore.insertCapture(artifact)
+            clipboardStore.insertCapture(
+                id: artifact.id,
+                imageURL: artifact.imageURL,
+                thumbnailURL: artifact.thumbnailURL,
+                width: artifact.width,
+                height: artifact.height,
+                createdAt: artifact.createdAt,
+                sourceName: L10n.screenshotClipboardName
+            )
         }
         switch settings.outputMode {
         case .copy:
-            clipboardStore.writeCaptureToPasteboard(artifact)
+            clipboardStore.writeCaptureToPasteboard(
+                imageURL: artifact.imageURL,
+                isScrolling: artifact.kind == .scrolling
+            )
         case .save:
             break
         case .copyAndSave:
-            clipboardStore.writeCaptureToPasteboard(artifact)
+            clipboardStore.writeCaptureToPasteboard(
+                imageURL: artifact.imageURL,
+                isScrolling: artifact.kind == .scrolling
+            )
         }
 
         if settings.playSound {
@@ -305,7 +319,10 @@ final class AppCaptureCoordinator {
             store: captureStore,
             theme: theme,
             onCopy: { [weak self] artifact in
-                self?.clipboardStore.writeCaptureToPasteboard(artifact)
+                self?.clipboardStore.writeCaptureToPasteboard(
+                    imageURL: artifact.imageURL,
+                    isScrolling: artifact.kind == .scrolling
+                )
             },
             onPin: { [weak self] artifact in
                 self?.pinnedImageController.pin(artifact)
@@ -375,7 +392,10 @@ final class AppCaptureCoordinator {
     ) {
         switch action {
         case .copy:
-            clipboardStore.writeCaptureToPasteboard(artifact)
+            clipboardStore.writeCaptureToPasteboard(
+                imageURL: artifact.imageURL,
+                isScrolling: artifact.kind == .scrolling
+            )
         case .save:
             do {
                 guard let image = NSImage(contentsOf: artifact.imageURL),
