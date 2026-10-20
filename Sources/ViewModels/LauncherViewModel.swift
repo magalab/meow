@@ -1,3 +1,4 @@
+import MeowRecording
 import MeowClipboard
 import AppKit
 import Foundation

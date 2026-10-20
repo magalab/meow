@@ -3,8 +3,8 @@ import AppKit
 import Foundation
 
 @MainActor
-final class RecordingStore: ObservableObject {
-    @Published private(set) var artifacts: [RecordingArtifact] = []
+public final class RecordingStore: ObservableObject {
+    @Published public private(set) var artifacts: [RecordingArtifact] = []
 
     private let fileManager: FileManager
     private let storageDirectory: URL
@@ -12,7 +12,7 @@ final class RecordingStore: ObservableObject {
     private let metadataURL: URL
     private let recoveryDirectory: URL
 
-    init(fileManager: FileManager = .default, storageDirectory: URL? = nil) {
+    public init(fileManager: FileManager = .default, storageDirectory: URL? = nil) {
         self.fileManager = fileManager
         let support = storageDirectory ?? fileManager.urls(
             for: .applicationSupportDirectory,
@@ -29,7 +29,7 @@ final class RecordingStore: ObservableObject {
         Task { await recoverInterruptedRecordings() }
     }
 
-    func load() {
+    public func load() {
         guard let data = try? Data(contentsOf: metadataURL),
               let decoded = try? JSONDecoder().decode([RecordingArtifact].self, from: data)
         else {
@@ -42,7 +42,7 @@ final class RecordingStore: ObservableObject {
         persist()
     }
 
-    func add(
+    public func add(
         fileURL: URL,
         source: RecordingSourceKind,
         duration: TimeInterval,
@@ -74,7 +74,7 @@ final class RecordingStore: ObservableObject {
         return artifact
     }
 
-    func markRecordingStarted(fileURL: URL, source: RecordingSourceKind) {
+    public func markRecordingStarted(fileURL: URL, source: RecordingSourceKind) {
         let record = RecordingRecoveryRecord(
             id: UUID(),
             fileURL: fileURL,
@@ -86,7 +86,7 @@ final class RecordingStore: ObservableObject {
         try? data.write(to: url, options: .atomic)
     }
 
-    func markRecordingFinished(fileURL: URL) {
+    public func markRecordingFinished(fileURL: URL) {
         for url in recoveryRecordURLs() {
             guard let data = try? Data(contentsOf: url),
                   let record = try? JSONDecoder().decode(RecordingRecoveryRecord.self, from: data),
@@ -96,7 +96,7 @@ final class RecordingStore: ObservableObject {
         }
     }
 
-    func delete(_ artifact: RecordingArtifact, deleteFile: Bool = true) {
+    public func delete(_ artifact: RecordingArtifact, deleteFile: Bool = true) {
         artifacts.removeAll { $0.id == artifact.id }
         if deleteFile {
             try? fileManager.removeItem(at: artifact.fileURL)
@@ -107,7 +107,7 @@ final class RecordingStore: ObservableObject {
         persist()
     }
 
-    func clear(deleteFiles: Bool = true) {
+    public func clear(deleteFiles: Bool = true) {
         let existing = artifacts
         artifacts = []
         for artifact in existing {
@@ -121,7 +121,7 @@ final class RecordingStore: ObservableObject {
         persist()
     }
 
-    func applyRetentionPolicy(historyLimit: Int, retentionDays: Int, maxStorageMB: Int) {
+    public func applyRetentionPolicy(historyLimit: Int, retentionDays: Int, maxStorageMB: Int) {
         let retained = Self.retainedArtifactIDs(
             artifacts,
             historyLimit: historyLimit,
@@ -133,7 +133,7 @@ final class RecordingStore: ObservableObject {
         }
     }
 
-    static func retainedArtifactIDs(
+    public static func retainedArtifactIDs(
         _ artifacts: [RecordingArtifact],
         historyLimit: Int,
         retentionDays: Int,
@@ -162,7 +162,7 @@ final class RecordingStore: ObservableObject {
         return Set(retained.map(\.id))
     }
 
-    static func expandedFileName(template: String, date: Date = Date()) -> String {
+    public static func expandedFileName(template: String, date: Date = Date()) -> String {
         var result = template.trimmingCharacters(in: .whitespacesAndNewlines)
         if result.isEmpty {
             result = RecordingSettings.default.fileNameTemplate
@@ -178,7 +178,7 @@ final class RecordingStore: ObservableObject {
             .replacingOccurrences(of: ":", with: "-")
     }
 
-    static func outputURL(
+    public static func outputURL(
         settings: RecordingSettings,
         source: RecordingSourceKind? = nil,
         date: Date = Date()
@@ -213,7 +213,7 @@ final class RecordingStore: ObservableObject {
         return candidate
     }
 
-    static func availableCapacity(at directory: URL) -> Int64? {
+    public static func availableCapacity(at directory: URL) -> Int64? {
         let values = try? directory.resourceValues(forKeys: [
             .volumeAvailableCapacityForImportantUsageKey,
             .volumeAvailableCapacityKey,
