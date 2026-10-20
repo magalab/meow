@@ -1,6 +1,6 @@
 import Foundation
 
-enum ClipboardRetention: Int, Codable, CaseIterable, Identifiable, Sendable {
+public enum ClipboardRetention: Int, Codable, CaseIterable, Identifiable, Sendable {
     case day = 1
     case week = 7
     case month = 30
@@ -9,22 +9,22 @@ enum ClipboardRetention: Int, Codable, CaseIterable, Identifiable, Sendable {
     case year = 365
     case forever = -1
 
-    var id: Int { rawValue }
+    public var id: Int { rawValue }
 
-    var cutoffDate: Date? {
+    public var cutoffDate: Date? {
         guard self != .forever else { return nil }
         return Date().addingTimeInterval(-TimeInterval(rawValue) * 86_400)
     }
 }
 
-struct ClipboardSettings: Codable, Equatable, Sendable {
-    var historyEnabled: Bool
-    var showImagePreviews: Bool
-    var retention: ClipboardRetention
-    var disabledAppBundleIDs: [String]
-    var imageStorageLimitMB: Int
+public struct ClipboardSettings: Codable, Equatable, Sendable {
+    public var historyEnabled: Bool
+    public var showImagePreviews: Bool
+    public var retention: ClipboardRetention
+    public var disabledAppBundleIDs: [String]
+    public var imageStorageLimitMB: Int
 
-    static let `default` = ClipboardSettings(
+    public static let `default` = ClipboardSettings(
         historyEnabled: true,
         showImagePreviews: true,
         retention: .threeMonths,
@@ -32,7 +32,7 @@ struct ClipboardSettings: Codable, Equatable, Sendable {
         imageStorageLimitMB: 512
     )
 
-    init(
+    public init(
         historyEnabled: Bool,
         showImagePreviews: Bool,
         retention: ClipboardRetention,

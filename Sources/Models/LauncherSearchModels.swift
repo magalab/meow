@@ -1,3 +1,4 @@
+import MeowClipboard
 import Foundation
 
 struct CalculationEntry: Identifiable, Hashable {
