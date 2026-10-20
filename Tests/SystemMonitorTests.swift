@@ -58,7 +58,10 @@ struct SystemMonitorLifecycleTests {
 
         engine.start()
         engine.start()
-        try await Task.sleep(nanoseconds: 100_000_000)
+        let firstSnapshotDeadline = ContinuousClock.now.advanced(by: .seconds(5))
+        while snapshotCount == 0, ContinuousClock.now < firstSnapshotDeadline {
+            try await Task.sleep(for: .milliseconds(10))
+        }
         #expect(snapshotCount == 1)
 
         engine.stop()
