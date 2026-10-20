@@ -219,6 +219,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         keepAwakeService: keepAwakeService,
         windowCoordinator: windowCoordinator
     )
+    private lazy var aiChatCoordinator = AppAIChatCoordinator(
+        viewModel: viewModel,
+        historyStore: aiChatHistoryStore,
+        launcherCoordinator: launcherCoordinator,
+        windowCoordinator: windowCoordinator,
+        actions: AppAIChatCoordinator.Actions(
+            showAIPreferences: { [weak self] in self?.showPreferences(section: .ai) }
+        )
+    )
     private lazy var lifecycleCoordinator = AppLifecycleCoordinator(
         actions: makeLifecycleActions(),
         startupActions: AppLifecycleCoordinator.StartupActions(
@@ -320,7 +329,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.showPreferences()
         }
         viewModel.onOpenAIChat = { [weak self] input in
-            self?.openAIChat(input)
+            self?.aiChatCoordinator.open(input)
         }
         viewModel.onOpenAuthenticator = { [weak self] in
             self?.launcherCoordinator.hide()
@@ -911,7 +920,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return AppTextActionCoordinator.Actions(
             settings: { [weak self] in self?.viewModel.settings ?? .default },
             openAIChat: { [weak self] input in
-                self?.openAIChat(input)
+                self?.aiChatCoordinator.open(input)
             }
         )
     }
@@ -1350,73 +1359,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func removeEventMonitors() {
         windowCoordinator.removeEventMonitors()
-    }
-
-    private func showAIChat(initialInput: AIChatInitialInput?) {
-        let view = AnyView(
-            AIChatPanelView(
-                viewModel: viewModel,
-                initialInput: initialInput,
-                historyStore: aiChatHistoryStore,
-                onOpenPreferences: { [weak self] in
-                    self?.showPreferences(section: .ai)
-                }
-            )
-        )
-        launcherCoordinator.hide()
-        windowCoordinator.showAIChat(
-            contentViewController: NSHostingController(
-                rootView: LocalizedRootView { view }
-            )
-        )
-    }
-
-    private func openAIChat(_ input: AIChatInitialInput?) {
-        guard let input, input.imagePath != nil else {
-            showAIChat(initialInput: input)
-            return
-        }
-        guard viewModel.settings.ai.supportsVision else {
-            let alert = NSAlert()
-            alert.alertStyle = .warning
-            alert.messageText = L10n.aiErrorVisionUnsupportedTitle
-            alert.informativeText = L10n.aiErrorVisionUnsupported
-            alert.addButton(withTitle: L10n.prefsAIModelOpenSettings)
-            alert.addButton(withTitle: L10n.actionCancel)
-            if alert.runModal() == .alertFirstButtonReturn {
-                showPreferences(section: .ai)
-            }
-            return
-        }
-
-        let settings = viewModel.settings.ai
-        let alert = NSAlert()
-        alert.messageText = L10n.aiImagePrivacyTitle
-        alert.informativeText = String(
-            format: L10n.aiImagePrivacyMessage,
-            settings.endpoint,
-            settings.imageMaxDimension,
-            Int(settings.imageJPEGQuality * 100)
-        )
-        alert.addButton(withTitle: L10n.aiImagePrivacyConfirm)
-        alert.addButton(withTitle: L10n.actionCancel)
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
-        showAIChat(initialInput: persistedAIInput(input))
-    }
-
-    private func persistedAIInput(_ input: AIChatInitialInput?) -> AIChatInitialInput? {
-        guard let input, let imagePath = input.imagePath else { return input }
-        do {
-            let persistedPath = try aiChatHistoryStore.storeAttachment(
-                at: URL(fileURLWithPath: imagePath)
-            )
-            return AIChatInitialInput(text: input.text, imagePath: persistedPath)
-        } catch {
-            MeowLog.ai.error(
-                "Unable to persist AI image attachment: \(error.localizedDescription, privacy: .public)"
-            )
-            return input
-        }
     }
 
     private func presentUploadError(_ error: Error) {
