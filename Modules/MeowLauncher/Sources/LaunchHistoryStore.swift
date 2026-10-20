@@ -5,7 +5,8 @@ private struct LaunchStat: Codable {
     var lastLaunchedAt: TimeInterval
 }
 
-final class LaunchHistoryStore {
+@MainActor
+public final class LaunchHistoryStore {
     private enum Key {
         static let launchHistory = "meow.launch-history"
     }
@@ -16,11 +17,11 @@ final class LaunchHistoryStore {
     private let defaults: UserDefaults
     private var cachedMap: [String: LaunchStat]?
 
-    init(defaults: UserDefaults = .standard) {
+    public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
     }
 
-    func recordLaunch(id: String) {
+    public func recordLaunch(id: String) {
         var map = loadMap()
         var stat = map[id] ?? LaunchStat(launches: 0, lastLaunchedAt: 0)
         stat.launches += 1
@@ -29,7 +30,7 @@ final class LaunchHistoryStore {
         saveMap(map)
     }
 
-    func score(for id: String) -> Int {
+    public func score(for id: String) -> Int {
         let map = loadMap()
         guard let stat = map[id] else { return 0 }
 

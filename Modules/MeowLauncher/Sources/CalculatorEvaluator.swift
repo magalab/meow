@@ -2,8 +2,10 @@ import Foundation
 
 /// Evaluates the deliberately small expression language supported by the launcher.
 /// It never evaluates arbitrary code or invokes a scripting runtime.
-struct CalculatorEvaluator: Sendable {
-    func evaluate(_ expression: String) -> Decimal? {
+public struct CalculatorEvaluator: Sendable {
+    public init() {}
+
+    public func evaluate(_ expression: String) -> Decimal? {
         var parser = Parser(Array(expression))
         return parser.parse()
     }

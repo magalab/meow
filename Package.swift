@@ -20,6 +20,7 @@ var executableDependencies: [Target.Dependency] = [
     .target(name: "MeowCapture"),
     .target(name: "MeowRecording"),
     .target(name: "MeowAI"),
+    .target(name: "MeowLauncher"),
     .target(name: "MeowS3"),
 ]
 if isVoiceEdition {
@@ -64,6 +65,10 @@ let targets: [Target] = [
     .target(
         name: "MeowAI",
         path: "Modules/MeowAI/Sources"
+    ),
+    .target(
+        name: "MeowLauncher",
+        path: "Modules/MeowLauncher/Sources"
     ),
     .target(
         name: "WhiteboardFeature",
@@ -120,6 +125,11 @@ let targets: [Target] = [
         name: "MeowAITests",
         dependencies: ["MeowAI"],
         path: "Modules/MeowAI/Tests"
+    ),
+    .testTarget(
+        name: "MeowLauncherTests",
+        dependencies: ["MeowLauncher"],
+        path: "Modules/MeowLauncher/Tests"
     ),
     .testTarget(
         name: "MeowS3Tests",

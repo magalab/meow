@@ -1,14 +1,10 @@
 import Foundation
 import Testing
-
-#if MEOW_VOICE
-@testable import Miao
-#else
-@testable import Meow
-#endif
+@testable import MeowLauncher
 
 struct LaunchHistoryTests {
     @Test
+    @MainActor
     func missingEntryHasNoScore() {
         let (defaults, suiteName) = makeDefaults()
         defer { defaults.removePersistentDomain(forName: suiteName) }
@@ -19,6 +15,7 @@ struct LaunchHistoryTests {
     }
 
     @Test
+    @MainActor
     func launchFrequencyAndRecencyContributeToScore() {
         let (defaults, suiteName) = makeDefaults()
         defer { defaults.removePersistentDomain(forName: suiteName) }
@@ -32,6 +29,7 @@ struct LaunchHistoryTests {
     }
 
     @Test
+    @MainActor
     func oldEntriesArePrunedWhenHistoryExceedsLimit() throws {
         let (defaults, suiteName) = makeDefaults()
         defer { defaults.removePersistentDomain(forName: suiteName) }

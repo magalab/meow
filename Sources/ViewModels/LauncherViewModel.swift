@@ -3,6 +3,7 @@ import MeowClipboard
 import AppKit
 import Foundation
 import MeowAI
+import MeowLauncher
 
 enum WhiteboardCommand {
     case show
