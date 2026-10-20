@@ -207,7 +207,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private let windowCoordinator = AppWindowCoordinator()
     private lazy var lifecycleCoordinator = AppLifecycleCoordinator(
-        actions: makeLifecycleActions()
+        actions: makeLifecycleActions(),
+        startupActions: AppLifecycleCoordinator.StartupActions(
+            prepareApplication: { [weak self] in self?.prepareApplicationForLaunch() },
+            setupStatusItem: { [weak self] in self?.setupStatusItem() },
+            applyInitialSettings: { [weak self] in self?.applyInitialSettings() },
+            installEventMonitors: { [weak self] in self?.setupOutsideClickDismissMonitor() }
+        )
     )
     private lazy var preferencesCoordinator: AppPreferencesCoordinator = {
         #if MEOW_VOICE
@@ -293,6 +299,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var uploadNotificationAuthorizationRequested = false
 
     func applicationDidFinishLaunching(_: Notification) {
+        lifecycleCoordinator.applicationDidFinishLaunching()
+    }
+
+    private func prepareApplicationForLaunch() {
         FileUploadService.cleanupTemporaryClipboardUploads()
         viewModel = LauncherViewModel(
             settingsStore: settingsStore,
@@ -417,13 +427,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.presentTextActions(for: text)
         }
         NSApp.servicesProvider = textServiceProvider
+    }
 
-        setupStatusItem()
+    private func applyInitialSettings() {
         let initial = settingsStore.load()
         dockIconService.start(style: initial.dockIconStyle)
         apply(settings: initial)
-        observeSystemPowerState()
-        setupOutsideClickDismissMonitor()
     }
 
     private func configureAuthenticatorService(_ service: AuthenticatorService) {
@@ -487,10 +496,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidBecomeActive(_: Notification) {
         lifecycleCoordinator.applicationDidBecomeActive()
-    }
-
-    private func observeSystemPowerState() {
-        lifecycleCoordinator.observeSystemPowerState()
     }
 
     private func refreshDateUIAfterWake() {
@@ -797,6 +802,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             },
             shutdownUploads: { [weak self] in
                 await self?.fileUploadService.shutdown()
+            },
+            replyToTermination: { sender in
+                sender.reply(toApplicationShouldTerminate: true)
             }
         )
     }
