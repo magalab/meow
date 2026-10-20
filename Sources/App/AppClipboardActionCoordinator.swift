@@ -1,3 +1,4 @@
+import MeowCapture
 import MeowClipboard
 import AppKit
 import ImageIO
