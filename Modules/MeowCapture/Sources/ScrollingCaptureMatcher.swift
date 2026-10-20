@@ -91,41 +91,64 @@ public enum ScrollingCaptureMatcher {
             currentForVision = current
         }
 
+        let maximumOffset = max(1, Int(Double(previous.height) * 0.82))
         let request = VNTranslationalImageRegistrationRequest(targetedCGImage: previousForVision)
         let handler = VNImageRequestHandler(cgImage: currentForVision)
-        guard (try? handler.perform([request])) != nil,
-              let observation = request.results?.first as? VNImageTranslationAlignmentObservation
-        else { return nil }
-
-        let coarseOffset = Int(abs(observation.alignmentTransform.ty).rounded())
-        let maximumOffset = max(1, Int(Double(previous.height) * 0.82))
-        guard coarseOffset <= maximumOffset else { return nil }
-
-        let searchCenter = max(1, coarseOffset)
-        let lowerBound = max(1, searchCenter - 10)
-        let upperBound = min(maximumOffset, searchCenter + 10)
-        guard lowerBound <= upperBound else { return nil }
-
-        var bestOffset = 0
-        var bestError = Double.greatestFiniteMagnitude
-        for candidate in lowerBound...upperBound {
-            let error = alignmentError(
-                previousPixels,
-                currentPixels,
-                offset: candidate,
-                cropTop: cropTop,
-                rightMargin: rightMargin
-            )
-            if error < bestError {
-                bestError = error
-                bestOffset = candidate
+        if (try? handler.perform([request])) != nil,
+           let observation = request.results?.first as? VNImageTranslationAlignmentObservation
+        {
+            let coarseOffset = Int(abs(observation.alignmentTransform.ty).rounded())
+            if coarseOffset <= maximumOffset {
+                let searchCenter = max(1, coarseOffset)
+                let lowerBound = max(1, searchCenter - 10)
+                let upperBound = min(maximumOffset, searchCenter + 10)
+                if let match = bestMatch(
+                    previousPixels,
+                    currentPixels,
+                    offsets: lowerBound...upperBound,
+                    cropTop: cropTop,
+                    rightMargin: rightMargin
+                ) {
+                    return match
+                }
             }
         }
 
-        guard bestOffset > 0, bestError.isFinite, bestError <= 0.22 else { return nil }
-        return ScrollingCaptureMatch(
-            verticalOffset: bestOffset,
-            confidence: max(0, min(1, 1 - bestError / 0.22)),
+        return fallbackMatch(
+            previousPixels,
+            currentPixels,
+            maximumOffset: maximumOffset,
+            cropTop: cropTop,
+            rightMargin: rightMargin
+        )
+    }
+
+    static func matchUsingPixelFallback(
+        previous: CGImage,
+        current: CGImage,
+        frozenHeaderHeight: Int = 0
+    ) -> ScrollingCaptureMatch? {
+        guard previous.width == current.width,
+              previous.height == current.height,
+              previous.width >= 40,
+              previous.height >= 40,
+              let previousPixels = PixelBuffer(previous),
+              let currentPixels = PixelBuffer(current)
+        else { return nil }
+
+        let rightMargin = detectRightMargin(previousPixels, currentPixels)
+        let cropTop = min(max(0, frozenHeaderHeight), previous.height / 3)
+        let cropWidth = previous.width - rightMargin
+        guard cropWidth >= 32,
+              previous.height - cropTop >= 32,
+              hasEnoughVisualDetail(previousPixels, cropTop: cropTop, cropWidth: cropWidth)
+        else { return nil }
+
+        return fallbackMatch(
+            previousPixels,
+            currentPixels,
+            maximumOffset: max(1, Int(Double(previous.height) * 0.82)),
+            cropTop: cropTop,
             rightMargin: rightMargin
         )
     }
@@ -276,5 +299,75 @@ public enum ScrollingCaptureMatcher {
         }
         guard samples > 0 else { return .greatestFiniteMagnitude }
         return Double(totalDifference) / Double(samples * 3 * 255)
+    }
+
+    private static func bestMatch(
+        _ previous: PixelBuffer,
+        _ current: PixelBuffer,
+        offsets: ClosedRange<Int>,
+        cropTop: Int,
+        rightMargin: Int
+    ) -> ScrollingCaptureMatch? {
+        guard !offsets.isEmpty else { return nil }
+        var bestOffset = 0
+        var bestError = Double.greatestFiniteMagnitude
+        for candidate in offsets {
+            let error = alignmentError(
+                previous,
+                current,
+                offset: candidate,
+                cropTop: cropTop,
+                rightMargin: rightMargin
+            )
+            if error < bestError {
+                bestError = error
+                bestOffset = candidate
+            }
+        }
+        guard bestOffset > 0, bestError.isFinite, bestError <= 0.22 else { return nil }
+        return ScrollingCaptureMatch(
+            verticalOffset: bestOffset,
+            confidence: max(0, min(1, 1 - bestError / 0.22)),
+            rightMargin: rightMargin
+        )
+    }
+
+    private static func fallbackMatch(
+        _ previous: PixelBuffer,
+        _ current: PixelBuffer,
+        maximumOffset: Int,
+        cropTop: Int,
+        rightMargin: Int
+    ) -> ScrollingCaptureMatch? {
+        let coarseStep = max(1, maximumOffset / 48)
+        var coarseOffsets = Array(stride(from: 1, through: maximumOffset, by: coarseStep))
+        if coarseOffsets.last != maximumOffset {
+            coarseOffsets.append(maximumOffset)
+        }
+        var bestOffset = 0
+        var bestError = Double.greatestFiniteMagnitude
+        for candidate in coarseOffsets {
+            let error = alignmentError(
+                previous,
+                current,
+                offset: candidate,
+                cropTop: cropTop,
+                rightMargin: rightMargin
+            )
+            if error < bestError {
+                bestError = error
+                bestOffset = candidate
+            }
+        }
+        guard bestOffset > 0, bestError.isFinite, bestError <= 0.22 else { return nil }
+        let lowerBound = max(1, bestOffset - coarseStep)
+        let upperBound = min(maximumOffset, bestOffset + coarseStep)
+        return bestMatch(
+            previous,
+            current,
+            offsets: lowerBound...upperBound,
+            cropTop: cropTop,
+            rightMargin: rightMargin
+        )
     }
 }

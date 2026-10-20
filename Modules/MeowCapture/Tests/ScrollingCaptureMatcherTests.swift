@@ -1,6 +1,6 @@
 import AppKit
 import CoreGraphics
-import MeowCapture
+@testable import MeowCapture
 import Testing
 
 struct ScrollingCaptureMatcherTests {
@@ -37,6 +37,30 @@ struct ScrollingCaptureMatcherTests {
 
         let match = try #require(ScrollingCaptureMatcher.match(previous: previous, current: current))
         #expect(abs(match.verticalOffset - expectedOffset) <= 2)
+        #expect(match.confidence > 0.5)
+    }
+
+    @Test("Pixel fallback matches a known downward content offset")
+    func pixelFallbackMatchesKnownDownwardOffset() throws {
+        let source = try makeScrollingSourceImage(width: 220, height: 360)
+        let previous = try #require(source.cropping(to: CGRect(
+            x: 0,
+            y: 0,
+            width: source.width,
+            height: 180
+        )))
+        let current = try #require(source.cropping(to: CGRect(
+            x: 0,
+            y: 48,
+            width: source.width,
+            height: 180
+        )))
+
+        let match = try #require(ScrollingCaptureMatcher.matchUsingPixelFallback(
+            previous: previous,
+            current: current
+        ))
+        #expect(abs(match.verticalOffset - 48) <= 2)
         #expect(match.confidence > 0.5)
     }
 
