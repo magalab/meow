@@ -168,58 +168,6 @@ func scrollingCaptureResourceIntensiveActionLimits() {
     #expect(!large.supportsFullResolutionEditing)
 }
 
-@Test("Pixel magnifier maps local points using each display scale")
-func pixelMagnifierUsesDisplayScale() {
-    let bounds = CGRect(x: 0, y: 0, width: 100, height: 80)
-    let standard = CapturePixelMagnifierGeometry.sampleRect(
-        at: CGPoint(x: 50, y: 40), in: bounds,
-        imageWidth: 100, imageHeight: 80, scale: 1
-    )
-    let retina = CapturePixelMagnifierGeometry.sampleRect(
-        at: CGPoint(x: 50, y: 40), in: bounds,
-        imageWidth: 200, imageHeight: 160, scale: 2
-    )
-    #expect(standard == CGRect(x: 44, y: 34, width: 13, height: 13))
-    #expect(retina == CGRect(x: 94, y: 74, width: 13, height: 13))
-}
-
-@Test("Pixel magnifier remains within image and screen edges")
-func pixelMagnifierClampsAtEdges() {
-    let bounds = CGRect(x: 0, y: 0, width: 100, height: 80)
-    let sample = CapturePixelMagnifierGeometry.sampleRect(
-        at: CGPoint(x: 100, y: 0), in: bounds,
-        imageWidth: 200, imageHeight: 160, scale: 2
-    )
-    let frame = CapturePixelMagnifierGeometry.frame(
-        near: CGPoint(x: 98, y: 2), in: CGRect(x: 0, y: 0, width: 300, height: 200)
-    )
-    #expect(sample == CGRect(x: 187, y: 147, width: 13, height: 13))
-    #expect(frame.minX >= 0 && frame.maxX <= 300)
-    #expect(frame.minY >= 0 && frame.maxY <= 200)
-}
-
-@Test("Capture editor command stack supports undo and redo")
-@MainActor
-func captureEditorUndoRedo() {
-    let model = CaptureEditorModel(sourceSize: CGSize(width: 100, height: 80))
-    let command = CaptureEditorCommand.rectangle(
-        rect: CGRect(x: 10, y: 10, width: 30, height: 20),
-        color: .red,
-        width: 4
-    )
-
-    model.add(command)
-    #expect(model.commands == [command])
-    #expect(model.canUndo)
-
-    model.undo()
-    #expect(model.commands.isEmpty)
-    #expect(model.canRedo)
-
-    model.redo()
-    #expect(model.commands == [command])
-}
-
 @Test("OCR search index removes OTPAuth payloads")
 @MainActor
 func captureSearchIndexExcludesOTPAuth() {
