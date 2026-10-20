@@ -1,16 +1,18 @@
 import AppKit
 
 @MainActor
-final class RecordingRegionBorderController {
-    static let windowTitle = "Meow Recording Region Border"
+public final class RecordingRegionBorderController {
+    public static let windowTitle = "Meow Recording Region Border"
 
     private var panel: NSPanel?
 
-    static func globalFrame(for rectInDisplayPoints: CGRect, screenFrame: CGRect) -> CGRect {
+    public init() {}
+
+    public static func globalFrame(for rectInDisplayPoints: CGRect, screenFrame: CGRect) -> CGRect {
         rectInDisplayPoints.offsetBy(dx: screenFrame.minX, dy: screenFrame.minY)
     }
 
-    func show(_ rectInDisplayPoints: CGRect, on screen: NSScreen) {
+    public func show(_ rectInDisplayPoints: CGRect, on screen: NSScreen) {
         stop()
         let frame = Self.globalFrame(
             for: rectInDisplayPoints,
@@ -38,7 +40,7 @@ final class RecordingRegionBorderController {
         self.panel = panel
     }
 
-    func stop() {
+    public func stop() {
         panel?.orderOut(nil)
         panel = nil
     }
