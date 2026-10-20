@@ -845,6 +845,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             stopClipboardMonitoring: { [weak self] in
                 self?.clipboardStore.stopMonitoring()
             },
+            stopStatusItem: { [weak self] in
+                self?.statusItemService.stop()
+            },
             stopDockIcon: { [weak self] in
                 self?.dockIconService.stop()
             },
