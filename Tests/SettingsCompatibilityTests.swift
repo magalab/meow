@@ -289,6 +289,32 @@ func systemMonitorSettingsCompatibility() throws {
     #expect(!settings.systemMonitor.enabledModules.isEmpty)
 }
 
+@Test("System monitor settings preserve persisted keys and partial-field defaults")
+func systemMonitorSettingsSchemaCompatibility() throws {
+    let settings = SystemMonitorSettings(
+        enabled: true,
+        statusStyle: .cpuAndMemory,
+        updateInterval: 5,
+        historyDuration: .tenMinutes,
+        enabledModules: [.cpu, .memory]
+    )
+    let encoded = try JSONEncoder().encode(settings)
+    let payload = try #require(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+
+    #expect(Set(payload.keys) == ["enabled", "statusStyle", "updateInterval", "historyDuration", "enabledModules"])
+    #expect(try JSONDecoder().decode(SystemMonitorSettings.self, from: encoded) == settings)
+
+    let partial = try JSONDecoder().decode(
+        SystemMonitorSettings.self,
+        from: Data("{\"enabled\":true}".utf8)
+    )
+    #expect(partial.enabled)
+    #expect(partial.statusStyle == SystemMonitorSettings.default.statusStyle)
+    #expect(partial.updateInterval == SystemMonitorSettings.default.updateInterval)
+    #expect(partial.historyDuration == SystemMonitorSettings.default.historyDuration)
+    #expect(partial.enabledModules == SystemMonitorSettings.default.enabledModules)
+}
+
 @Test("Partial whiteboard settings use safe opt-in defaults")
 func partialWhiteboardSettingsCompatibility() throws {
     let data = Data(
