@@ -2,6 +2,7 @@ import AppKit
 @preconcurrency import ApplicationServices
 import Carbon
 import SwiftUI
+import MeowAI
 
 struct PreferenceAISettingsSection: View {
     let theme: AppTheme
