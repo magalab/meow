@@ -22,6 +22,7 @@ enum RecordingError: LocalizedError {
     case cameraUnavailable
     case insufficientDiskSpace
     case magnifierUnavailable
+    case shutdownTimedOut
 
     var errorDescription: String? {
         switch self {
@@ -36,6 +37,7 @@ enum RecordingError: LocalizedError {
         case .cameraUnavailable: return L10n.recordingErrorCameraUnavailable
         case .insufficientDiskSpace: return L10n.recordingErrorInsufficientDiskSpace
         case .magnifierUnavailable: return L10n.recordingErrorMagnifierUnavailable
+        case .shutdownTimedOut: return L10n.recordingShutdownTimedOut
         }
     }
 }

@@ -162,6 +162,7 @@ extension L10n {
     static var recordingErrorCameraUnavailable: String { loc("recording.error.camera.unavailable") }
     static var recordingErrorInsufficientDiskSpace: String { loc("recording.error.insufficient.disk.space") }
     static var recordingErrorMagnifierUnavailable: String { loc("recording.error.magnifier.unavailable") }
+    static var recordingShutdownTimedOut: String { loc("recording.shutdown.timed.out") }
     static var recordingStatusIdle: String { loc("recording.status.idle") }
     static var recordingStatusActive: String { loc("recording.status.active") }
     static var recordingPause: String { loc("recording.pause") }

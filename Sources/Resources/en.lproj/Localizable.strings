@@ -1081,6 +1081,7 @@
 "whiteboard.send.image" = "Send to Whiteboard";
 "whiteboard.error.title" = "Whiteboard Error";
 "whiteboard.no.recent.screenshot" = "There is no recent screenshot to send.";
+"recording.shutdown.timed.out" = "Recording is taking longer than expected to stop. Meow will stay open while it finishes. Try quitting again afterward.";
 "cmd.whiteboard.open.title" = "Show Whiteboard";
 "cmd.whiteboard.open.subtitle" = "Show the desktop whiteboard without entering edit mode";
 "cmd.whiteboard.toggle.title" = "Edit Whiteboard";

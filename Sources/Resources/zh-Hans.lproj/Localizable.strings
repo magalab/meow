@@ -1081,6 +1081,7 @@
 "whiteboard.send.image" = "发送到白板";
 "whiteboard.error.title" = "白板错误";
 "whiteboard.no.recent.screenshot" = "没有可发送的最近截图。";
+"recording.shutdown.timed.out" = "录屏停止时间超出预期，应用会保持运行并继续清理。清理完成后请重试退出。";
 "cmd.whiteboard.open.title" = "显示白板";
 "cmd.whiteboard.open.subtitle" = "显示桌面白板，但不进入编辑模式";
 "cmd.whiteboard.toggle.title" = "编辑白板";

@@ -71,7 +71,7 @@ func lifecycleTerminationWaitsForShutdownAndRejectsRepeatedRequest() async {
         actions: makeLifecycleTestActions(
             stopKeepAwake: { calls.append("keepAwake") },
             shutdownUploads: { calls.append("uploads") },
-            replyToTermination: { _ in
+            replyToTermination: { _, _ in
                 calls.append("reply")
                 replyContinuation?.resume()
                 replyContinuation = nil
@@ -109,7 +109,7 @@ func lifecycleTerminationWaitsForRecordingStop() async {
             },
             stopKeepAwake: { calls.append("keepAwake") },
             shutdownUploads: { calls.append("uploads") },
-            replyToTermination: { _ in
+            replyToTermination: { _, _ in
                 calls.append("reply")
                 replyContinuation?.resume()
                 replyContinuation = nil
@@ -151,7 +151,7 @@ func lifecycleTerminationWaitsForRecordingAlreadyFinishing() async {
             },
             stopKeepAwake: { calls.append("keepAwake") },
             shutdownUploads: { calls.append("uploads") },
-            replyToTermination: { _ in
+            replyToTermination: { _, _ in
                 calls.append("reply")
                 replyContinuation?.resume()
                 replyContinuation = nil
@@ -174,6 +174,65 @@ func lifecycleTerminationWaitsForRecordingAlreadyFinishing() async {
     await terminationTask.value
 
     #expect(calls == ["cancelRecording", "joinRecordingStop", "keepAwake", "uploads", "reply"])
+}
+
+@MainActor
+@Test("Recording shutdown timeout keeps the app running and permits a later quit")
+func lifecycleRecordingShutdownTimeoutAllowsRetry() async {
+    var calls: [String] = []
+    var stopCalls = 0
+    var firstStopContinuation: CheckedContinuation<Void, Never>?
+    var replyContinuation: CheckedContinuation<Void, Never>?
+    let coordinator = AppLifecycleCoordinator(
+        actions: makeLifecycleTestActions(
+            recordingServiceLoaded: { true },
+            cancelRecording: { calls.append("cancelRecording") },
+            recordingServiceNeedsStop: { true },
+            stopRecording: {
+                stopCalls += 1
+                calls.append("stopRecording\(stopCalls)")
+                if stopCalls == 1 {
+                    await withCheckedContinuation { firstStopContinuation = $0 }
+                }
+            },
+            recordingShutdownTimedOut: { calls.append("timeoutAlert") },
+            stopKeepAwake: { calls.append("keepAwake") },
+            shutdownUploads: { calls.append("uploads") },
+            replyToTermination: { _, shouldTerminate in
+                calls.append("reply:\(shouldTerminate)")
+                replyContinuation?.resume()
+                replyContinuation = nil
+            }
+        ),
+        startupActions: noOpStartupActions(),
+        workspaceNotificationCenter: NotificationCenter(),
+        recordingShutdownTimeout: .milliseconds(20)
+    )
+
+    let firstTermination = Task {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            replyContinuation = continuation
+            #expect(coordinator.applicationShouldTerminate(NSApplication.shared) == .terminateLater)
+        }
+    }
+    await firstTermination.value
+    #expect(calls == ["cancelRecording", "stopRecording1", "reply:false", "timeoutAlert"])
+
+    firstStopContinuation?.resume()
+    for _ in 0..<10 { await Task.yield() }
+
+    let secondTermination = Task {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            replyContinuation = continuation
+            #expect(coordinator.applicationShouldTerminate(NSApplication.shared) == .terminateLater)
+        }
+    }
+    await secondTermination.value
+
+    #expect(calls == [
+        "cancelRecording", "stopRecording1", "reply:false", "timeoutAlert",
+        "cancelRecording", "stopRecording2", "keepAwake", "uploads", "reply:true",
+    ])
 }
 
 @MainActor
@@ -224,6 +283,7 @@ private func makeLifecycleTestActions(
     cancelRecording: @escaping @MainActor () -> Void = {},
     recordingServiceNeedsStop: @escaping @MainActor () -> Bool = { false },
     stopRecording: @escaping @MainActor () async -> Void = {},
+    recordingShutdownTimedOut: @escaping @MainActor () -> Void = {},
     stopCameraOverlay: @escaping @MainActor () -> Void = {},
     stopMagnifier: @escaping @MainActor () -> Void = {},
     cancelCaptureOverlay: @escaping @MainActor () -> Void = {},
@@ -243,7 +303,7 @@ private func makeLifecycleTestActions(
     stopDockIcon: @escaping @MainActor () -> Void = {},
     removeEventMonitors: @escaping @MainActor () -> Void = {},
     shutdownUploads: @escaping @MainActor () async -> Void = {},
-    replyToTermination: @escaping @MainActor (NSApplication) -> Void = { _ in }
+    replyToTermination: @escaping @MainActor (NSApplication, Bool) -> Void = { _, _ in }
 ) -> AppLifecycleCoordinator.Actions {
     AppLifecycleCoordinator.Actions(
         systemDidWake: systemDidWake,
@@ -259,6 +319,7 @@ private func makeLifecycleTestActions(
         cancelRecording: cancelRecording,
         recordingServiceNeedsStop: recordingServiceNeedsStop,
         stopRecording: stopRecording,
+        recordingShutdownTimedOut: recordingShutdownTimedOut,
         stopCameraOverlay: stopCameraOverlay,
         stopMagnifier: stopMagnifier,
         cancelCaptureOverlay: cancelCaptureOverlay,
