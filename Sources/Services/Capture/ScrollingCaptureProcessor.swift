@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import MeowCapture
 
 enum ScrollingCaptureProcessOutcome: Sendable {
     case appended(ScrollingCaptureProgress)
