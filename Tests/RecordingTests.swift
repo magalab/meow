@@ -61,6 +61,7 @@ func recordingCountdownCancellationAllowsRestart() async throws {
     #expect(service.state == .preparing)
     await service.stop()
     #expect(service.state == .idle)
+    #expect(!service.isStopping)
 }
 
 @Test("Trim export refuses the source file and aliases")

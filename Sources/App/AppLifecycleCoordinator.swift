@@ -22,7 +22,7 @@ final class AppLifecycleCoordinator {
         let cancelCapture: @MainActor () -> Void
         let recordingServiceLoaded: @MainActor () -> Bool
         let cancelRecording: @MainActor () -> Void
-        let recordingServiceIsActive: @MainActor () -> Bool
+        let recordingServiceNeedsStop: @MainActor () -> Bool
         let stopRecording: @MainActor () async -> Void
         let stopCameraOverlay: @MainActor () -> Void
         let stopMagnifier: @MainActor () -> Void
@@ -109,7 +109,7 @@ final class AppLifecycleCoordinator {
         Task { @MainActor [weak self, weak sender] in
             if let self,
                self.actions.recordingServiceLoaded(),
-               self.actions.recordingServiceIsActive()
+               self.actions.recordingServiceNeedsStop()
             {
                 self.actions.cancelRecording()
                 await self.actions.stopRecording()
@@ -133,7 +133,7 @@ final class AppLifecycleCoordinator {
         if actions.recordingServiceLoaded() {
             actions.cancelRecording()
         }
-        if actions.recordingServiceLoaded(), actions.recordingServiceIsActive() {
+        if actions.recordingServiceLoaded(), actions.recordingServiceNeedsStop() {
             Task { @MainActor in
                 await actions.stopRecording()
             }

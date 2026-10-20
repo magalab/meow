@@ -92,12 +92,15 @@ final class RecordingService: NSObject, ObservableObject {
     private var mobileCapture: RecordingMobileDeviceCapture?
     private let mouseClickHighlighter = MouseClickHighlighterController()
     private var countdownTask: Task<Void, Never>?
+    private var stopTask: Task<Void, Never>?
     private var elapsedTimer: Timer?
     private var sleepAssertionID: IOPMAssertionID = 0
     private var includedApplicationWindowIDs: Set<CGWindowID> = []
     private var displayFilterExceptionWindowIDs: Set<CGWindowID> = []
     private var displayFilterRefreshTask: Task<Void, Never>?
     private var isRefreshingDisplayFilter = false
+
+    var isStopping: Bool { stopTask != nil }
 
     init(store: RecordingStore) {
         self.store = store
@@ -211,7 +214,7 @@ final class RecordingService: NSObject, ObservableObject {
     }
 
     func prepare(source: RecordingSource) throws {
-        guard !state.isActive else { throw RecordingError.alreadyRecording }
+        guard !state.isActive, stopTask == nil else { throw RecordingError.alreadyRecording }
         preparedSource = source
         state = .preparing
     }
@@ -279,7 +282,20 @@ final class RecordingService: NSObject, ObservableObject {
     }
 
     func stop() async {
+        if let stopTask {
+            await stopTask.value
+            return
+        }
         guard state.isActive else { return }
+        let task = Task { @MainActor in
+            await self.finishStop()
+        }
+        stopTask = task
+        await task.value
+        stopTask = nil
+    }
+
+    private func finishStop() async {
         isMicrophoneCapturing = false
         microphoneCaptureID = nil
         microphoneLevel = 0
