@@ -1,20 +1,21 @@
+import Combine
 import Foundation
-import MeowAI
+import os
 
-enum AIChatHistoryError: LocalizedError, Sendable {
-    case attachmentStorageLimitExceeded
-
-    var errorDescription: String? {
-        L10n.aiErrorAttachmentStorageLimitExceeded
-    }
+private enum AIChatHistoryLogger {
+    static let ai = Logger(subsystem: "tech.lury.meow", category: "ai")
 }
 
-struct AIChatConversation: Identifiable, Codable, Hashable {
-    let id: UUID
-    var title: String
-    var messages: [AIChatMessage]
-    var createdAt: Date
-    var updatedAt: Date
+public enum AIChatHistoryError: Error, Sendable {
+    case attachmentStorageLimitExceeded
+}
+
+public struct AIChatConversation: Identifiable, Codable, Hashable {
+    public let id: UUID
+    public var title: String
+    public var messages: [AIChatMessage]
+    public var createdAt: Date
+    public var updatedAt: Date
 }
 
 private struct AIChatConversationIndexEntry: Identifiable, Codable, Hashable {
@@ -26,7 +27,7 @@ private struct AIChatConversationIndexEntry: Identifiable, Codable, Hashable {
 }
 
 @MainActor
-final class AIChatHistoryStore: ObservableObject {
+public final class AIChatHistoryStore: ObservableObject {
     private enum Storage {
         static let legacyDefaultsKey = "meow.ai.chat-history"
         static let appSupportDirectoryName = "Meow"
@@ -42,37 +43,37 @@ final class AIChatHistoryStore: ObservableObject {
     private static let maxMessageLength = 100_000
     private static let maxAttachmentStorageBytes: Int64 = 256 * 1024 * 1024
 
-    @Published private(set) var conversations: [AIChatConversation] = []
-    @Published var selectedConversationID: UUID?
+    @Published public private(set) var conversations: [AIChatConversation] = []
+    @Published public var selectedConversationID: UUID?
 
     private let fileManager = FileManager.default
     private let appSupportMeowURLOverride: URL?
     private var persistenceEnabled = true
     private var loadedConversationIDs = Set<UUID>()
 
-    init(appSupportMeowURL: URL? = nil) {
+    public init(appSupportMeowURL: URL? = nil) {
         self.appSupportMeowURLOverride = appSupportMeowURL
         loadIndex()
         selectedConversationID = conversations.first?.id
     }
 
-    func selectedConversation() -> AIChatConversation? {
+    public func selectedConversation() -> AIChatConversation? {
         guard let selectedConversationID else { return nil }
         return conversation(id: selectedConversationID)
     }
 
-    func conversation(id: UUID) -> AIChatConversation? {
+    public func conversation(id: UUID) -> AIChatConversation? {
         loadConversationBodyIfNeeded(id)
         return conversations.first { $0.id == id }
     }
 
-    func messages(for id: UUID?) -> [AIChatMessage] {
+    public func messages(for id: UUID?) -> [AIChatMessage] {
         guard let id else { return [] }
         return conversation(id: id)?.messages ?? []
     }
 
     @discardableResult
-    func createConversation(select: Bool = true) -> UUID {
+    public func createConversation(select: Bool = true) -> UUID {
         let now = Date()
         let conversation = AIChatConversation(
             id: UUID(),
@@ -91,7 +92,7 @@ final class AIChatHistoryStore: ObservableObject {
     }
 
     @discardableResult
-    func ensureSelectedConversation() -> UUID {
+    public func ensureSelectedConversation() -> UUID {
         if let selectedConversationID,
            conversations.contains(where: { $0.id == selectedConversationID })
         {
@@ -100,12 +101,12 @@ final class AIChatHistoryStore: ObservableObject {
         return createConversation()
     }
 
-    func selectConversation(_ id: UUID) {
+    public func selectConversation(_ id: UUID) {
         guard conversations.contains(where: { $0.id == id }) else { return }
         selectedConversationID = id
     }
 
-    func append(_ message: AIChatMessage, to id: UUID) {
+    public func append(_ message: AIChatMessage, to id: UUID) {
         if !loadConversationBodyIfNeeded(id) {
             preserveUnreadableConversationFile(for: id)
             loadedConversationIDs.insert(id)
@@ -132,7 +133,7 @@ final class AIChatHistoryStore: ObservableObject {
         save(cleanupAttachments: shouldCleanupAttachments)
     }
 
-    func deleteConversation(_ id: UUID) {
+    public func deleteConversation(_ id: UUID) {
         conversations.removeAll { $0.id == id }
         loadedConversationIDs.remove(id)
         if selectedConversationID == id {
@@ -141,14 +142,14 @@ final class AIChatHistoryStore: ObservableObject {
         save(cleanupAttachments: true)
     }
 
-    func clearAll() {
+    public func clearAll() {
         conversations = []
         loadedConversationIDs.removeAll()
         selectedConversationID = nil
         removePersistedHistory()
     }
 
-    func setPersistenceEnabled(_ enabled: Bool) {
+    public func setPersistenceEnabled(_ enabled: Bool) {
         guard persistenceEnabled != enabled else { return }
         persistenceEnabled = enabled
         if enabled {
@@ -159,7 +160,7 @@ final class AIChatHistoryStore: ObservableObject {
         }
     }
 
-    func storeAttachment(at sourceURL: URL) throws -> String {
+    public func storeAttachment(at sourceURL: URL) throws -> String {
         guard persistenceEnabled else {
             return sourceURL.path
         }
@@ -182,11 +183,11 @@ final class AIChatHistoryStore: ObservableObject {
         return destination.path
     }
 
-    var storagePath: String {
+    public var storagePath: String {
         historyRootURL.path
     }
 
-    var storageFolderURL: URL {
+    public var storageFolderURL: URL {
         historyRootURL
     }
 
@@ -250,7 +251,7 @@ final class AIChatHistoryStore: ObservableObject {
             loadedConversationIDs.insert(id)
             return true
         } catch {
-            MeowLog.ai.error(
+            AIChatHistoryLogger.ai.error(
                 "Failed to load chat conversation \(id.uuidString, privacy: .public): \(error.localizedDescription, privacy: .private(mask: .hash))"
             )
             return false
@@ -266,11 +267,11 @@ final class AIChatHistoryStore: ObservableObject {
             .appendingPathExtension("json")
         do {
             try fileManager.moveItem(at: fileURL, to: preservedURL)
-            MeowLog.ai.debug(
+            AIChatHistoryLogger.ai.debug(
                 "Preserved unreadable chat conversation at \(preservedURL.path, privacy: .private(mask: .hash))"
             )
         } catch {
-            MeowLog.ai.error(
+            AIChatHistoryLogger.ai.error(
                 "Failed to preserve unreadable chat conversation \(id.uuidString, privacy: .public): \(error.localizedDescription, privacy: .private(mask: .hash))"
             )
         }
@@ -300,7 +301,7 @@ final class AIChatHistoryStore: ObservableObject {
             UserDefaults.standard.removeObject(forKey: Storage.legacyDefaultsKey)
             try? fileManager.removeItem(at: legacyHistoryFileURL)
         } catch {
-            MeowLog.ai.error(
+            AIChatHistoryLogger.ai.error(
                 "Failed to save chat history: \(error.localizedDescription, privacy: .private(mask: .hash))"
             )
         }
@@ -431,7 +432,7 @@ final class AIChatHistoryStore: ObservableObject {
             do {
                 try fileManager.removeItem(at: file)
             } catch {
-                MeowLog.ai.debug(
+                AIChatHistoryLogger.ai.debug(
                     "Unable to remove orphan chat attachment \(file.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)"
                 )
             }
