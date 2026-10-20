@@ -30,6 +30,7 @@ struct MeowApp: App {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let serviceRegistry = AppServiceRegistry()
+    private let mediaErrorPresenter = AppMediaErrorPresenter()
 
     private var settingsStore: SettingsStore { serviceRegistry.settingsStore }
     private var dockService: DockService { serviceRegistry.dockService }
@@ -497,7 +498,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.cameraOverlayController.stop()
             self?.screenMagnifierController.stop()
             self?.recordingCoordinator.resetVisualOverlays()
-            self?.presentRecordingError(error)
+            self?.mediaErrorPresenter.presentRecordingError(error)
         }
         service.onStateChanged = { [weak self] state, elapsed in
             self?.statusItemService.updateRecordingState(state, elapsed: elapsed)
@@ -730,16 +731,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.viewModel.refresh()
             },
             presentScreenshotError: { [weak self] error in
-                self?.presentScreenshotError(error)
+                self?.mediaErrorPresenter.presentScreenshotError(error)
             },
             presentUploadError: { [weak self] error in
-                self?.presentUploadError(error)
+                self?.mediaErrorPresenter.presentUploadError(error)
             },
             presentScrollingAccessibilityPrompt: { [weak self] in
-                self?.presentScrollingCaptureAccessibilityPrompt()
+                self?.mediaErrorPresenter.presentScrollingCaptureAccessibilityPrompt()
             },
             presentScrollingReducedImageWarning: { [weak self] in
-                self?.presentScrollingCaptureReducedImageWarning()
+                self?.mediaErrorPresenter.presentScrollingCaptureReducedImageWarning()
             },
             editImage: { [weak self] url in
                 self?.clipboardActionCoordinator.editImage(at: url)
@@ -771,7 +772,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.viewModel.settings.recording.audioMode = .system
             },
             presentRecordingError: { [weak self] error in
-                self?.presentRecordingError(error)
+                self?.mediaErrorPresenter.presentRecordingError(error)
             }
         )
     }
@@ -909,10 +910,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 )
             },
             presentScreenshotError: { [weak self] error in
-                self?.presentScreenshotError(error)
+                self?.mediaErrorPresenter.presentScreenshotError(error)
             },
             presentUploadError: { [weak self] error in
-                self?.presentUploadError(error)
+                self?.mediaErrorPresenter.presentUploadError(error)
             },
             importImageFileToWhiteboard: { [weak self] url, sourceName in
                 self?.whiteboardCoordinator.sendImageFile(at: url, sourceName: sourceName)
@@ -1053,80 +1054,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         recordingCoordinator.showRecordingTrimmer(for: url)
     }
 
-    private func presentRecordingError(_ error: Error) {
-        let alert = NSAlert()
-        alert.alertStyle = .warning
-        alert.messageText = L10n.recordingErrorTitle
-        alert.informativeText = error.localizedDescription
-        alert.addButton(withTitle: L10n.actionOK)
-        if case .permissionDenied? = error as? RecordingError {
-            alert.addButton(withTitle: L10n.screenshotOpenSettings)
-        } else if case .cameraDenied? = error as? RecordingError {
-            alert.addButton(withTitle: L10n.screenshotOpenSettings)
-        }
-        let response = alert.runModal()
-        if response == .alertSecondButtonReturn {
-            let pane = if case .cameraDenied? = error as? RecordingError {
-                "Privacy_Camera"
-            } else {
-                "Privacy_ScreenCapture"
-            }
-            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?\(pane)") {
-                NSWorkspace.shared.open(url)
-            }
-        }
-    }
-
-    private func presentScrollingCaptureAccessibilityPrompt() {
-        let alert = NSAlert()
-        alert.alertStyle = .warning
-        alert.messageText = L10n.scrollingCaptureAccessibilityTitle
-        alert.informativeText = L10n.scrollingCaptureAccessibilityMessage
-        alert.addButton(withTitle: L10n.screenshotOpenSettings)
-        alert.addButton(withTitle: L10n.actionCancel)
-        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
-        AXIsProcessTrustedWithOptions(options)
-        if alert.runModal() == .alertFirstButtonReturn,
-           let url = URL(
-               string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
-           )
-        {
-            NSWorkspace.shared.open(url)
-        }
-    }
-
-    private func presentScrollingCaptureReducedImageWarning() {
-        let alert = NSAlert()
-        alert.alertStyle = .warning
-        alert.messageText = L10n.scrollingCaptureReducedImageTitle
-        alert.informativeText = L10n.scrollingCaptureReducedImageMessage
-        alert.addButton(withTitle: L10n.actionOK)
-        alert.runModal()
-    }
-
-    private func presentScreenshotError(_ error: Error) {
-        let alert = NSAlert()
-        alert.alertStyle = .warning
-        alert.messageText = L10n.screenshotErrorTitle
-        if let captureError = error as? CaptureStoreError,
-           case .imageEncodingFailed = captureError
-        {
-            alert.informativeText = L10n.screenshotErrorEncoding
-        } else {
-            alert.informativeText = error.localizedDescription
-        }
-        alert.addButton(withTitle: L10n.actionOK)
-        if case .permissionDenied? = error as? ScreenCaptureError {
-            alert.addButton(withTitle: L10n.screenshotOpenSettings)
-        }
-        let response = alert.runModal()
-        if response == .alertSecondButtonReturn,
-           let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")
-        {
-            NSWorkspace.shared.open(url)
-        }
-    }
-
     private func makeCaptureHistoryView(theme: AppTheme) -> CaptureHistoryView {
         captureCoordinator.makeCaptureHistoryView(theme: theme)
     }
@@ -1160,15 +1087,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         windowCoordinator.removeEventMonitors()
     }
 
-    private func presentUploadError(_ error: Error) {
-        let alert = NSAlert()
-        alert.alertStyle = .warning
-        alert.messageText = L10n.uploadErrorTitle
-        alert.informativeText = error.localizedDescription
-        alert.addButton(withTitle: L10n.actionOK)
-        alert.runModal()
-    }
-
     private func presentKeepAwakeError(_ error: Error) {
         let alert = NSAlert()
         alert.alertStyle = .warning
@@ -1183,7 +1101,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func presentOTPAuthImport(_ payload: String) {
         guard let parsed = OTPAuthURL.parse(payload) else {
-            presentScreenshotError(AuthenticatorError.invalidURL)
+            mediaErrorPresenter.presentScreenshotError(AuthenticatorError.invalidURL)
             return
         }
 
