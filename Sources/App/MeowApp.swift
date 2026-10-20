@@ -281,7 +281,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             fileUploadService: fileUploadService,
             recordingStore: recordingStore,
             makeCaptureHistoryView: { [weak self] theme in
-                self?.makeCaptureHistoryView(theme: theme) ?? CaptureHistoryView(
+                self?.captureCoordinator.makeCaptureHistoryView(theme: theme) ?? CaptureHistoryView(
                     store: CaptureStore(),
                     theme: theme,
                     onCopy: { _ in },
@@ -297,7 +297,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 )
             },
             showRecordingTrimmer: { [weak self] url in
-                self?.showRecordingTrimmer(for: url)
+                self?.recordingCoordinator.showRecordingTrimmer(for: url)
             },
             speechModelStore: speechModelStore,
             speechHistoryStore: speechHistoryStore,
@@ -317,7 +317,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             fileUploadService: fileUploadService,
             recordingStore: recordingStore,
             makeCaptureHistoryView: { [weak self] theme in
-                self?.makeCaptureHistoryView(theme: theme) ?? CaptureHistoryView(
+                self?.captureCoordinator.makeCaptureHistoryView(theme: theme) ?? CaptureHistoryView(
                     store: CaptureStore(),
                     theme: theme,
                     onCopy: { _ in },
@@ -333,7 +333,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 )
             },
             showRecordingTrimmer: { [weak self] url in
-                self?.showRecordingTrimmer(for: url)
+                self?.recordingCoordinator.showRecordingTrimmer(for: url)
             }
         )
         return AppPreferencesCoordinator(windowCoordinator: windowCoordinator, dependencies: dependencies)
@@ -420,7 +420,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.clipboardActionCoordinator.saveClipboardImageAs(image)
         }
         viewModel.onSendClipboardImageToWhiteboard = { [weak self] image in
-            self?.sendImageToWhiteboard(image)
+            self?.clipboardActionCoordinator.sendImageToWhiteboard(image)
         }
         viewModel.onSettingsChanged = { [weak self] settings in
             self?.apply(settings: settings)
@@ -503,7 +503,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func configureRecordingService(_ service: RecordingService) {
         service.onCompleted = { [weak self] artifact in
             self?.whiteboardCoordinator.restoreAfterRecording()
-            self?.hideRecordingControl()
+            self?.recordingCoordinator.hideRecordingControl()
             self?.cameraOverlayController.stop()
             self?.screenMagnifierController.stop()
             self?.recordingCoordinator.resetVisualOverlays()
@@ -514,7 +514,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         service.onError = { [weak self] error in
             self?.whiteboardCoordinator.restoreAfterRecording()
-            self?.hideRecordingControl()
+            self?.recordingCoordinator.hideRecordingControl()
             self?.cameraOverlayController.stop()
             self?.screenMagnifierController.stop()
             self?.recordingCoordinator.resetVisualOverlays()
@@ -653,9 +653,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             },
             setRecordingControlsVisible: { [weak self] visible in
                 if visible {
-                    self?.showRecordingControl()
+                    self?.recordingCoordinator.showRecordingControl()
                 } else {
-                    self?.hideRecordingControl()
+                    self?.recordingCoordinator.hideRecordingControl()
                 }
             },
             applyAuthenticatorSettings: { [weak self] settings in
@@ -787,7 +787,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             restoreWhiteboardAfterRecording: { [weak self] in
                 self?.whiteboardCoordinator.restoreAfterRecording()
             },
-            activeScreen: { [weak self] in self?.activeScreen() },
+            activeScreen: { [weak self] in self?.windowCoordinator.activeScreen() },
             setSystemAudioMode: { [weak self] in
                 self?.viewModel.settings.recording.audioMode = .system
             },
@@ -905,7 +905,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.dockIconService.stop()
             },
             removeEventMonitors: { [weak self] in
-                self?.removeEventMonitors()
+                self?.windowCoordinator.removeEventMonitors()
             },
             shutdownUploads: { [weak self] in
                 await self?.fileUploadService.shutdown()
@@ -1009,35 +1009,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
     }
 
-    private func sendImageToWhiteboard(_ image: ImageClipboardContent) {
-        clipboardActionCoordinator.sendImageToWhiteboard(image)
-    }
-
-
-
     private var recordingStateShowsControls: Bool {
         guard recordingServiceLoaded else { return false }
         return recordingCoordinator.recordingStateShowsControls
-    }
-
-    private func showRecordingControl() {
-        recordingCoordinator.showRecordingControl()
-    }
-
-    private func hideRecordingControl() {
-        recordingCoordinator.hideRecordingControl()
-    }
-
-    private func showRecordingPreview(_ artifact: RecordingArtifact) {
-        recordingCoordinator.showRecordingPreview(artifact)
-    }
-
-    private func showRecordingTrimmer(for url: URL) {
-        recordingCoordinator.showRecordingTrimmer(for: url)
-    }
-
-    private func makeCaptureHistoryView(theme: AppTheme) -> CaptureHistoryView {
-        captureCoordinator.makeCaptureHistoryView(theme: theme)
     }
 
     private func setupOutsideClickDismissMonitor() {
@@ -1063,10 +1037,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 showPreferences: { [weak self] in self?.showPreferences(animated: true) }
             )
         )
-    }
-
-    private func removeEventMonitors() {
-        windowCoordinator.removeEventMonitors()
     }
 
     private func presentKeepAwakeError(_ error: Error) {
@@ -1177,11 +1147,4 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
     }
 
-    private func activeScreen() -> NSScreen? {
-        windowCoordinator.activeScreen()
-    }
-
-    private func centerWindowOnScreen(_ window: NSWindow, on targetScreen: NSScreen? = nil) {
-        windowCoordinator.center(window, on: targetScreen)
-    }
 }
