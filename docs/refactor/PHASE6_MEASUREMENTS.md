@@ -2,7 +2,7 @@
 
 Measurement date: 2026-10-20 (Asia/Shanghai)
 
-Code revision: `e16bf56afe70e4725df95946cc8fc019bfff1c8b`
+Code revision: `4abf268ff5f54be33d0c53848aa5d70ea8acd61d`
 
 Host: MacBook Air (`MacBookAir10,1`), Apple M1, 16 GB RAM, arm64
 
@@ -17,10 +17,10 @@ The baseline values come from the Phase 0 measurements for `4f7cfc9` (`v0.1.3`),
 
 | Edition | Baseline app (KiB) | Current app (KiB) | Change | Baseline DMG (KiB) | Current DMG (KiB) | Current DMG (bytes) | Change |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| Meow | 11,188 | 11,560 | +372 (+3.3%) | 5,936 | 6,060 | 6,204,104 | +124 (+2.1%) |
-| Miao | 11,540 | 11,900 | +360 (+3.1%) | 6,088 | 6,216 | 6,361,098 | +128 (+2.1%) |
+| Meow | 11,188 | 11,560 | +372 (+3.3%) | 5,936 | 6,060 | 6,204,721 | +124 (+2.1%) |
+| Miao | 11,540 | 11,900 | +360 (+3.1%) | 6,088 | 6,216 | 6,362,761 | +128 (+2.1%) |
 
-The measured outputs were created in `/private/tmp/meow-phase6-refresh`; both app signatures passed `codesign --verify --deep --strict`, and both disk images passed `hdiutil verify`. Release builds for Meow and Miao passed on this revision. The existing `dist/` artifacts were not changed. These numbers describe package size only and do not establish runtime performance parity.
+The measured outputs were created in `/private/tmp/meow-phase6-r94`; both app signatures passed `codesign --verify --deep --strict`, and both disk images passed `hdiutil verify`. Local Release builds for Meow and Miao and the full dual-edition CI passed on this revision. The existing `dist/` artifacts were not changed. These numbers describe package size only and do not establish runtime performance parity.
 
 ## Runtime performance and regression status
 
