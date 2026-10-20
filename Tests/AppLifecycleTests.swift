@@ -102,7 +102,7 @@ func lifecycleTerminationWaitsForRecordingStop() async {
         actions: makeLifecycleTestActions(
             recordingServiceLoaded: { true },
             cancelRecording: { calls.append("cancelRecording") },
-            recordingServiceIsActive: { true },
+            recordingServiceNeedsStop: { true },
             stopRecording: {
                 calls.append("stopRecording")
                 await withCheckedContinuation { stopContinuation = $0 }
@@ -135,6 +135,48 @@ func lifecycleTerminationWaitsForRecordingStop() async {
 }
 
 @MainActor
+@Test("Termination waits for a recording that is already finishing")
+func lifecycleTerminationWaitsForRecordingAlreadyFinishing() async {
+    var calls: [String] = []
+    var stopContinuation: CheckedContinuation<Void, Never>?
+    var replyContinuation: CheckedContinuation<Void, Never>?
+    let coordinator = AppLifecycleCoordinator(
+        actions: makeLifecycleTestActions(
+            recordingServiceLoaded: { true },
+            cancelRecording: { calls.append("cancelRecording") },
+            recordingServiceNeedsStop: { true },
+            stopRecording: {
+                calls.append("joinRecordingStop")
+                await withCheckedContinuation { stopContinuation = $0 }
+            },
+            stopKeepAwake: { calls.append("keepAwake") },
+            shutdownUploads: { calls.append("uploads") },
+            replyToTermination: { _ in
+                calls.append("reply")
+                replyContinuation?.resume()
+                replyContinuation = nil
+            }
+        ),
+        startupActions: noOpStartupActions(),
+        workspaceNotificationCenter: NotificationCenter()
+    )
+
+    let terminationTask = Task {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            replyContinuation = continuation
+            #expect(coordinator.applicationShouldTerminate(NSApplication.shared) == .terminateLater)
+        }
+    }
+    for _ in 0..<10 where stopContinuation == nil { await Task.yield() }
+
+    #expect(calls == ["cancelRecording", "joinRecordingStop"])
+    stopContinuation?.resume()
+    await terminationTask.value
+
+    #expect(calls == ["cancelRecording", "joinRecordingStop", "keepAwake", "uploads", "reply"])
+}
+
+@MainActor
 @Test("Application termination cancels active feature work before removing monitors")
 func lifecycleTerminationCancelsFeaturesBeforeMonitors() {
     var calls: [String] = []
@@ -147,7 +189,7 @@ func lifecycleTerminationCancelsFeaturesBeforeMonitors() {
             cancelCapture: { calls.append("capture") },
             recordingServiceLoaded: { true },
             cancelRecording: { calls.append("recording") },
-            recordingServiceIsActive: { false },
+            recordingServiceNeedsStop: { false },
             stopKeystrokeVisualizer: { calls.append("keystrokeVisualizer") },
             stopHealthReminder: { calls.append("healthReminder") },
             stopClipboardMonitoring: { calls.append("clipboard") },
@@ -180,7 +222,7 @@ private func makeLifecycleTestActions(
     cancelCapture: @escaping @MainActor () -> Void = {},
     recordingServiceLoaded: @escaping @MainActor () -> Bool = { false },
     cancelRecording: @escaping @MainActor () -> Void = {},
-    recordingServiceIsActive: @escaping @MainActor () -> Bool = { false },
+    recordingServiceNeedsStop: @escaping @MainActor () -> Bool = { false },
     stopRecording: @escaping @MainActor () async -> Void = {},
     stopCameraOverlay: @escaping @MainActor () -> Void = {},
     stopMagnifier: @escaping @MainActor () -> Void = {},
@@ -215,7 +257,7 @@ private func makeLifecycleTestActions(
         cancelCapture: cancelCapture,
         recordingServiceLoaded: recordingServiceLoaded,
         cancelRecording: cancelRecording,
-        recordingServiceIsActive: recordingServiceIsActive,
+        recordingServiceNeedsStop: recordingServiceNeedsStop,
         stopRecording: stopRecording,
         stopCameraOverlay: stopCameraOverlay,
         stopMagnifier: stopMagnifier,
