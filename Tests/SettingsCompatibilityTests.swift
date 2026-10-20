@@ -356,6 +356,53 @@ func clipboardSettingsSchemaCompatibility() throws {
     #expect(partial.clipboard.imageStorageLimitMB == 128)
 }
 
+@Test("Appearance settings retain the flat persisted schema")
+func appearanceSettingsSchemaCompatibility() throws {
+    let legacyPayload = Data(
+        """
+        {
+          "language": "zh-Hans",
+          "theme": "mist-blue",
+          "dateIconStyle": "lunarDate",
+          "dockIconStyle": "flat"
+        }
+        """.utf8
+    )
+    let settings = try JSONDecoder().decode(AppSettings.self, from: legacyPayload)
+    let expected = AppearanceSettings(
+        language: .chinese,
+        theme: .mistBlue,
+        dateIconStyle: .lunarDate,
+        dockIconStyle: .flat
+    )
+    #expect(settings.appearance == expected)
+
+    let encoded = try JSONEncoder().encode(settings)
+    let payload = try #require(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+    #expect(payload["appearance"] == nil)
+    #expect(payload["language"] as? String == "zh-Hans")
+    #expect(payload["theme"] as? String == "mist-blue")
+    #expect(payload["dateIconStyle"] as? String == "lunarDate")
+    #expect(payload["dockIconStyle"] as? String == "flat")
+    #expect(try JSONDecoder().decode(AppSettings.self, from: encoded).appearance == expected)
+
+    var legacyAccessors = AppSettings.default
+    legacyAccessors.language = .chinese
+    legacyAccessors.theme = .mistBlue
+    legacyAccessors.dateIconStyle = .lunarDate
+    legacyAccessors.dockIconStyle = .flat
+    #expect(legacyAccessors.appearance == expected)
+
+    let partial = try JSONDecoder().decode(
+        AppSettings.self,
+        from: Data("{\"language\":\"en\"}".utf8)
+    )
+    #expect(partial.appearance.language == .english)
+    #expect(partial.appearance.theme == AppearanceSettings.default.theme)
+    #expect(partial.appearance.dateIconStyle == AppearanceSettings.default.dateIconStyle)
+    #expect(partial.appearance.dockIconStyle == AppearanceSettings.default.dockIconStyle)
+}
+
 @Test("System monitor settings clamp unsafe persisted values")
 func systemMonitorSettingsCompatibility() throws {
     let data = Data(
