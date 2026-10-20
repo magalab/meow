@@ -1,7 +1,7 @@
 import Foundation
 import MeowS3
 
-final class S3Uploader: FileUploader, @unchecked Sendable {
+final class S3Uploader: FileUploader {
     private let config: S3Config
     private let client: S3Client
 

@@ -2,7 +2,7 @@ import MeowRecording
 import Foundation
 import UserNotifications
 
-final class RecordingNotificationService: @unchecked Sendable {
+final class RecordingNotificationService: Sendable {
     func requestAuthorization() {
         guard Self.canUseUserNotifications else { return }
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
