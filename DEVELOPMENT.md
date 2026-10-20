@@ -5,7 +5,7 @@
 ```
 ├── Sources/
 │   ├── App/
-│   │   └── MeowApp.swift            # App entry, AppDelegate, window management
+│   │   └── MeowApp.swift            # App entry and AppDelegate; composition lives in AppCompositionRoot
 │   ├── Models/
 │   │   ├── AppModels.swift          # AppEntry, CommandEntry
 │   │   ├── AppSettings.swift        # AppSettings, AISettings, enums (theme, lang, dock/date icon)
@@ -42,7 +42,7 @@
 │   │   │   ├── SystemMonitorHistory.swift # Bounded recent samples
 │   │   │   └── SystemMonitorModels.swift # Modules, snapshots, configuration models
 │   │   ├── SystemMonitorService.swift # Optional menu bar item and popover lifecycle
-│   │   ├── Uploaders/               # Backend-neutral upload protocol and implementations
+│   │   ├── Uploaders/               # App upload orchestration and backend-neutral uploader protocol
 │   │   ├── SettingsStore.swift      # UserDefaults-based persistence
 │   │   ├── ClipboardService.swift   # ClipboardStore, ClipboardImageCache
 │   │   ├── TranslationService.swift # AX text capture + fallback copy
@@ -57,6 +57,7 @@
 │   │   ├── SpeechHistoryStore.swift # Transcript index and WAV persistence
 │   │   ├── SpeechRecognizerFactory.swift # Voice-edition backend composition boundary
 │   │   └── LaunchHistoryStore.swift # Launch frequency/recency tracking
+│   ├── MeowS3/                      # Standalone S3-compatible upload/delete client and SigV4 signing
 │   ├── ViewModels/
 │   │   └── LauncherViewModel.swift  # Search, ranking, app dispatch, clipboard management
 │   ├── Views/
@@ -117,7 +118,14 @@
 │       ├── en.lproj/                # English strings
 │       ├── zh-Hans.lproj/           # Chinese strings
 │       └── solar_terms.json         # Solar term dates
-├── Modules/WhiteboardFeature/        # Standalone local SwiftPM feature module
+├── Modules/
+│   ├── MeowAI/                      # AI request and chat domain code
+│   ├── MeowCapture/                 # Capture domain code and image matching/stitching
+│   ├── MeowClipboard/               # Clipboard persistence and image cache (GRDB-backed)
+│   ├── MeowLauncher/                # Launcher matching and ranking; depends on MeowClipboard
+│   ├── MeowRecording/               # Recording domain code
+│   └── WhiteboardFeature/            # Standalone whiteboard feature with resources
+├── Packages/MeowSpeech/              # Voice-only speech contracts and SenseVoice CoreML backend
 ├── Tests/                            # Tests grouped by feature
 ├── Package.swift                    # Swift Package manifest (Swift 6, macOS 15+)
 ├── scripts/
