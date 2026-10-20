@@ -18,7 +18,6 @@ var executableDependencies: [Target.Dependency] = [
     .target(name: "WhiteboardFeature"),
     .target(name: "MeowClipboard"),
     .target(name: "MeowS3"),
-    .product(name: "GRDB", package: "GRDB.swift"),
 ]
 if isVoiceEdition {
     executableDependencies += [
@@ -46,6 +45,9 @@ if isVoiceEdition {
 let targets: [Target] = [
     .target(
         name: "MeowClipboard",
+        dependencies: [
+            .product(name: "GRDB", package: "GRDB.swift"),
+        ],
         path: "Modules/MeowClipboard/Sources"
     ),
     .target(

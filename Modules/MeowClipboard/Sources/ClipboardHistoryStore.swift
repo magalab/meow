@@ -1,30 +1,32 @@
-import MeowClipboard
 import Foundation
 import GRDB
+import os
 
-enum ClipboardStoragePaths {
-    static var defaultDirectory: URL {
+public enum ClipboardStoragePaths {
+    public static var defaultDirectory: URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("Meow/Clipboard", isDirectory: true)
     }
 
-    static var legacyCacheDirectory: URL {
+    public static var legacyCacheDirectory: URL {
         FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("Meow/Clipboard", isDirectory: true)
     }
 }
 
 /// GRDB-backed clipboard history. All database and cleanup work is isolated away from the main actor.
-actor ClipboardHistoryStore {
-    nonisolated let directoryURL: URL
-    nonisolated let imagesDirectoryURL: URL
-    nonisolated let pendingImagesDirectoryURL: URL
+public actor ClipboardHistoryStore {
+    public nonisolated let directoryURL: URL
+    public nonisolated let imagesDirectoryURL: URL
+    public nonisolated let pendingImagesDirectoryURL: URL
 
     private static let selectColumns = """
         id, kind, text_value, primary_path, secondary_path, display_name,
         width, height, duration, copied_at, source_bundle_id, pinned_at,
         content_hash, owns_files
         """
+
+    private static let logger = Logger(subsystem: "tech.lury.meow", category: "clipboard")
 
     private static let aliasedSelectColumns = """
         i.id, i.kind, i.text_value, i.primary_path, i.secondary_path, i.display_name,
@@ -78,7 +80,7 @@ actor ClipboardHistoryStore {
     private let legacyCacheDirectory: URL?
     private var databaseQueue: DatabaseQueue?
 
-    init(
+    public init(
         directory: URL? = nil,
         memoryWindow: Int = 1000,
         legacyCacheDirectory: URL? = nil
@@ -113,7 +115,7 @@ actor ClipboardHistoryStore {
         }
     }
 
-    func load(
+    public func load(
         retention: ClipboardRetention,
         imageStorageLimitMB: Int
     ) -> [ClipboardEntry]? {
@@ -125,7 +127,7 @@ actor ClipboardHistoryStore {
         return loadWindow()
     }
 
-    func upsert(
+    public func upsert(
         _ newEntry: ClipboardEntry,
         retention: ClipboardRetention,
         imageStorageLimitMB: Int
@@ -176,7 +178,7 @@ actor ClipboardHistoryStore {
         return loadWindow()
     }
 
-    func remove(id: String) -> [ClipboardEntry]? {
+    public func remove(id: String) -> [ClipboardEntry]? {
         guard let databaseQueue else { return nil }
         let existing: ClipboardEntry?
         do {
@@ -197,7 +199,7 @@ actor ClipboardHistoryStore {
         return loadWindow()
     }
 
-    func remove(ids: Set<String>) -> [ClipboardEntry]? {
+    public func remove(ids: Set<String>) -> [ClipboardEntry]? {
         guard let databaseQueue else { return nil }
         let existing: [ClipboardEntry]
         do {
@@ -221,7 +223,7 @@ actor ClipboardHistoryStore {
         return loadWindow()
     }
 
-    func remove(contentHash: String) -> [ClipboardEntry]? {
+    public func remove(contentHash: String) -> [ClipboardEntry]? {
         guard let databaseQueue else { return nil }
         let existing: ClipboardEntry?
         do {
@@ -242,7 +244,7 @@ actor ClipboardHistoryStore {
         return loadWindow()
     }
 
-    func setPinned(id: String, pinned: Bool) -> [ClipboardEntry]? {
+    public func setPinned(id: String, pinned: Bool) -> [ClipboardEntry]? {
         guard let databaseQueue else { return nil }
         let sql = pinned
             ? "UPDATE clipboard_items SET pinned_at = ? WHERE id = ?"
@@ -260,7 +262,7 @@ actor ClipboardHistoryStore {
         return loadWindow()
     }
 
-    func search(_ query: String, limit: Int = 200) -> [ClipboardEntry]? {
+    public func search(_ query: String, limit: Int = 200) -> [ClipboardEntry]? {
         guard databaseQueue != nil else { return nil }
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return loadWindow() }
@@ -274,7 +276,7 @@ actor ClipboardHistoryStore {
         return Array((pinned + regular.filter { !pinnedIDs.contains($0.id) }).prefix(safeLimit))
     }
 
-    func clearAll() -> [ClipboardEntry]? {
+    public func clearAll() -> [ClipboardEntry]? {
         guard let databaseQueue else { return nil }
         let existing: [ClipboardEntry]
         do {
@@ -297,7 +299,7 @@ actor ClipboardHistoryStore {
         return []
     }
 
-    func enforce(
+    public func enforce(
         retention: ClipboardRetention,
         imageStorageLimitMB: Int
     ) -> [ClipboardEntry]? {
@@ -307,7 +309,7 @@ actor ClipboardHistoryStore {
         return loadWindow()
     }
 
-    func storageUsageBytes() -> Int64 {
+    public func storageUsageBytes() -> Int64 {
         let fileManager = FileManager.default
         let keys: Set<URLResourceKey> = [.isRegularFileKey, .fileSizeKey]
         guard let enumerator = fileManager.enumerator(
@@ -325,7 +327,7 @@ actor ClipboardHistoryStore {
         return total
     }
 
-    func close() {
+    public func close() {
         databaseQueue = nil
     }
 
@@ -765,21 +767,21 @@ actor ClipboardHistoryStore {
                     to: recoveryDirectory.appendingPathComponent(source.lastPathComponent)
                 )
             }
-            MeowLog.clipboard.warning("Preserved a corrupt history database for recovery")
+            Self.logger.warning("Preserved a corrupt history database for recovery")
             return true
         } catch {
-            MeowLog.clipboard.error("Could not preserve the corrupt history database")
+            Self.logger.error("Could not preserve the corrupt history database")
             return false
         }
     }
 
     private static func logDatabaseOpenFailure(_ error: Error) {
         if let databaseError = error as? DatabaseError {
-            MeowLog.clipboard.error(
+            Self.logger.error(
                 "History database unavailable (SQLite code \(databaseError.resultCode.rawValue, privacy: .public)); existing files were preserved"
             )
         } else {
-            MeowLog.clipboard.error("History database unavailable; existing files were preserved")
+            Self.logger.error("History database unavailable; existing files were preserved")
         }
     }
 
