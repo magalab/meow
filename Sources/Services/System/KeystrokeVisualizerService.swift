@@ -159,12 +159,16 @@ final class KeystrokeVisualizerService: ObservableObject {
     }
 
     func refreshPermissionState(prompt: Bool = false) {
-        if requestPermission(prompt: prompt) {
-            if permissionState != .unavailable {
-                permissionState = .trusted
-            }
-        } else {
+        guard requestPermission(prompt: prompt) else {
             permissionState = .denied
+            if isEnabled {
+                stopEventTap()
+            }
+            return
+        }
+
+        if permissionState != .unavailable {
+            permissionState = .trusted
         }
     }
 
@@ -174,15 +178,18 @@ final class KeystrokeVisualizerService: ObservableObject {
             return
         }
 
-        if eventTapToken == nil {
+        refreshPermissionState(prompt: false)
+        if permissionState != .denied, eventTapToken == nil {
             start()
-        } else {
-            refreshPermissionState(prompt: false)
         }
     }
 
     func stop() {
         isEnabled = false
+        stopEventTap()
+    }
+
+    private func stopEventTap() {
         hideWorkItem?.cancel()
         hideWorkItem = nil
         pendingModifierWorkItem?.cancel()
@@ -220,7 +227,7 @@ final class KeystrokeVisualizerService: ObservableObject {
     }
 
     fileprivate func handleEvent(type: CGEventType, keyCode: UInt32, flags: CGEventFlags) {
-        guard isEnabled else { return }
+        guard isEnabled, eventTapToken != nil, permissionState == .trusted else { return }
         guard !InternalInputEventSuppressor.isSuppressed else {
             cancelPendingModifierDisplay()
             return
