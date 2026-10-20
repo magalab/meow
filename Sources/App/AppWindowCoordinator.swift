@@ -41,6 +41,24 @@ private final class WindowResignDelegate: NSObject, NSWindowDelegate {
 
 @MainActor
 final class AppWindowCoordinator {
+    struct EventMonitorDriver {
+        let addGlobal: @MainActor (NSEvent.EventTypeMask, @escaping (NSEvent) -> Void) -> Any?
+        let addLocal: @MainActor (NSEvent.EventTypeMask, @escaping (NSEvent) -> NSEvent?) -> Any?
+        let remove: @MainActor (Any) -> Void
+
+        static let appKit = EventMonitorDriver(
+            addGlobal: { mask, handler in
+                NSEvent.addGlobalMonitorForEvents(matching: mask, handler: handler)
+            },
+            addLocal: { mask, handler in
+                NSEvent.addLocalMonitorForEvents(matching: mask, handler: handler)
+            },
+            remove: { monitor in
+                NSEvent.removeMonitor(monitor)
+            }
+        )
+    }
+
     struct EventMonitorActions {
         let dismissLauncher: @MainActor () -> Void
         let dismissTranslation: @MainActor () -> Void
@@ -73,21 +91,26 @@ final class AppWindowCoordinator {
     private var globalKeyMonitor: Any?
     private var localKeyMonitor: Any?
     private var eventMonitorsInstalled = false
+    private let eventMonitorDriver: EventMonitorDriver
+
+    init(eventMonitorDriver: EventMonitorDriver = .appKit) {
+        self.eventMonitorDriver = eventMonitorDriver
+    }
 
     func installEventMonitors(actions: EventMonitorActions) {
         guard !eventMonitorsInstalled else { return }
         eventMonitorActions = actions
 
-        globalMouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) {
+        globalMouseMonitor = eventMonitorDriver.addGlobal([.leftMouseDown, .rightMouseDown]) {
             [weak self] _ in
             self?.dismissWindowsClickedOutside()
         }
-        localMouseMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) {
+        localMouseMonitor = eventMonitorDriver.addLocal([.leftMouseDown, .rightMouseDown]) {
             [weak self] event in
             self?.dismissWindowsClickedOutside()
             return event
         }
-        globalKeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
+        globalKeyMonitor = eventMonitorDriver.addGlobal([.keyDown]) { [weak self] event in
             guard let self else { return }
             if event.keyCode == 53 {
                 _ = eventMonitorActions?.cancelSpeechIfActive()
@@ -95,7 +118,7 @@ final class AppWindowCoordinator {
             _ = dismissTranslationIfEscape(event)
             _ = dismissTextActionsIfEscape(event)
         }
-        localKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
+        localKeyMonitor = eventMonitorDriver.addLocal([.keyDown]) { [weak self] event in
             guard let self else { return event }
             if event.keyCode == 53 {
                 var handled = eventMonitorActions?.cancelSpeechIfActive() ?? false
@@ -117,7 +140,7 @@ final class AppWindowCoordinator {
 
     func removeEventMonitors() {
         for monitor in [globalMouseMonitor, localMouseMonitor, globalKeyMonitor, localKeyMonitor].compactMap({ $0 }) {
-            NSEvent.removeMonitor(monitor)
+            eventMonitorDriver.remove(monitor)
         }
         globalMouseMonitor = nil
         localMouseMonitor = nil
