@@ -31,6 +31,20 @@ struct MeowApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let serviceRegistry = AppServiceRegistry()
     private let mediaErrorPresenter = AppMediaErrorPresenter()
+    private lazy var authenticatorCoordinator = AppAuthenticatorCoordinator(
+        actions: AppAuthenticatorCoordinator.Actions(
+            authenticatorEnabled: { [weak self] in self?.viewModel.settings.authenticatorEnabled ?? false },
+            enableAuthenticator: { [weak self] in self?.viewModel.settings.authenticatorEnabled = true },
+            importOTPAuth: { [weak self] payload in
+                guard let self else { throw CancellationError() }
+                try self.authenticatorService.importOTPAuth(payload)
+            },
+            showAuthenticator: { [weak self] in self?.authenticatorService.showPanel() },
+            presentInvalidOTPAuth: { [weak self] in
+                self?.mediaErrorPresenter.presentScreenshotError(AuthenticatorError.invalidURL)
+            }
+        )
+    )
 
     private var settingsStore: SettingsStore { serviceRegistry.settingsStore }
     private var dockService: DockService { serviceRegistry.dockService }
@@ -942,10 +956,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.captureCoordinator.showPostCaptureActionsIfNeeded(for: artifact)
             },
             presentOTPAuthImport: { [weak self] payload in
-                self?.presentOTPAuthImport(payload)
+                self?.authenticatorCoordinator.handleOTPAuthImport(payload)
             },
             presentQRCodePayload: { [weak self] payload in
-                self?.presentQRCodePayload(payload)
+                self?.authenticatorCoordinator.presentQRCodeResult(payload)
             }
         )
     }
@@ -1049,66 +1063,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         alert.addButton(withTitle: L10n.actionOK)
         alert.runModal()
-    }
-
-    private func presentOTPAuthImport(_ payload: String) {
-        guard let parsed = OTPAuthURL.parse(payload) else {
-            mediaErrorPresenter.presentScreenshotError(AuthenticatorError.invalidURL)
-            return
-        }
-
-        let alert = NSAlert()
-        alert.messageText = L10n.screenshotQRImportOTPTitle
-        alert.informativeText = String(
-            format: L10n.screenshotQRImportOTPMessage,
-            parsed.issuer.isEmpty ? "-" : parsed.issuer,
-            parsed.account
-        )
-        alert.addButton(withTitle: L10n.screenshotQRImportOTPConfirm)
-        alert.addButton(withTitle: L10n.actionCancel)
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
-
-        do {
-            if !viewModel.settings.authenticatorEnabled {
-                viewModel.settings.authenticatorEnabled = true
-            }
-            try authenticatorService.importOTPAuth(payload)
-            authenticatorService.showPanel()
-        } catch {
-            let failure = NSAlert()
-            failure.alertStyle = .warning
-            failure.messageText = L10n.screenshotQRImportOTPFailed
-            failure.informativeText = error.localizedDescription
-            failure.addButton(withTitle: L10n.actionOK)
-            failure.runModal()
-        }
-    }
-
-    private func presentQRCodePayload(_ payload: String) {
-        let url = URL(string: payload)
-        let canOpen = url.map { ["http", "https"].contains($0.scheme?.lowercased() ?? "") } ?? false
-
-        let alert = NSAlert()
-        alert.messageText = L10n.screenshotQRResultTitle
-        alert.informativeText = payload
-        if canOpen {
-            alert.addButton(withTitle: L10n.screenshotQROpen)
-        }
-        alert.addButton(withTitle: L10n.actionMenuCopy)
-        alert.addButton(withTitle: L10n.actionCancel)
-        let response = alert.runModal()
-
-        if canOpen, response == .alertFirstButtonReturn, let url {
-            NSWorkspace.shared.open(url)
-            return
-        }
-
-        let copyResponse = canOpen ? NSApplication.ModalResponse.alertSecondButtonReturn : .alertFirstButtonReturn
-        if response == copyResponse {
-            let pasteboard = NSPasteboard.general
-            pasteboard.clearContents()
-            pasteboard.setString(payload, forType: .string)
-        }
     }
 
     private func showPreferences(section: PreferenceSection? = nil, animated: Bool = true) {
