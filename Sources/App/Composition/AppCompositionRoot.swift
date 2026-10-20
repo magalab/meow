@@ -740,6 +740,9 @@ final class AppCompositionRoot {
             stopRecording: { [weak self] in
                 await self?.recordingService.stop()
             },
+            recordingShutdownTimedOut: { [weak self] in
+                self?.mediaErrorPresenter.presentRecordingError(RecordingError.shutdownTimedOut)
+            },
             stopCameraOverlay: { [weak self] in
                 self?.cameraOverlayController.stop()
             },
@@ -805,8 +808,8 @@ final class AppCompositionRoot {
             shutdownUploads: { [weak self] in
                 await self?.fileUploadService.shutdown()
             },
-            replyToTermination: { sender in
-                sender.reply(toApplicationShouldTerminate: true)
+            replyToTermination: { sender, shouldTerminate in
+                sender.reply(toApplicationShouldTerminate: shouldTerminate)
             }
         )
     }
