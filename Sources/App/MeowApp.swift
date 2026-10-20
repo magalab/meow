@@ -54,6 +54,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var launchHistoryStore: LaunchHistoryStore { serviceRegistry.launchHistoryStore }
     private var autoLaunchService: AutoLaunchService { serviceRegistry.autoLaunchService }
     private lazy var hotkeyCoordinator = AppHotkeyCoordinator(hotkeyService: HotkeyService())
+    private lazy var launcherCommandRouter = AppLauncherCommandRouter(
+        actions: AppLauncherCommandRouter.Actions(
+            openPreferences: { [weak self] in self?.preferencesCoordinator.show() },
+            openAIChat: { [weak self] in self?.aiChatCoordinator.open($0) },
+            openAuthenticator: { [weak self] in
+                self?.launcherCoordinator.hide()
+                self?.authenticatorService.showPanel()
+            },
+            handleHealthCommand: { [weak self] in self?.healthReminderCoordinator.handle($0) },
+            handleScreenshotCommand: { [weak self] in self?.captureCoordinator.handle($0) },
+            handleRecordingCommand: { [weak self] in self?.recordingCoordinator.handle($0) },
+            handleWhiteboardCommand: { [weak self] in self?.whiteboardCoordinator.handle($0) },
+            handleKeepAwakeCommand: { [weak self] in self?.keepAwakeCommandCoordinator.handleCommand() }
+        )
+    )
     private lazy var hotkeyRouter = AppHotkeyRouter(actions: makeHotkeyRouterActions())
     private lazy var mediaCommandRouter = AppMediaCommandRouter(actions: makeMediaCommandRouterActions())
     private lazy var settingsCoordinator = AppSettingsCoordinator(actions: makeSettingsActions())
@@ -380,31 +395,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             clipboardStore: clipboardStore
         )
         launcherCoordinator.bindOutputCommands()
-        viewModel.onOpenPreferences = { [weak self] in
-            self?.preferencesCoordinator.show()
-        }
-        viewModel.onOpenAIChat = { [weak self] input in
-            self?.aiChatCoordinator.open(input)
-        }
-        viewModel.onOpenAuthenticator = { [weak self] in
-            self?.launcherCoordinator.hide()
-            self?.authenticatorService.showPanel()
-        }
-        viewModel.onHealthCommand = { [weak self] command in
-            self?.healthReminderCoordinator.handle(command)
-        }
-        viewModel.onScreenshotCommand = { [weak self] command in
-            self?.captureCoordinator.handle(command)
-        }
-        viewModel.onRecordingCommand = { [weak self] command in
-            self?.recordingCoordinator.handle(command)
-        }
-        viewModel.onWhiteboardCommand = { [weak self] command in
-            self?.whiteboardCoordinator.handle(command)
-        }
-        viewModel.onKeepAwakeCommand = { [weak self] in
-            self?.keepAwakeCommandCoordinator.handleCommand()
-        }
+        launcherCommandRouter.bind(to: viewModel)
         clipboardActionCoordinator.bindLauncherCommands(to: viewModel)
         keepAwakeService.onStateChanged = { [weak self] state in
             guard let self else { return }
