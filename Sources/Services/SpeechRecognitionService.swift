@@ -137,16 +137,32 @@ final class SpeechRecognitionService: ObservableObject {
     }
 
     func cancel() {
+        let taskToFinish = cancelActiveWork()
+        Task {
+            await taskToFinish?.value
+            await recognitionEngine.unload()
+        }
+    }
+
+    func shutdown() async {
+        let taskToFinish = cancelActiveWork()
+        await taskToFinish?.value
+        await recognitionEngine.unload()
+    }
+
+    private func cancelActiveWork() -> Task<Void, Never>? {
         isHotkeyHeld = false
         recognitionTaskID = nil
-        recognitionTask?.cancel()
+        let taskToFinish = recognitionTask
+        taskToFinish?.cancel()
         recognitionTask = nil
         resetTask?.cancel()
-        Task { await recognitionEngine.unload() }
+        resetTask = nil
         stopAudioEngine()
         if state != .idle {
             setTransientState(.cancelled)
         }
+        return taskToFinish
     }
 
     func unloadModel() {

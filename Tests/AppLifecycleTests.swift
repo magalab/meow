@@ -134,6 +134,47 @@ func lifecycleTerminationWaitsForCaptureShutdown() async {
 }
 
 @MainActor
+@Test("Termination awaits loaded speech recognition teardown before replying")
+func lifecycleTerminationWaitsForSpeechRecognitionShutdown() async {
+    var calls: [String] = []
+    var shutdownContinuation: CheckedContinuation<Void, Never>?
+    var replyContinuation: CheckedContinuation<Void, Never>?
+    let coordinator = AppLifecycleCoordinator(
+        actions: makeLifecycleTestActions(
+            cancelUpload: { calls.append("cancelUpload") },
+            speechRecognitionServiceLoaded: { true },
+            shutdownSpeechRecognition: {
+                calls.append("shutdownSpeechRecognition")
+                await withCheckedContinuation { shutdownContinuation = $0 }
+            },
+            stopKeepAwake: { calls.append("keepAwake") },
+            shutdownUploads: { calls.append("uploads") },
+            replyToTermination: { _, _ in
+                calls.append("reply")
+                replyContinuation?.resume()
+                replyContinuation = nil
+            }
+        ),
+        startupActions: noOpStartupActions(),
+        workspaceNotificationCenter: NotificationCenter()
+    )
+
+    let terminationTask = Task {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            replyContinuation = continuation
+            #expect(coordinator.applicationShouldTerminate(NSApplication.shared) == .terminateLater)
+        }
+    }
+    for _ in 0..<10 where shutdownContinuation == nil { await Task.yield() }
+
+    #expect(calls == ["cancelUpload", "shutdownSpeechRecognition"])
+    shutdownContinuation?.resume()
+    await terminationTask.value
+
+    #expect(calls == ["cancelUpload", "shutdownSpeechRecognition", "keepAwake", "uploads", "reply"])
+}
+
+@MainActor
 @Test("Termination waits for active recording teardown before allowing the app to exit")
 func lifecycleTerminationWaitsForRecordingStop() async {
     var calls: [String] = []
@@ -334,6 +375,7 @@ private func makeLifecycleTestActions(
     closePinnedImages: @escaping @MainActor () -> Void = {},
     speechRecognitionServiceLoaded: @escaping @MainActor () -> Bool = { false },
     cancelSpeechRecognition: @escaping @MainActor () -> Void = {},
+    shutdownSpeechRecognition: @escaping @MainActor () async -> Void = {},
     hideSpeechOverlay: @escaping @MainActor () -> Void = {},
     stopKeystrokeVisualizer: @escaping @MainActor () -> Void = {},
     systemMonitorServiceLoaded: @escaping @MainActor () -> Bool = { false },
@@ -371,6 +413,7 @@ private func makeLifecycleTestActions(
         closePinnedImages: closePinnedImages,
         speechRecognitionServiceLoaded: speechRecognitionServiceLoaded,
         cancelSpeechRecognition: cancelSpeechRecognition,
+        shutdownSpeechRecognition: shutdownSpeechRecognition,
         hideSpeechOverlay: hideSpeechOverlay,
         stopKeystrokeVisualizer: stopKeystrokeVisualizer,
         systemMonitorServiceLoaded: systemMonitorServiceLoaded,

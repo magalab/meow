@@ -776,6 +776,11 @@ final class AppCompositionRoot {
                 self?.speechRecognitionService.cancel()
                 #endif
             },
+            shutdownSpeechRecognition: { [weak self] in
+                #if MEOW_VOICE
+                await self?.speechRecognitionService.shutdown()
+                #endif
+            },
             hideSpeechOverlay: { [weak self] in
                 #if MEOW_VOICE
                 self?.speechOverlayController.hide()
