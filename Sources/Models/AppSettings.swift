@@ -1,34 +1,5 @@
 import Foundation
 
-enum ClipboardRetention: Int, Codable, CaseIterable, Identifiable, Sendable {
-    case day = 1
-    case week = 7
-    case month = 30
-    case threeMonths = 90
-    case sixMonths = 180
-    case year = 365
-    case forever = -1
-
-    var id: Int { rawValue }
-
-    var displayName: String {
-        switch self {
-        case .day: return L10n.clipboardRetentionDay
-        case .week: return L10n.clipboardRetentionWeek
-        case .month: return L10n.clipboardRetentionMonth
-        case .threeMonths: return L10n.clipboardRetentionThreeMonths
-        case .sixMonths: return L10n.clipboardRetentionSixMonths
-        case .year: return L10n.clipboardRetentionYear
-        case .forever: return L10n.clipboardRetentionForever
-        }
-    }
-
-    var cutoffDate: Date? {
-        guard self != .forever else { return nil }
-        return Date().addingTimeInterval(-TimeInterval(rawValue) * 86_400)
-    }
-}
-
 enum DateIconStyle: String, Codable, CaseIterable, Identifiable {
     case outlinedDay
     case roundedOutlineDay
@@ -119,11 +90,27 @@ enum AppTheme: String, Codable, CaseIterable, Identifiable, Sendable {
 
 struct AppSettings: Codable {
     var autoLaunch: Bool
-    var clipboardHistoryEnabled: Bool
-    var clipboardShowImagePreviews: Bool
-    var clipboardRetention: ClipboardRetention
-    var clipboardDisabledAppBundleIDs: [String]
-    var clipboardImageStorageLimitMB: Int
+    var clipboard: ClipboardSettings
+    var clipboardHistoryEnabled: Bool {
+        get { clipboard.historyEnabled }
+        set { clipboard.historyEnabled = newValue }
+    }
+    var clipboardShowImagePreviews: Bool {
+        get { clipboard.showImagePreviews }
+        set { clipboard.showImagePreviews = newValue }
+    }
+    var clipboardRetention: ClipboardRetention {
+        get { clipboard.retention }
+        set { clipboard.retention = newValue }
+    }
+    var clipboardDisabledAppBundleIDs: [String] {
+        get { clipboard.disabledAppBundleIDs }
+        set { clipboard.disabledAppBundleIDs = newValue }
+    }
+    var clipboardImageStorageLimitMB: Int {
+        get { clipboard.imageStorageLimitMB }
+        set { clipboard.imageStorageLimitMB = max(128, newValue) }
+    }
     var showStatusItem: Bool
     var showDockIcon: Bool
     var hotkeyKeyCode: UInt32
@@ -210,11 +197,13 @@ struct AppSettings: Codable {
         keystrokeVisualizerDisplayMode: KeystrokeDisplayMode = .shortcutsAndSpecialKeys
     ) {
         self.autoLaunch = autoLaunch
-        self.clipboardHistoryEnabled = clipboardHistoryEnabled
-        self.clipboardShowImagePreviews = clipboardShowImagePreviews
-        self.clipboardRetention = clipboardRetention
-        self.clipboardDisabledAppBundleIDs = clipboardDisabledAppBundleIDs
-        self.clipboardImageStorageLimitMB = max(128, clipboardImageStorageLimitMB)
+        self.clipboard = ClipboardSettings(
+            historyEnabled: clipboardHistoryEnabled,
+            showImagePreviews: clipboardShowImagePreviews,
+            retention: clipboardRetention,
+            disabledAppBundleIDs: clipboardDisabledAppBundleIDs,
+            imageStorageLimitMB: clipboardImageStorageLimitMB
+        )
         self.showStatusItem = showStatusItem
         self.showDockIcon = showDockIcon
         self.hotkeyKeyCode = hotkeyKeyCode
@@ -321,20 +310,19 @@ extension AppSettings {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         autoLaunch = try container.decodeIfPresent(Bool.self, forKey: .autoLaunch) ?? Self.default.autoLaunch
-        clipboardHistoryEnabled = try container.decodeIfPresent(Bool.self, forKey: .clipboardHistoryEnabled) ?? Self.default.clipboardHistoryEnabled
-        clipboardShowImagePreviews = try container.decodeIfPresent(Bool.self, forKey: .clipboardShowImagePreviews) ?? Self.default.clipboardShowImagePreviews
-        clipboardRetention = try container.decodeIfPresent(
-            ClipboardRetention.self,
-            forKey: .clipboardRetention
-        ) ?? Self.default.clipboardRetention
-        clipboardDisabledAppBundleIDs = try container.decodeIfPresent(
-            [String].self,
-            forKey: .clipboardDisabledAppBundleIDs
-        ) ?? Self.default.clipboardDisabledAppBundleIDs
-        clipboardImageStorageLimitMB = max(
-            128,
-            try container.decodeIfPresent(Int.self, forKey: .clipboardImageStorageLimitMB)
-                ?? Self.default.clipboardImageStorageLimitMB
+        clipboard = ClipboardSettings(
+            historyEnabled: try container.decodeIfPresent(Bool.self, forKey: .clipboardHistoryEnabled)
+                ?? ClipboardSettings.default.historyEnabled,
+            showImagePreviews: try container.decodeIfPresent(Bool.self, forKey: .clipboardShowImagePreviews)
+                ?? ClipboardSettings.default.showImagePreviews,
+            retention: try container.decodeIfPresent(ClipboardRetention.self, forKey: .clipboardRetention)
+                ?? ClipboardSettings.default.retention,
+            disabledAppBundleIDs: try container.decodeIfPresent(
+                [String].self,
+                forKey: .clipboardDisabledAppBundleIDs
+            ) ?? ClipboardSettings.default.disabledAppBundleIDs,
+            imageStorageLimitMB: try container.decodeIfPresent(Int.self, forKey: .clipboardImageStorageLimitMB)
+                ?? ClipboardSettings.default.imageStorageLimitMB
         )
         showStatusItem = try container.decodeIfPresent(Bool.self, forKey: .showStatusItem) ?? Self.default.showStatusItem
         showDockIcon = try container.decodeIfPresent(Bool.self, forKey: .showDockIcon) ?? Self.default.showDockIcon
@@ -433,5 +421,50 @@ extension AppSettings {
             KeystrokeDisplayMode.self,
             forKey: .keystrokeVisualizerDisplayMode
         ) ?? Self.default.keystrokeVisualizerDisplayMode
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(autoLaunch, forKey: .autoLaunch)
+        try container.encode(clipboardHistoryEnabled, forKey: .clipboardHistoryEnabled)
+        try container.encode(clipboardShowImagePreviews, forKey: .clipboardShowImagePreviews)
+        try container.encode(clipboardRetention, forKey: .clipboardRetention)
+        try container.encode(clipboardDisabledAppBundleIDs, forKey: .clipboardDisabledAppBundleIDs)
+        try container.encode(clipboardImageStorageLimitMB, forKey: .clipboardImageStorageLimitMB)
+        try container.encode(showStatusItem, forKey: .showStatusItem)
+        try container.encode(showDockIcon, forKey: .showDockIcon)
+        try container.encode(hotkeyKeyCode, forKey: .hotkeyKeyCode)
+        try container.encode(hotkeyModifiers, forKey: .hotkeyModifiers)
+        try container.encode(finderHotkeyKeyCode, forKey: .finderHotkeyKeyCode)
+        try container.encode(finderHotkeyModifiers, forKey: .finderHotkeyModifiers)
+        try container.encode(translateHotkeyKeyCode, forKey: .translateHotkeyKeyCode)
+        try container.encode(translateHotkeyModifiers, forKey: .translateHotkeyModifiers)
+        try container.encode(textActionsHotkeyKeyCode, forKey: .textActionsHotkeyKeyCode)
+        try container.encode(textActionsHotkeyModifiers, forKey: .textActionsHotkeyModifiers)
+        try container.encode(language, forKey: .language)
+        try container.encode(theme, forKey: .theme)
+        try container.encode(dateIconStyle, forKey: .dateIconStyle)
+        try container.encode(dockIconStyle, forKey: .dockIconStyle)
+        try container.encode(ai, forKey: .ai)
+        try container.encode(fileHosting, forKey: .fileHosting)
+        try container.encode(screenshot, forKey: .screenshot)
+        try container.encode(recording, forKey: .recording)
+        try container.encode(whiteboard, forKey: .whiteboard)
+        try container.encode(speech, forKey: .speech)
+        try container.encode(healthReminder, forKey: .healthReminder)
+        try container.encode(keepAwake, forKey: .keepAwake)
+        try container.encode(authenticatorEnabled, forKey: .authenticatorEnabled)
+        try container.encode(authenticatorICloudSyncEnabled, forKey: .authenticatorICloudSyncEnabled)
+        try container.encode(systemMonitor, forKey: .systemMonitor)
+        try container.encode(keystrokeVisualizerEnabled, forKey: .keystrokeVisualizerEnabled)
+        try container.encode(keystrokeVisualizerShowModifierOnly, forKey: .keystrokeVisualizerShowModifierOnly)
+        try container.encode(keystrokeVisualizerOverlayPosition, forKey: .keystrokeVisualizerOverlayPosition)
+        try container.encodeIfPresent(keystrokeVisualizerOverlayPoint, forKey: .keystrokeVisualizerOverlayPoint)
+        try container.encode(keystrokeVisualizerStyle, forKey: .keystrokeVisualizerStyle)
+        try container.encode(keystrokeVisualizerDisplayDuration, forKey: .keystrokeVisualizerDisplayDuration)
+        try container.encode(keystrokeVisualizerCustomDisplayDuration, forKey: .keystrokeVisualizerCustomDisplayDuration)
+        try container.encode(keystrokeVisualizerOpacity, forKey: .keystrokeVisualizerOpacity)
+        try container.encode(keystrokeVisualizerHistoryCount, forKey: .keystrokeVisualizerHistoryCount)
+        try container.encode(keystrokeVisualizerDisplayMode, forKey: .keystrokeVisualizerDisplayMode)
     }
 }
