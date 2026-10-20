@@ -424,10 +424,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         viewModel.load()
 
-        textServiceProvider.onProcessText = { [weak self] text in
-            self?.textActionCoordinator.presentTextActions(for: text)
-        }
-        NSApp.servicesProvider = textServiceProvider
+        textActionCoordinator.installServicesProvider(textServiceProvider)
     }
 
     private func applyInitialSettings() {
