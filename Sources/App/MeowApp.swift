@@ -109,7 +109,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             statusItemButton: { [weak self] in self?.statusItemService.statusItemButton },
             theme: { [weak self] in self?.viewModel.settings.theme ?? .gingerCat },
             handleHealthCommand: { [weak self] in self?.healthReminderCoordinator.handle($0) },
-            openHealthPreferences: { [weak self] in self?.showPreferences(section: .health) }
+            openHealthPreferences: { [weak self] in self?.preferencesCoordinator.show(section: .health) }
         )
     )
     private lazy var keepAwakeCommandCoordinator = AppKeepAwakeCommandCoordinator(
@@ -250,7 +250,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             clipboardStore: clipboardStore
         )
         service.onNeedsModel = { [weak self] in
-            self?.showPreferences(section: .speech)
+            self?.preferencesCoordinator.show(section: .speech)
         }
         speechOverlayController.connect(to: service)
         service.apply(settings: viewModel.settings.speech)
@@ -279,7 +279,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         launcherCoordinator: launcherCoordinator,
         windowCoordinator: windowCoordinator,
         actions: AppAIChatCoordinator.Actions(
-            showAIPreferences: { [weak self] in self?.showPreferences(section: .ai) }
+            showAIPreferences: { [weak self] in self?.preferencesCoordinator.show(section: .ai) }
         )
     )
     private lazy var lifecycleCoordinator = AppLifecycleCoordinator(
@@ -323,6 +323,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             showRecordingTrimmer: { [weak self] url in
                 self?.recordingCoordinator.showRecordingTrimmer(for: url)
             },
+            hideLauncher: { [weak self] in self?.launcherCoordinator.hide() },
             speechModelStore: speechModelStore,
             speechHistoryStore: speechHistoryStore,
             speechRecognitionService: speechRecognitionService
@@ -358,7 +359,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             },
             showRecordingTrimmer: { [weak self] url in
                 self?.recordingCoordinator.showRecordingTrimmer(for: url)
-            }
+            },
+            hideLauncher: { [weak self] in self?.launcherCoordinator.hide() }
         )
         return AppPreferencesCoordinator(windowCoordinator: windowCoordinator, dependencies: dependencies)
         #endif
@@ -377,7 +379,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             clipboardStore: clipboardStore
         )
         viewModel.onOpenPreferences = { [weak self] in
-            self?.showPreferences()
+            self?.preferencesCoordinator.show()
         }
         viewModel.onOpenAIChat = { [weak self] input in
             self?.aiChatCoordinator.open(input)
@@ -578,7 +580,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.launcherCoordinator.toggle()
             },
             openPreferences: { [weak self] in
-                self?.showPreferences()
+                self?.preferencesCoordinator.show()
             },
             showCalendar: { [weak self] in
                 self?.calendarCoordinator.togglePopover()
@@ -1053,7 +1055,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     false
                     #endif
                 },
-                showPreferences: { [weak self] in self?.showPreferences(animated: true) }
+                showPreferences: { [weak self] in self?.preferencesCoordinator.show(animated: true) }
             )
         )
     }
@@ -1070,13 +1072,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         alert.runModal()
     }
 
-    private func showPreferences(section: PreferenceSection? = nil, animated: Bool = true) {
-        launcherCoordinator.hide()
-        preferencesCoordinator.show(section: section, animated: animated)
-    }
-
     func openPreferencesFromCommand() {
-        showPreferences(animated: true)
+        preferencesCoordinator.show(animated: true)
     }
 
 }

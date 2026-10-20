@@ -19,6 +19,7 @@ final class AppPreferencesCoordinator {
         let recordingStore: RecordingStore
         let makeCaptureHistoryView: @MainActor (AppTheme) -> CaptureHistoryView
         let showRecordingTrimmer: @MainActor (URL) -> Void
+        let hideLauncher: @MainActor () -> Void
         #if MEOW_VOICE
         let speechModelStore: SpeechModelStore
         let speechHistoryStore: SpeechHistoryStore
@@ -35,6 +36,7 @@ final class AppPreferencesCoordinator {
     }
 
     func show(section: PreferenceSection? = nil, animated: Bool = true) {
+        dependencies.hideLauncher()
         if let section {
             dependencies.navigation.selectedSection = section
         }
