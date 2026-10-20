@@ -77,6 +77,11 @@ final class AppCaptureCoordinator {
         scrollingCaptureHUDController.close()
     }
 
+    func shutdown() async {
+        cancel()
+        await captureTask?.value
+    }
+
     func handle(_ command: ScreenshotCommand) {
         switch command {
         case .captureRegion:
@@ -155,6 +160,7 @@ final class AppCaptureCoordinator {
                     showPostCaptureActionsIfNeeded(for: artifact)
                 }
             } catch {
+                guard !Task.isCancelled else { return }
                 if uploadAfterCapture {
                     actions.presentUploadError(error)
                 } else {
@@ -249,6 +255,7 @@ final class AppCaptureCoordinator {
                     showPostCaptureActionsIfNeeded(for: artifact)
                 }
             } catch {
+                guard !Task.isCancelled else { return }
                 actions.presentScreenshotError(error)
             }
         }
