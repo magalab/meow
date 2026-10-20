@@ -3,9 +3,9 @@ import Foundation
 import ImageIO
 import UniformTypeIdentifiers
 
-// Safe to share across detached clipboard tasks: configuration is immutable,
-// each operation uses UUID-based file names, and writes target separate files.
-public final class ClipboardImageCache: @unchecked Sendable {
+// Immutable configuration and UUID-based file names make detached clipboard
+// tasks safe to run concurrently.
+public final class ClipboardImageCache: Sendable {
     public static let shared = ClipboardImageCache()
 
     private let pendingImagesDirectory: URL
