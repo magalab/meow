@@ -1,4 +1,5 @@
 import MeowClipboard
+import MeowCapture
 import AppKit
 @preconcurrency import ApplicationServices
 import AVFoundation
@@ -1283,7 +1284,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let alert = NSAlert()
         alert.alertStyle = .warning
         alert.messageText = L10n.screenshotErrorTitle
-        alert.informativeText = error.localizedDescription
+        if let captureError = error as? CaptureStoreError,
+           case .imageEncodingFailed = captureError
+        {
+            alert.informativeText = L10n.screenshotErrorEncoding
+        } else {
+            alert.informativeText = error.localizedDescription
+        }
         alert.addButton(withTitle: L10n.actionOK)
         if case .permissionDenied? = error as? ScreenCaptureError {
             alert.addButton(withTitle: L10n.screenshotOpenSettings)

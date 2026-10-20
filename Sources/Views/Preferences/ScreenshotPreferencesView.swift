@@ -1,4 +1,5 @@
 import AppKit
+import MeowCapture
 import SwiftUI
 
 private enum ScreenshotPreferencePage: String, CaseIterable, Identifiable {

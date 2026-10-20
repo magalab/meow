@@ -244,7 +244,15 @@ final class AppCaptureCoordinator {
         var externalURL: URL?
 
         if settings.outputMode == .save || settings.outputMode == .copyAndSave {
-            externalURL = try captureStore.saveExternal(image: image, settings: settings)
+            externalURL = try captureStore.saveExternal(
+                image: image,
+                options: CaptureExportOptions(
+                    saveDirectory: settings.saveDirectory,
+                    fileNameTemplate: settings.fileNameTemplate,
+                    imageFormat: settings.imageFormat,
+                    jpegQuality: settings.jpegQuality
+                )
+            )
         }
 
         let artifact: CaptureArtifact
@@ -398,6 +406,7 @@ final class AppCaptureCoordinator {
                 isScrolling: artifact.kind == .scrolling
             )
         case .save:
+            let screenshotSettings = actions.settings().screenshot
             do {
                 guard let image = NSImage(contentsOf: artifact.imageURL),
                       let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil)
@@ -406,7 +415,12 @@ final class AppCaptureCoordinator {
                 }
                 _ = try captureStore.saveExternal(
                     image: cgImage,
-                    settings: actions.settings().screenshot
+                    options: CaptureExportOptions(
+                        saveDirectory: screenshotSettings.saveDirectory,
+                        fileNameTemplate: screenshotSettings.fileNameTemplate,
+                        imageFormat: screenshotSettings.imageFormat,
+                        jpegQuality: screenshotSettings.jpegQuality
+                    )
                 )
             } catch {
                 actions.presentScreenshotError(error)
