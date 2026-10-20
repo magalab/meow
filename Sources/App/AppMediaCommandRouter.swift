@@ -1,4 +1,5 @@
 import MeowClipboard
+import MeowRecording
 import AppKit
 import ApplicationServices
 
@@ -26,6 +27,7 @@ struct AppMediaCommandRouter {
         let restoreWhiteboardAfterRecording: @MainActor () -> Void
         let activeScreen: @MainActor () -> NSScreen?
         let setSystemAudioMode: @MainActor () -> Void
+        let updateRecordingState: @MainActor (RecordingState, TimeInterval) -> Void
         let presentRecordingError: @MainActor (Error) -> Void
     }
 
@@ -65,6 +67,7 @@ struct AppMediaCommandRouter {
             restoreWhiteboard: actions.restoreWhiteboardAfterRecording,
             activeScreen: actions.activeScreen,
             setSystemAudioMode: actions.setSystemAudioMode,
+            updateRecordingState: actions.updateRecordingState,
             presentError: actions.presentRecordingError
         )
     }
