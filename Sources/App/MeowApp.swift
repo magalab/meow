@@ -35,6 +35,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var autoLaunchService: AutoLaunchService { serviceRegistry.autoLaunchService }
     private lazy var hotkeyCoordinator = AppHotkeyCoordinator(hotkeyService: HotkeyService())
     private lazy var hotkeyRouter = AppHotkeyRouter(actions: makeHotkeyRouterActions())
+    private lazy var mediaCommandRouter = AppMediaCommandRouter(actions: makeMediaCommandRouterActions())
     private lazy var settingsCoordinator = AppSettingsCoordinator(actions: makeSettingsActions())
     private var keystrokeVisualizerService: KeystrokeVisualizerService {
         serviceRegistry.keystrokeVisualizerService
@@ -101,7 +102,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             pinnedImageController: pinnedImageController,
             postCaptureActionsController: postCaptureActionsController,
             windowCoordinator: windowCoordinator,
-            actions: makeCaptureActions()
+            actions: mediaCommandRouter.makeCaptureActions()
         )
     }()
 
@@ -136,7 +137,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         cameraOverlayController: cameraOverlayController,
         screenMagnifierController: screenMagnifierController,
         windowCoordinator: windowCoordinator,
-        actions: makeRecordingActions()
+        actions: mediaCommandRouter.makeRecordingActions()
     )
     private var recordingNotificationService: RecordingNotificationService {
         serviceRegistry.recordingNotificationService
@@ -680,17 +681,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
     }
 
-    private func makeCaptureActions() -> AppCaptureCoordinator.Actions {
-        AppCaptureCoordinator.Actions(
+    private func makeMediaCommandRouterActions() -> AppMediaCommandRouter.Actions {
+        AppMediaCommandRouter.Actions(
             settings: { [weak self] in self?.viewModel.settings ?? .default },
             hideTransientPanels: { [weak self] in
                 self?.hideLauncher()
                 self?.hideTranslationPanel()
             },
-            prepareWhiteboard: { [weak self] in
+            prepareWhiteboardForCapture: { [weak self] in
                 self?.prepareWhiteboardForCapture() ?? []
             },
-            restoreWhiteboard: { [weak self] in
+            restoreWhiteboardAfterCapture: { [weak self] in
                 self?.whiteboardFeatureController.restoreAfterScreenCapture()
             },
             upload: { [weak self] url in
@@ -729,6 +730,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             },
             sendImageFileToWhiteboard: { [weak self] url, sourceName in
                 self?.sendImageFileToWhiteboard(at: url, sourceName: sourceName)
+            },
+            captureIsBusy: { [weak self] in self?.captureIsBusy ?? false },
+            prepareWhiteboardForRecording: { [weak self] in
+                self?.prepareWhiteboardForRecording() ?? []
+            },
+            restoreWhiteboardAfterRecording: { [weak self] in
+                self?.restoreWhiteboardAfterRecording()
+            },
+            activeScreen: { [weak self] in self?.activeScreen() },
+            setSystemAudioMode: { [weak self] in
+                self?.viewModel.settings.recording.audioMode = .system
+            },
+            presentRecordingError: { [weak self] error in
+                self?.presentRecordingError(error)
             }
         )
     }
@@ -845,32 +860,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             },
             replyToTermination: { sender in
                 sender.reply(toApplicationShouldTerminate: true)
-            }
-        )
-    }
-
-    private func makeRecordingActions() -> AppRecordingCoordinator.Actions {
-        AppRecordingCoordinator.Actions(
-            settings: { [weak self] in self?.viewModel.settings ?? .default },
-            captureIsBusy: { [weak self] in self?.captureIsBusy ?? false },
-            hideTransientPanels: { [weak self] in
-                self?.hideLauncher()
-                self?.hideTranslationPanel()
-            },
-            prepareWhiteboard: { [weak self] in
-                self?.prepareWhiteboardForRecording() ?? []
-            },
-            restoreWhiteboard: { [weak self] in
-                self?.restoreWhiteboardAfterRecording()
-            },
-            activeScreen: { [weak self] in
-                self?.activeScreen()
-            },
-            setSystemAudioMode: { [weak self] in
-                self?.viewModel.settings.recording.audioMode = .system
-            },
-            presentError: { [weak self] error in
-                self?.presentRecordingError(error)
             }
         )
     }
