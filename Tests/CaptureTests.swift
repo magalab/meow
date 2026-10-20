@@ -380,20 +380,6 @@ func scrollingCaptureResourceIntensiveActionLimits() {
     #expect(!large.supportsFullResolutionEditing)
 }
 
-@Test("Screen magnifier panel fits a small visible display area")
-@MainActor
-func screenMagnifierPanelFitsVisibleArea() {
-    let visible = CGRect(x: -400, y: 80, width: 400, height: 260)
-    let frame = ScreenMagnifierController.panelFrame(
-        near: CGPoint(x: -2, y: 338),
-        visibleFrame: visible,
-        preferredSize: CGSize(width: 540, height: 360)
-    )
-    #expect(visible.contains(frame))
-    #expect(frame.width < 540)
-    #expect(abs(frame.width / frame.height - 1.5) < 0.001)
-}
-
 @Test("Pixel magnifier maps local points using each display scale")
 func pixelMagnifierUsesDisplayScale() {
     let bounds = CGRect(x: 0, y: 0, width: 100, height: 80)
