@@ -220,52 +220,6 @@ func captureEditorUndoRedo() {
     #expect(model.commands == [command])
 }
 
-@Test("Capture editor crop and resize produce requested dimensions")
-func captureEditorCropAndResize() throws {
-    let source = makeTestImage(width: 100, height: 80)
-    let output = try CaptureEditorRenderer.render(
-        source: source,
-        commands: [],
-        cropRect: CGRect(x: 10, y: 10, width: 50, height: 40),
-        outputSize: CGSize(width: 200, height: 160)
-    )
-
-    #expect(output.width == 200)
-    #expect(output.height == 160)
-}
-
-@Test("Capture editor annotations are flattened into exported pixels")
-func captureEditorFlattensAnnotations() throws {
-    let source = makeTestImage(width: 80, height: 60)
-    let output = try CaptureEditorRenderer.render(
-        source: source,
-        commands: [
-            .rectangle(
-                rect: CGRect(x: 10, y: 10, width: 40, height: 30),
-                color: .red,
-                width: 6
-            ),
-        ],
-        cropRect: nil
-    )
-
-    #expect(imageBytes(output) != imageBytes(source))
-}
-
-@Test("Capture editor mosaic destructively changes exported pixels")
-func captureEditorMosaicIsDestructive() throws {
-    let source = makeCheckerboardImage(width: 64, height: 64)
-    let output = try CaptureEditorRenderer.render(
-        source: source,
-        commands: [
-            .mosaic(rect: CGRect(x: 0, y: 0, width: 64, height: 64)),
-        ],
-        cropRect: nil
-    )
-
-    #expect(imageBytes(output) != imageBytes(source))
-}
-
 @Test("OCR search index removes OTPAuth payloads")
 @MainActor
 func captureSearchIndexExcludesOTPAuth() {

@@ -1,83 +1,30 @@
 import AppKit
 import Foundation
+import MeowCapture
 
-enum CaptureEditorTool: String, CaseIterable, Identifiable {
-    case crop
-    case rectangle
-    case ellipse
-    case arrow
-    case pen
-    case text
-    case number
-    case highlight
-    case mosaic
-
-    var id: String { rawValue }
-
-    var symbol: String {
-        switch self {
-        case .crop: return "crop"
-        case .rectangle: return "rectangle"
-        case .ellipse: return "circle"
-        case .arrow: return "arrow.up.right"
-        case .pen: return "pencil.tip"
-        case .text: return "textformat"
-        case .number: return "1.circle"
-        case .highlight: return "highlighter"
-        case .mosaic: return "square.grid.3x3.fill"
-        }
-    }
-
+extension CaptureEditorTool {
     var displayName: String {
         switch self {
-        case .crop: return L10n.editorToolCrop
-        case .rectangle: return L10n.editorToolRectangle
-        case .ellipse: return L10n.editorToolEllipse
-        case .arrow: return L10n.editorToolArrow
-        case .pen: return L10n.editorToolPen
-        case .text: return L10n.editorToolText
-        case .number: return L10n.editorToolNumber
-        case .highlight: return L10n.editorToolHighlight
-        case .mosaic: return L10n.editorToolMosaic
+        case .crop: L10n.editorToolCrop
+        case .rectangle: L10n.editorToolRectangle
+        case .ellipse: L10n.editorToolEllipse
+        case .arrow: L10n.editorToolArrow
+        case .pen: L10n.editorToolPen
+        case .text: L10n.editorToolText
+        case .number: L10n.editorToolNumber
+        case .highlight: L10n.editorToolHighlight
+        case .mosaic: L10n.editorToolMosaic
         }
     }
 }
-struct CaptureEditorColor: Codable, Equatable, Sendable {
-    var red: Double
-    var green: Double
-    var blue: Double
-    var alpha: Double
 
-    init(_ color: NSColor) {
-        let converted = color.usingColorSpace(.deviceRGB) ?? color
-        red = converted.redComponent
-        green = converted.greenComponent
-        blue = converted.blueComponent
-        alpha = converted.alphaComponent
+extension CaptureEditorRenderError: LocalizedError {
+    public var errorDescription: String? {
+        switch self {
+        case .contextCreationFailed: L10n.editorErrorContext
+        case .imageCreationFailed: L10n.editorErrorImage
+        }
     }
-
-    var nsColor: NSColor {
-        NSColor(
-            deviceRed: red,
-            green: green,
-            blue: blue,
-            alpha: alpha
-        )
-    }
-
-    static let red = CaptureEditorColor(.systemRed)
-    static let yellow = CaptureEditorColor(.systemYellow)
-}
-
-enum CaptureEditorCommand: Equatable, Sendable {
-    case rectangle(rect: CGRect, color: CaptureEditorColor, width: CGFloat)
-    case ellipse(rect: CGRect, color: CaptureEditorColor, width: CGFloat)
-    case arrow(start: CGPoint, end: CGPoint, color: CaptureEditorColor, width: CGFloat)
-    case pen(points: [CGPoint], color: CaptureEditorColor, width: CGFloat)
-    case text(origin: CGPoint, text: String, color: CaptureEditorColor, fontSize: CGFloat)
-    case number(center: CGPoint, value: Int, color: CaptureEditorColor, radius: CGFloat)
-    case highlight(rect: CGRect, color: CaptureEditorColor)
-    case mosaic(rect: CGRect)
 }
 
 @MainActor
