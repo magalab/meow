@@ -732,8 +732,10 @@ final class AppCompositionRoot {
             cancelRecording: { [weak self] in
                 self?.recordingCoordinator.cancel()
             },
-            recordingServiceIsActive: { [weak self] in
-                self?.recordingService.state.isActive == true
+            recordingServiceNeedsStop: { [weak self] in
+                guard let self else { return false }
+                return self.recordingService.state.isActive
+                    || self.recordingService.state == .finishing
             },
             stopRecording: { [weak self] in
                 await self?.recordingService.stop()

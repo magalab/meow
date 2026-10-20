@@ -550,7 +550,10 @@ final class AppRecordingCoordinator {
     }
 
     private var canStartRecording: Bool {
-        recordingTask == nil && !actions.captureIsBusy() && recordingService.state.isActive == false
+        recordingTask == nil
+            && !actions.captureIsBusy()
+            && !recordingService.isStopping
+            && recordingService.state.isActive == false
     }
 
     private func applicationCandidates(from session: CaptureSession) -> [SCRunningApplication] {
