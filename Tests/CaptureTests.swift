@@ -46,6 +46,53 @@ func screenshotFileNameTemplateExpansion() {
     )
 }
 
+@Test("Capture store loads and rewrites legacy history metadata")
+@MainActor
+func captureStoreLegacyHistoryCompatibility() throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("meow-capture-legacy-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let id = UUID()
+    let imageURL = directory.appendingPathComponent("legacy.png")
+    let thumbnailURL = directory.appendingPathComponent("legacy-thumb.png")
+    try Data([1, 2, 3]).write(to: imageURL)
+    try Data([4, 5, 6]).write(to: thumbnailURL)
+    let legacyMetadata = Data(
+        """
+        [{
+          "id": "\(id.uuidString)",
+          "kind": "region",
+          "createdAt": 790000000,
+          "imageURL": "\(imageURL.absoluteString)",
+          "thumbnailURL": "\(thumbnailURL.absoluteString)",
+          "width": 1280,
+          "height": 720
+        }]
+        """.utf8
+    )
+    try legacyMetadata.write(to: directory.appendingPathComponent("index.json"))
+
+    let store = CaptureStore(capturesDirectory: directory)
+    let artifact = try #require(store.artifacts.first)
+    #expect(store.artifacts.count == 1)
+    #expect(artifact.id == id)
+    #expect(artifact.kind == .region)
+    #expect(artifact.width == 1280)
+    #expect(artifact.height == 720)
+    #expect(artifact.ocrText == nil)
+
+    store.applyRetention(historyLimit: 100, retentionDays: 0, maxStorageMB: 0)
+    let rewritten = try Data(contentsOf: directory.appendingPathComponent("index.json"))
+    let records = try #require(JSONSerialization.jsonObject(with: rewritten) as? [[String: Any]])
+    #expect(records.count == 1)
+    #expect(Set(try #require(records.first).keys) == [
+        "id", "kind", "createdAt", "imageURL", "thumbnailURL", "width", "height",
+    ])
+    #expect(try JSONDecoder().decode([CaptureArtifact].self, from: rewritten) == [artifact])
+}
+
 @Test("Region selection converts bottom-left points to top-left pixels")
 @MainActor
 func screenshotRegionPixelConversion() {
