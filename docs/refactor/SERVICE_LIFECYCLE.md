@@ -8,6 +8,7 @@ contract. Permission recovery and manual checks remain platform-dependent.
 | Service / resource | Owner and start condition | Stop condition | Re-entry and outstanding coverage |
 | --- | --- | --- | --- |
 | System monitor sampler | `SystemMonitorService`, configured by `AppSettingsCoordinator`; starts when enabled or when its panel is shown | Disabled setting or app termination | `SystemMonitorEngine` now serializes lifecycle operations, ignores stale callbacks, and `SystemMetricsActor.stop()` awaits its canceled loop. Repeated start/stop has a unit test. Manual setting toggle and app termination checks remain. |
+| Screenshot and scrolling capture | `AppCaptureCoordinator` owns the active capture task and scrolling controller | User cancellation or app termination | Shutdown cancels and awaits the capture task before app termination continues. Cancellation errors do not open screenshot/upload error alerts. App termination cancels an active upload before awaiting capture teardown. Real ScreenCaptureKit cancellation still needs manual coverage. |
 | Screen recording | `AppRecordingCoordinator` owns the user operation task and visual overlays; `RecordingService` owns ScreenCaptureKit, writer, microphone capture, and timers | User stop, failed start, cancellation, or app termination | `canStartRecording` checks the coordinator task and service state. Service stop is async and tears down stream/audio before finalizing; concurrent stop callers join the same shutdown task. App termination cancels and awaits an active or already-finishing recording for up to 30 seconds. A timeout cancels that quit attempt while the recording cleanup continues, so the user can retry. `SCStream.stopCapture()` errors are logged and writer finalization is still attempted; ScreenCaptureKit teardown still needs manual coverage. |
 | Recording mouse click highlighter | `RecordingService` prepares its overlay and starts `MouseClickHighlighterController` when click highlighting is enabled; recording pause pauses its event monitors | Recording stop, cancellation, or feature reconfiguration | Meow/Miao tests verify repeated start does not duplicate global/local monitors and pause/stop removes each monitor once. Real click rendering and permission behavior remain manual checks. |
 | Clipboard monitor | `AppSettingsCoordinator` starts/stops `ClipboardStore` when clipboard history changes; app termination stops it | Setting disabled or app termination | `startMonitoring` first calls `stopMonitoring`, preventing duplicate timer/observer installation. It owns a 0.5-second timer and workspace app observer. Meow and Miao tests now restart monitoring and verify changes after stop are ignored using an isolated pasteboard and notification center. |
@@ -30,11 +31,12 @@ contract. Permission recovery and manual checks remain platform-dependent.
   setting change should not instantiate an optional service unless the feature
   is enabled or the service was already loaded.
 - `AppLifecycleCoordinator` owns app startup, sleep/wake notifications,
-  permission retry, and shutdown sequencing. Async shutdown explicitly awaits an
-  active or already-finishing recording, Keep Awake, and upload shutdown before
-  replying to termination. Recording shutdown has a 30-second deadline; timeout
-  keeps the app alive and resets the termination guard for a retry. Other teardown
-  callbacks are dispatched synchronously or in unawaited tasks.
+  permission retry, and shutdown sequencing. Termination cancels an upload and
+  awaits loaded capture work, active or already-finishing recording, Keep Awake,
+  and upload shutdown before replying. Recording shutdown has a 30-second
+  deadline; timeout keeps the app alive and resets the termination guard for a
+  retry. Other teardown callbacks are dispatched synchronously or in unawaited
+  tasks.
 - Permission restoration is event-specific: accessibility and speech
   microphone permissions are retried when the app becomes active. Screen
   recording requests screen capture access at start. There is no shared generic

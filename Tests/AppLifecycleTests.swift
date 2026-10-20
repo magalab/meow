@@ -93,6 +93,47 @@ func lifecycleTerminationWaitsForShutdownAndRejectsRepeatedRequest() async {
 }
 
 @MainActor
+@Test("Termination waits for canceled capture work before shutting down services")
+func lifecycleTerminationWaitsForCaptureShutdown() async {
+    var calls: [String] = []
+    var captureContinuation: CheckedContinuation<Void, Never>?
+    var replyContinuation: CheckedContinuation<Void, Never>?
+    let coordinator = AppLifecycleCoordinator(
+        actions: makeLifecycleTestActions(
+            cancelUpload: { calls.append("cancelUpload") },
+            captureCoordinatorLoaded: { true },
+            shutdownCapture: {
+                calls.append("shutdownCapture")
+                await withCheckedContinuation { captureContinuation = $0 }
+            },
+            stopKeepAwake: { calls.append("keepAwake") },
+            shutdownUploads: { calls.append("uploads") },
+            replyToTermination: { _, shouldTerminate in
+                calls.append("reply:\(shouldTerminate)")
+                replyContinuation?.resume()
+                replyContinuation = nil
+            }
+        ),
+        startupActions: noOpStartupActions(),
+        workspaceNotificationCenter: NotificationCenter()
+    )
+
+    let terminationTask = Task {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            replyContinuation = continuation
+            #expect(coordinator.applicationShouldTerminate(NSApplication.shared) == .terminateLater)
+        }
+    }
+    for _ in 0..<10 where captureContinuation == nil { await Task.yield() }
+
+    #expect(calls == ["cancelUpload", "shutdownCapture"])
+    captureContinuation?.resume()
+    await terminationTask.value
+
+    #expect(calls == ["cancelUpload", "shutdownCapture", "keepAwake", "uploads", "reply:true"])
+}
+
+@MainActor
 @Test("Termination waits for active recording teardown before allowing the app to exit")
 func lifecycleTerminationWaitsForRecordingStop() async {
     var calls: [String] = []
@@ -279,6 +320,7 @@ private func makeLifecycleTestActions(
     cancelUpload: @escaping @MainActor () -> Void = {},
     captureCoordinatorLoaded: @escaping @MainActor () -> Bool = { false },
     cancelCapture: @escaping @MainActor () -> Void = {},
+    shutdownCapture: @escaping @MainActor () async -> Void = {},
     recordingServiceLoaded: @escaping @MainActor () -> Bool = { false },
     cancelRecording: @escaping @MainActor () -> Void = {},
     recordingServiceNeedsStop: @escaping @MainActor () -> Bool = { false },
@@ -315,6 +357,7 @@ private func makeLifecycleTestActions(
         cancelUpload: cancelUpload,
         captureCoordinatorLoaded: captureCoordinatorLoaded,
         cancelCapture: cancelCapture,
+        shutdownCapture: shutdownCapture,
         recordingServiceLoaded: recordingServiceLoaded,
         cancelRecording: cancelRecording,
         recordingServiceNeedsStop: recordingServiceNeedsStop,
