@@ -63,7 +63,7 @@ func lifecyclePowerObserversAreIdempotentAndRemoved() async {
 }
 
 @MainActor
-@Test("Termination shuts down Keep Awake and uploads before replying and only starts once")
+@Test("Termination shuts down Keep Awake and uploads before replying; repeat requests stay pending")
 func lifecycleTerminationWaitsForShutdownAndRejectsRepeatedRequest() async {
     var calls: [String] = []
     var replyContinuation: CheckedContinuation<Void, Never>?
@@ -86,7 +86,7 @@ func lifecycleTerminationWaitsForShutdownAndRejectsRepeatedRequest() async {
         let firstReply = coordinator.applicationShouldTerminate(NSApplication.shared)
         let duplicateReply = coordinator.applicationShouldTerminate(NSApplication.shared)
         #expect(firstReply == .terminateLater)
-        #expect(duplicateReply == .terminateNow)
+        #expect(duplicateReply == .terminateLater)
     }
 
     #expect(calls == ["keepAwake", "uploads", "reply"])

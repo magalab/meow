@@ -110,7 +110,7 @@ final class AppLifecycleCoordinator {
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        guard !terminationShutdownStarted else { return .terminateNow }
+        guard !terminationShutdownStarted else { return .terminateLater }
         terminationShutdownStarted = true
         Task { @MainActor [weak self, weak sender] in
             self?.actions.cancelUpload()
