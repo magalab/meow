@@ -20,7 +20,7 @@ contract. Permission recovery and manual checks remain platform-dependent.
 | App event monitors | `AppWindowCoordinator` installs launcher, translation, AI, and global/local input monitors | App termination or coordinator removal | Repeated install/remove and post-removal handler behavior are unit tested. Permission-dependent global monitor behavior still needs manual verification. |
 | Hotkeys | `AppHotkeyCoordinator` applies registrations when settings change | Registration replacement, unregister, or app termination | Registration conflicts are surfaced and restored on settings changes. Manual conflict and restoration checks remain. |
 | File upload | `FileUploadService` owns one active upload task and runtime uploader; an upload action creates the task | Completion, cancellation, credential/config change, or app termination | `executeUpload` rejects a second concurrent upload. `shutdown()` cancels and awaits active work, then shuts down and clears runtime uploader credentials. Test cancel during network I/O and shutdown during multipart upload. |
-| Voice speech recognition (Miao only) | `AppSettingsCoordinator` applies model/settings; hotkey hold starts audio capture and recognition | Key release, cancellation, setting/model change, or app termination | Audio engine and duration timer are stopped by capture cleanup; recognition/model tasks can be canceled and unloaded asynchronously. App activation refreshes microphone permission. Test rapid key press/release, permission revoke, and unload while inference is active. |
+| Voice speech recognition (Miao only) | `AppSettingsCoordinator` applies model/settings; hotkey hold starts audio capture and recognition | Key release, cancellation, setting/model change, or app termination | Audio engine and duration timer stop during cancellation. App termination cancels and awaits active inference before unloading the recognizer. App activation refreshes microphone permission. Test rapid key press/release, permission revoke, and unload while inference is active. |
 
 ## Lifecycle ownership notes
 
@@ -32,11 +32,11 @@ contract. Permission recovery and manual checks remain platform-dependent.
   is enabled or the service was already loaded.
 - `AppLifecycleCoordinator` owns app startup, sleep/wake notifications,
   permission retry, and shutdown sequencing. Termination cancels an upload and
-  awaits loaded capture work, active or already-finishing recording, Keep Awake,
-  and upload shutdown before replying. Recording shutdown has a 30-second
-  deadline; timeout keeps the app alive and resets the termination guard for a
-  retry. Other teardown callbacks are dispatched synchronously or in unawaited
-  tasks.
+  awaits loaded capture work, active or already-finishing recording, voice
+  recognition teardown, Keep Awake, and upload shutdown before replying.
+  Recording shutdown has a 30-second deadline; timeout keeps the app alive and
+  resets the termination guard for a retry. Other teardown callbacks are
+  dispatched synchronously or in unawaited tasks.
 - Permission restoration is event-specific: accessibility and speech
   microphone permissions are retried when the app becomes active. Screen
   recording requests screen capture access at start. There is no shared generic
