@@ -34,6 +34,7 @@ final class AppLifecycleCoordinator {
         let closePinnedImages: @MainActor () -> Void
         let speechRecognitionServiceLoaded: @MainActor () -> Bool
         let cancelSpeechRecognition: @MainActor () -> Void
+        let shutdownSpeechRecognition: @MainActor () async -> Void
         let hideSpeechOverlay: @MainActor () -> Void
         let stopKeystrokeVisualizer: @MainActor () -> Void
         let systemMonitorServiceLoaded: @MainActor () -> Bool
@@ -113,6 +114,9 @@ final class AppLifecycleCoordinator {
         terminationShutdownStarted = true
         Task { @MainActor [weak self, weak sender] in
             self?.actions.cancelUpload()
+            if let self, self.actions.speechRecognitionServiceLoaded() {
+                await self.actions.shutdownSpeechRecognition()
+            }
             if let self, self.actions.captureCoordinatorLoaded() {
                 await self.actions.shutdownCapture()
             }
