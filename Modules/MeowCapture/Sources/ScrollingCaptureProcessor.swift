@@ -1,18 +1,8 @@
 import CoreGraphics
 import Foundation
-import MeowCapture
 
-enum ScrollingCaptureProcessOutcome: Sendable {
-    case appended(ScrollingCaptureProgress)
-    case waiting(ScrollingCaptureProgress)
-    case paused(ScrollingCaptureProgress)
-    case reachedLimit(ScrollingCaptureStopReason, ScrollingCaptureProgress)
-}
-
-actor ScrollingCaptureProcessor {
-    static let safeFinalImageMaximumPixels = 20_000_000
-
-    private let settings: ScrollingCaptureSettings
+public actor ScrollingCaptureProcessor {
+    private let configuration: ScrollingCaptureProcessorConfiguration
     private let stitcher: ScrollingCaptureStitcher
     private var referenceFrame: CGImage
     private var receivedFrameCount = 1
@@ -23,21 +13,21 @@ actor ScrollingCaptureProcessor {
     private var confirmedFrozenHeaderHeight = 0
     private var latestConfidence = 0.0
 
-    init(firstFrame: CGImage, settings: ScrollingCaptureSettings) {
-        self.settings = settings
+    public init(firstFrame: CGImage, configuration: ScrollingCaptureProcessorConfiguration) {
+        self.configuration = configuration
         referenceFrame = firstFrame
         stitcher = ScrollingCaptureStitcher(
             firstFrame: firstFrame,
-            maximumHeight: settings.maximumHeightPixels,
-            maximumPixels: settings.maximumTotalPixels
+            maximumHeight: configuration.maximumHeightPixels,
+            maximumPixels: configuration.maximumTotalPixels
         )
     }
 
-    func initialProgress(isAutoScrolling: Bool) -> ScrollingCaptureProgress {
+    public func initialProgress(isAutoScrolling: Bool) -> ScrollingCaptureProgress {
         progress(state: .capturing, isAutoScrolling: isAutoScrolling)
     }
 
-    func process(
+    public func process(
         _ frame: CGImage,
         isAutoScrolling: Bool
     ) -> ScrollingCaptureProcessOutcome {
@@ -75,7 +65,7 @@ actor ScrollingCaptureProcessor {
             return .waiting(progress(state: .capturing, isAutoScrolling: isAutoScrolling))
         }
 
-        if settings.automaticallyDetectFrozenHeader, confirmedFrozenHeaderHeight == 0 {
+        if configuration.automaticallyDetectFrozenHeader, confirmedFrozenHeaderHeight == 0 {
             recordFrozenHeaderCandidate(ScrollingCaptureMatcher.frozenHeaderHeight(
                 previous: referenceFrame,
                 current: frame
@@ -107,7 +97,7 @@ actor ScrollingCaptureProcessor {
         }
     }
 
-    func progress(state: ScrollingCaptureState, isAutoScrolling: Bool) -> ScrollingCaptureProgress {
+    public func progress(state: ScrollingCaptureState, isAutoScrolling: Bool) -> ScrollingCaptureProgress {
         ScrollingCaptureProgress(
             receivedFrameCount: receivedFrameCount,
             stitchedStripCount: appendedStripCount,
@@ -118,12 +108,12 @@ actor ScrollingCaptureProcessor {
         )
     }
 
-    func makePreview() -> CGImage? {
+    public func makePreview() -> CGImage? {
         stitcher.makePreview()
     }
 
-    func makeFinalImage(
-        maximumPixels: Int = ScrollingCaptureProcessor.safeFinalImageMaximumPixels
+    public func makeFinalImage(
+        maximumPixels: Int = 20_000_000
     ) -> ScrollingCaptureFinalImage? {
         let pixelSize = stitcher.pixelSize
         let pixelCount = Double(pixelSize.width) * Double(pixelSize.height)
@@ -142,7 +132,7 @@ actor ScrollingCaptureProcessor {
         return ScrollingCaptureFinalImage(image: image, isReduced: true)
     }
 
-    func resumeAfterPause() {
+    public func resumeAfterPause() {
         consecutiveFailures = 0
         consecutiveStableFrames = 0
     }
