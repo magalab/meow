@@ -271,6 +271,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var launcherCoordinator = AppLauncherCoordinator(
         viewModel: viewModel,
         keepAwakeService: keepAwakeService,
+        clipboardStore: clipboardStore,
         windowCoordinator: windowCoordinator
     )
     private lazy var aiChatCoordinator = AppAIChatCoordinator(
@@ -378,6 +379,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             launchHistoryStore: launchHistoryStore,
             clipboardStore: clipboardStore
         )
+        launcherCoordinator.bindOutputCommands()
         viewModel.onOpenPreferences = { [weak self] in
             self?.preferencesCoordinator.show()
         }
@@ -434,32 +436,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             else { return }
 
             self.viewModel.updateKeystrokeOverlayPlacement(position: position, point: point)
-        }
-        viewModel.onPasteClipboard = { [weak self] entry in
-            guard let self else { return }
-            // Hide launcher first so target app becomes frontmost
-            self.launcherCoordinator.hide()
-            // Small delay to let hide complete
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                self.clipboardStore.writeToPasteboard(entry)
-                self.launcherCoordinator.simulatePaste()
-            }
-        }
-        viewModel.onCopyText = { [weak self] text in
-            guard let self else { return }
-            self.launcherCoordinator.hide()
-            self.clipboardStore.writePrivateTextToPasteboard(text)
-        }
-        viewModel.onLaunchApplication = { [weak self] app in
-            guard let self else { return }
-            self.launcherCoordinator.hide()
-            DispatchQueue.main.async {
-                NSWorkspace.shared.openApplication(
-                    at: app.url,
-                    configuration: NSWorkspace.OpenConfiguration(),
-                    completionHandler: nil
-                )
-            }
         }
         viewModel.load()
 
