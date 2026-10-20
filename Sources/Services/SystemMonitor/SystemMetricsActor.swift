@@ -34,10 +34,12 @@ public actor SystemMetricsActor {
         }
     }
 
-    public func stop() {
-        samplingTask?.cancel()
+    public func stop() async {
+        let currentTask = samplingTask
+        currentTask?.cancel()
         samplingTask = nil
         onSnapshot = nil
+        await currentTask?.value
         lastSampleDate = nil
         cpu = CPUMetricCollector()
         memory = MemoryMetricCollector()
