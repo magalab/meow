@@ -1,14 +1,14 @@
 import CoreGraphics
 import Foundation
 
-enum ScrollingCaptureAppendResult: Equatable {
+public enum ScrollingCaptureAppendResult: Equatable {
     case appended
     case maximumHeight
     case maximumPixels
     case invalidFrame
 }
 
-final class ScrollingCaptureStitcher {
+public final class ScrollingCaptureStitcher {
     private let maximumHeight: Int
     private let maximumPixels: Int
     private let batchSize: Int
@@ -17,7 +17,7 @@ final class ScrollingCaptureStitcher {
     private var chunks: [CGImage]
     private var pendingStrips: [CGImage] = []
 
-    init(
+    public init(
         firstFrame: CGImage,
         maximumHeight: Int,
         maximumPixels: Int,
@@ -31,7 +31,7 @@ final class ScrollingCaptureStitcher {
         chunks = [firstFrame]
     }
 
-    var pixelSize: CGSize {
+    public var pixelSize: CGSize {
         CGSize(width: width, height: totalHeight)
     }
 
@@ -39,7 +39,7 @@ final class ScrollingCaptureStitcher {
         chunks.count + pendingStrips.count
     }
 
-    func appendBottomRows(from frame: CGImage, count: Int) -> ScrollingCaptureAppendResult {
+    public func appendBottomRows(from frame: CGImage, count: Int) -> ScrollingCaptureAppendResult {
         guard frame.width == width, count > 0, count <= frame.height else {
             return .invalidFrame
         }
@@ -62,12 +62,12 @@ final class ScrollingCaptureStitcher {
         return .appended
     }
 
-    func makeImage() -> CGImage? {
+    public func makeImage() -> CGImage? {
         flushPendingStrips()
         return Self.composeVertically(chunks)
     }
 
-    func makeReducedImage(maximumPixels: Int = 20_000_000) -> CGImage? {
+    public func makeReducedImage(maximumPixels: Int = 20_000_000) -> CGImage? {
         flushPendingStrips()
         guard maximumPixels > 0, totalHeight > 0, width > 0 else { return nil }
         let currentPixels = Double(width) * Double(totalHeight)
@@ -82,7 +82,7 @@ final class ScrollingCaptureStitcher {
         )
     }
 
-    func makePreview(maximumSize: CGSize = CGSize(width: 260, height: 420)) -> CGImage? {
+    public func makePreview(maximumSize: CGSize = CGSize(width: 260, height: 420)) -> CGImage? {
         let allChunks = chunks + pendingStrips
         guard !allChunks.isEmpty, totalHeight > 0 else { return nil }
         let scale = min(
