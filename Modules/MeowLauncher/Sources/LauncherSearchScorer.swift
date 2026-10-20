@@ -13,6 +13,12 @@ public struct LauncherSearchMatch: Hashable {
 
 /// Applies the launcher's stable text-match ranking tiers and result ordering.
 public enum LauncherSearchScorer {
+    /// Returns the base score when the candidate text contains the query.
+    public static func scoreIfMatching(text: String, query: String) -> Int? {
+        guard text.contains(query) else { return nil }
+        return score(text: text, query: query)
+    }
+
     public static func score(text: String, query: String) -> Int {
         if text == query { return 120 }
         if text.hasPrefix(query) { return 90 }
