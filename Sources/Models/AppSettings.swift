@@ -142,16 +142,47 @@ struct AppSettings: Codable {
     var authenticatorEnabled: Bool
     var authenticatorICloudSyncEnabled: Bool
     var systemMonitor: SystemMonitorSettings
-    var keystrokeVisualizerEnabled: Bool
-    var keystrokeVisualizerShowModifierOnly: Bool
-    var keystrokeVisualizerOverlayPosition: KeystrokeOverlayPosition
-    var keystrokeVisualizerOverlayPoint: KeystrokeOverlayPoint?
-    var keystrokeVisualizerStyle: KeystrokeOverlayStyle
-    var keystrokeVisualizerDisplayDuration: KeystrokeDisplayDuration
-    var keystrokeVisualizerCustomDisplayDuration: Double
-    var keystrokeVisualizerOpacity: Double
-    var keystrokeVisualizerHistoryCount: KeystrokeHistoryCount
-    var keystrokeVisualizerDisplayMode: KeystrokeDisplayMode
+    var keystrokeVisualizer: KeystrokeVisualizerSettings
+    var keystrokeVisualizerEnabled: Bool {
+        get { keystrokeVisualizer.enabled }
+        set { keystrokeVisualizer.enabled = newValue }
+    }
+    var keystrokeVisualizerShowModifierOnly: Bool {
+        get { keystrokeVisualizer.showModifierOnly }
+        set { keystrokeVisualizer.showModifierOnly = newValue }
+    }
+    var keystrokeVisualizerOverlayPosition: KeystrokeOverlayPosition {
+        get { keystrokeVisualizer.overlayPosition }
+        set { keystrokeVisualizer.overlayPosition = newValue }
+    }
+    var keystrokeVisualizerOverlayPoint: KeystrokeOverlayPoint? {
+        get { keystrokeVisualizer.overlayPoint }
+        set { keystrokeVisualizer.overlayPoint = newValue }
+    }
+    var keystrokeVisualizerStyle: KeystrokeOverlayStyle {
+        get { keystrokeVisualizer.style }
+        set { keystrokeVisualizer.style = newValue }
+    }
+    var keystrokeVisualizerDisplayDuration: KeystrokeDisplayDuration {
+        get { keystrokeVisualizer.displayDuration }
+        set { keystrokeVisualizer.displayDuration = newValue }
+    }
+    var keystrokeVisualizerCustomDisplayDuration: Double {
+        get { keystrokeVisualizer.customDisplayDuration }
+        set { keystrokeVisualizer.customDisplayDuration = newValue }
+    }
+    var keystrokeVisualizerOpacity: Double {
+        get { keystrokeVisualizer.opacity }
+        set { keystrokeVisualizer.opacity = newValue }
+    }
+    var keystrokeVisualizerHistoryCount: KeystrokeHistoryCount {
+        get { keystrokeVisualizer.historyCount }
+        set { keystrokeVisualizer.historyCount = newValue }
+    }
+    var keystrokeVisualizerDisplayMode: KeystrokeDisplayMode {
+        get { keystrokeVisualizer.displayMode }
+        set { keystrokeVisualizer.displayMode = newValue }
+    }
 
     init(
         autoLaunch: Bool,
@@ -229,16 +260,18 @@ struct AppSettings: Codable {
         self.authenticatorEnabled = authenticatorEnabled
         self.authenticatorICloudSyncEnabled = authenticatorICloudSyncEnabled
         self.systemMonitor = systemMonitor.normalized
-        self.keystrokeVisualizerEnabled = keystrokeVisualizerEnabled
-        self.keystrokeVisualizerShowModifierOnly = keystrokeVisualizerShowModifierOnly
-        self.keystrokeVisualizerOverlayPosition = keystrokeVisualizerOverlayPosition
-        self.keystrokeVisualizerOverlayPoint = keystrokeVisualizerOverlayPoint
-        self.keystrokeVisualizerStyle = keystrokeVisualizerStyle
-        self.keystrokeVisualizerDisplayDuration = keystrokeVisualizerDisplayDuration
-        self.keystrokeVisualizerCustomDisplayDuration = keystrokeVisualizerCustomDisplayDuration
-        self.keystrokeVisualizerOpacity = keystrokeVisualizerOpacity
-        self.keystrokeVisualizerHistoryCount = keystrokeVisualizerHistoryCount
-        self.keystrokeVisualizerDisplayMode = keystrokeVisualizerDisplayMode
+        self.keystrokeVisualizer = KeystrokeVisualizerSettings(
+            enabled: keystrokeVisualizerEnabled,
+            showModifierOnly: keystrokeVisualizerShowModifierOnly,
+            overlayPosition: keystrokeVisualizerOverlayPosition,
+            overlayPoint: keystrokeVisualizerOverlayPoint,
+            style: keystrokeVisualizerStyle,
+            displayDuration: keystrokeVisualizerDisplayDuration,
+            customDisplayDuration: keystrokeVisualizerCustomDisplayDuration,
+            opacity: keystrokeVisualizerOpacity,
+            historyCount: keystrokeVisualizerHistoryCount,
+            displayMode: keystrokeVisualizerDisplayMode
+        )
     }
 
     static let `default` = AppSettings(
@@ -381,46 +414,44 @@ extension AppSettings {
             SystemMonitorSettings.self,
             forKey: .systemMonitor
         ) ?? Self.default.systemMonitor).normalized
-        keystrokeVisualizerEnabled = try container.decodeIfPresent(
-            Bool.self,
-            forKey: .keystrokeVisualizerEnabled
-        ) ?? Self.default.keystrokeVisualizerEnabled
-        keystrokeVisualizerShowModifierOnly = try container.decodeIfPresent(
-            Bool.self,
-            forKey: .keystrokeVisualizerShowModifierOnly
-        ) ?? Self.default.keystrokeVisualizerShowModifierOnly
-        keystrokeVisualizerOverlayPoint = try container.decodeIfPresent(
+        let overlayPoint = try container.decodeIfPresent(
             KeystrokeOverlayPoint.self,
             forKey: .keystrokeVisualizerOverlayPoint
-        ) ?? Self.default.keystrokeVisualizerOverlayPoint
-        keystrokeVisualizerOverlayPosition = try container.decodeIfPresent(
+        ) ?? KeystrokeVisualizerSettings.default.overlayPoint
+        let overlayPosition = try container.decodeIfPresent(
             KeystrokeOverlayPosition.self,
             forKey: .keystrokeVisualizerOverlayPosition
-        ) ?? (keystrokeVisualizerOverlayPoint == nil ? Self.default.keystrokeVisualizerOverlayPosition : .custom)
-        keystrokeVisualizerStyle = try container.decodeIfPresent(
-            KeystrokeOverlayStyle.self,
-            forKey: .keystrokeVisualizerStyle
-        ) ?? Self.default.keystrokeVisualizerStyle
-        keystrokeVisualizerDisplayDuration = try container.decodeIfPresent(
-            KeystrokeDisplayDuration.self,
-            forKey: .keystrokeVisualizerDisplayDuration
-        ) ?? Self.default.keystrokeVisualizerDisplayDuration
-        keystrokeVisualizerCustomDisplayDuration = try container.decodeIfPresent(
-            Double.self,
-            forKey: .keystrokeVisualizerCustomDisplayDuration
-        ) ?? Self.default.keystrokeVisualizerCustomDisplayDuration
-        keystrokeVisualizerOpacity = try container.decodeIfPresent(
-            Double.self,
-            forKey: .keystrokeVisualizerOpacity
-        ) ?? Self.default.keystrokeVisualizerOpacity
-        keystrokeVisualizerHistoryCount = try container.decodeIfPresent(
-            KeystrokeHistoryCount.self,
-            forKey: .keystrokeVisualizerHistoryCount
-        ) ?? Self.default.keystrokeVisualizerHistoryCount
-        keystrokeVisualizerDisplayMode = try container.decodeIfPresent(
-            KeystrokeDisplayMode.self,
-            forKey: .keystrokeVisualizerDisplayMode
-        ) ?? Self.default.keystrokeVisualizerDisplayMode
+        ) ?? (overlayPoint == nil
+            ? KeystrokeVisualizerSettings.default.overlayPosition
+            : .custom)
+        keystrokeVisualizer = KeystrokeVisualizerSettings(
+            enabled: try container.decodeIfPresent(Bool.self, forKey: .keystrokeVisualizerEnabled)
+                ?? KeystrokeVisualizerSettings.default.enabled,
+            showModifierOnly: try container.decodeIfPresent(Bool.self, forKey: .keystrokeVisualizerShowModifierOnly)
+                ?? KeystrokeVisualizerSettings.default.showModifierOnly,
+            overlayPosition: overlayPosition,
+            overlayPoint: overlayPoint,
+            style: try container.decodeIfPresent(KeystrokeOverlayStyle.self, forKey: .keystrokeVisualizerStyle)
+                ?? KeystrokeVisualizerSettings.default.style,
+            displayDuration: try container.decodeIfPresent(
+                KeystrokeDisplayDuration.self,
+                forKey: .keystrokeVisualizerDisplayDuration
+            ) ?? KeystrokeVisualizerSettings.default.displayDuration,
+            customDisplayDuration: try container.decodeIfPresent(
+                Double.self,
+                forKey: .keystrokeVisualizerCustomDisplayDuration
+            ) ?? KeystrokeVisualizerSettings.default.customDisplayDuration,
+            opacity: try container.decodeIfPresent(Double.self, forKey: .keystrokeVisualizerOpacity)
+                ?? KeystrokeVisualizerSettings.default.opacity,
+            historyCount: try container.decodeIfPresent(
+                KeystrokeHistoryCount.self,
+                forKey: .keystrokeVisualizerHistoryCount
+            ) ?? KeystrokeVisualizerSettings.default.historyCount,
+            displayMode: try container.decodeIfPresent(
+                KeystrokeDisplayMode.self,
+                forKey: .keystrokeVisualizerDisplayMode
+            ) ?? KeystrokeVisualizerSettings.default.displayMode
+        )
     }
 
     func encode(to encoder: Encoder) throws {
