@@ -12,6 +12,7 @@ final class AppClipboardActionCoordinator {
         let presentTranslation: @MainActor (String, Bool, String?) -> Void
         let presentScreenshotError: @MainActor (Error) -> Void
         let presentUploadError: @MainActor (Error) -> Void
+        let pinImage: @MainActor (ImageClipboardContent) -> Void
         let importImageFileToWhiteboard: @MainActor (URL, String?) -> Void
         let onArtifactReady: @MainActor (CaptureArtifact) -> Void
         let presentOTPAuthImport: @MainActor (String) -> Void
@@ -36,6 +37,40 @@ final class AppClipboardActionCoordinator {
         self.captureCoordinator = captureCoordinator
         self.fileUploadService = fileUploadService
         self.actions = actions
+    }
+
+    func bindLauncherCommands(to viewModel: LauncherViewModel) {
+        viewModel.onUploadClipboard = { [weak self] in
+            guard let self else { return }
+            actions.hideLauncher()
+            uploadFromClipboard()
+        }
+        viewModel.onPinClipboardImage = { [weak self] image in
+            guard let self else { return }
+            actions.hideLauncher()
+            actions.pinImage(image)
+        }
+        viewModel.onRecognizeClipboardImage = { [weak self] image in
+            self?.recognizeClipboardImage(image, translate: false)
+        }
+        viewModel.onTranslateClipboardImage = { [weak self] image in
+            self?.recognizeClipboardImage(image, translate: true)
+        }
+        viewModel.onScanClipboardImageQRCode = { [weak self] image in
+            self?.scanClipboardImageQRCode(image)
+        }
+        viewModel.onEditClipboardImage = { [weak self] image in
+            self?.editClipboardImage(image)
+        }
+        viewModel.onOpenClipboardImage = { [weak self] image in
+            self?.openClipboardImage(image)
+        }
+        viewModel.onSaveClipboardImage = { [weak self] image in
+            self?.saveClipboardImageAs(image)
+        }
+        viewModel.onSendClipboardImageToWhiteboard = { [weak self] image in
+            self?.sendImageToWhiteboard(image)
+        }
     }
 
     func recognizeClipboardImage(_ image: ImageClipboardContent, translate: Bool) {
