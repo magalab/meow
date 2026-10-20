@@ -20,6 +20,7 @@ final class AppLifecycleCoordinator {
         let cancelUpload: @MainActor () -> Void
         let captureCoordinatorLoaded: @MainActor () -> Bool
         let cancelCapture: @MainActor () -> Void
+        let shutdownCapture: @MainActor () async -> Void
         let recordingServiceLoaded: @MainActor () -> Bool
         let cancelRecording: @MainActor () -> Void
         let recordingServiceNeedsStop: @MainActor () -> Bool
@@ -111,6 +112,10 @@ final class AppLifecycleCoordinator {
         guard !terminationShutdownStarted else { return .terminateNow }
         terminationShutdownStarted = true
         Task { @MainActor [weak self, weak sender] in
+            self?.actions.cancelUpload()
+            if let self, self.actions.captureCoordinatorLoaded() {
+                await self.actions.shutdownCapture()
+            }
             if let self,
                self.actions.recordingServiceLoaded(),
                self.actions.recordingServiceNeedsStop()

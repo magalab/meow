@@ -726,6 +726,9 @@ final class AppCompositionRoot {
             cancelCapture: { [weak self] in
                 self?.captureCoordinator.cancel()
             },
+            shutdownCapture: { [weak self] in
+                await self?.captureCoordinator.shutdown()
+            },
             recordingServiceLoaded: { [weak self] in
                 self?.recordingServiceLoaded == true
             },
