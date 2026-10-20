@@ -675,31 +675,31 @@ final class LauncherViewModel: ObservableObject {
         query q: String,
         clipboardEntries: [ClipboardEntry]
     ) -> [SearchItem] {
-        let matchedCommands = commands.compactMap { command -> (SearchItem, Int)? in
+        let matchedCommands = commands.compactMap { command -> LauncherSearchMatch? in
             let hay = ([command.title, command.subtitle] + command.keywords).joined(separator: " ").lowercased()
             guard hay.contains(q) else { return nil }
-            return (.command(command), LauncherSearchScorer.score(text: hay, query: q) + 15)
+            return LauncherSearchMatch(
+                item: .command(command),
+                score: LauncherSearchScorer.score(text: hay, query: q) + 15
+            )
         }
 
-        let matchedApps = apps.compactMap { app -> (SearchItem, Int)? in
+        let matchedApps = apps.compactMap { app -> LauncherSearchMatch? in
             let hay = [app.name, app.bundleId ?? ""].joined(separator: " ").lowercased()
             guard hay.contains(q) else { return nil }
             let base = LauncherSearchScorer.score(text: hay, query: q)
             let history = launchHistoryStore.score(for: app.id)
-            return (.app(app), base + history)
+            return LauncherSearchMatch(item: .app(app), score: base + history)
         }
 
-        let matchedClipboard = clipboardEntries.map { entry -> (SearchItem, Int) in
-            (.clipboard(entry), entry.isPinned ? 200 : 5)
+        let matchedClipboard = clipboardEntries.map { entry in
+            LauncherSearchMatch(item: .clipboard(entry), score: entry.isPinned ? 200 : 5)
         }
 
-        return (matchedCommands + matchedApps + matchedClipboard)
-            .sorted { lhs, rhs in
-                if lhs.1 != rhs.1 { return lhs.1 > rhs.1 }
-                return lhs.0.primaryText.localizedCaseInsensitiveCompare(rhs.0.primaryText) == .orderedAscending
-            }
-            .prefix(maxSearchResults)
-            .map { $0.0 }
+        return LauncherSearchResultRanker.rank(
+            matches: matchedCommands + matchedApps + matchedClipboard,
+            limit: maxSearchResults
+        )
     }
 
     private func calculationResult(for query: String) -> CalculationEntry? {
