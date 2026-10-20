@@ -4,9 +4,21 @@ import CoreVideo
 import Darwin
 import QuartzCore
 
+public struct RecordingHighlightColor: Equatable, Sendable {
+    public let red: Double
+    public let green: Double
+    public let blue: Double
+
+    public init(red: Double, green: Double, blue: Double) {
+        self.red = red
+        self.green = green
+        self.blue = blue
+    }
+}
+
 /// Runs only on RecordingWriter's serial queue. The on-screen preview window
 /// never has to pass through ScreenCaptureKit's content filter.
-final class RecordingMouseClickCompositor {
+public final class RecordingMouseClickCompositor {
     private struct Click {
         let point: CGPoint
         let time: CFTimeInterval
@@ -18,24 +30,24 @@ final class RecordingMouseClickCompositor {
     private var enabled: Bool
     private static let duration: CFTimeInterval = 0.42
 
-    init(captureRect: CGRect?, enabled: Bool, theme: AppTheme) {
+    public init(captureRect: CGRect?, enabled: Bool, color: RecordingHighlightColor) {
         self.captureRect = captureRect
         self.enabled = enabled
-        color = Self.colorComponents(for: theme)
+        self.color = (CGFloat(color.red), CGFloat(color.green), CGFloat(color.blue))
     }
 
-    func apply(enabled: Bool, theme: AppTheme) {
+    public func apply(enabled: Bool, color: RecordingHighlightColor) {
         self.enabled = enabled
         if !enabled { clicks.removeAll() }
-        color = Self.colorComponents(for: theme)
+        self.color = (CGFloat(color.red), CGFloat(color.green), CGFloat(color.blue))
     }
 
-    func recordClick(at point: CGPoint) {
+    public func recordClick(at point: CGPoint) {
         guard enabled, let captureRect, captureRect.contains(point) else { return }
         clicks.append(Click(point: point, time: CACurrentMediaTime()))
     }
 
-    func composite(_ sampleBuffer: CMSampleBuffer) -> CMSampleBuffer {
+    public func composite(_ sampleBuffer: CMSampleBuffer) -> CMSampleBuffer {
         guard enabled,
               captureRect != nil,
               let sourceBuffer = sampleBuffer.imageBuffer,
@@ -351,7 +363,7 @@ final class RecordingMouseClickCompositor {
         return (CGFloat(0.7 + 0.95 * eased), CGFloat(0.95 * (1 - eased)))
     }
 
-    static func pixelCenter(
+    public static func pixelCenter(
         for point: CGPoint,
         captureRect: CGRect,
         imageSize: CGSize
@@ -366,12 +378,4 @@ final class RecordingMouseClickCompositor {
         )
     }
 
-    private static func colorComponents(for theme: AppTheme) -> (CGFloat, CGFloat, CGFloat) {
-        switch theme {
-        case .gingerCat: return (0.85, 0.47, 0.24)
-        case .mistBlue: return (0.23, 0.31, 0.54)
-        case .graphiteAmber: return (0.77, 0.54, 0.23)
-        case .mossInk: return (0.29, 0.42, 0.34)
-        }
-    }
 }
