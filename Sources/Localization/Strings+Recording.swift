@@ -207,6 +207,7 @@ extension L10n {
     static var recordingNotificationBody: String { loc("recording.notification.body") }
     static var editorTitle: String { loc("editor.title") }
     static var editorToolCrop: String { loc("editor.tool.crop") }
+    static var editorToolSelect: String { loc("editor.tool.select") }
     static var editorToolRectangle: String { loc("editor.tool.rectangle") }
     static var editorToolEllipse: String { loc("editor.tool.ellipse") }
     static var editorToolArrow: String { loc("editor.tool.arrow") }

@@ -130,6 +130,7 @@ private final class CaptureOverlayView: NSView {
     private var selectionPointer: CGPoint?
     private var hoveredWindow: CaptureWindowCandidate?
     private var trackingAreaRef: NSTrackingArea?
+    private var windowSnapEnabled = true
 
     override var acceptsFirstResponder: Bool { true }
 
@@ -200,13 +201,17 @@ private final class CaptureOverlayView: NSView {
         } else {
             drawInstruction()
         }
+        if mode == .region, let hoveredWindow, windowSnapEnabled {
+            drawFocusBorder(hoveredWindow.rect)
+            drawWindowLabel(for: hoveredWindow)
+        }
         if mode == .region, dragStart != nil, let selectionPointer {
             drawPixelMagnifier(at: selectionPointer)
         }
     }
 
     override func mouseMoved(with event: NSEvent) {
-        guard mode == .window else { return }
+        guard mode == .window || (mode == .region && windowSnapEnabled) else { return }
         updateHoveredWindow(at: convert(event.locationInWindow, from: nil))
     }
 
@@ -214,6 +219,10 @@ private final class CaptureOverlayView: NSView {
         let point = convert(event.locationInWindow, from: nil)
         switch mode {
         case .region:
+            if windowSnapEnabled, let hoveredWindow {
+                onSelect(.window(hoveredWindow.window, scale: frozen.scale))
+                return
+            }
             dragStart = point
             selectionRect = CGRect(origin: point, size: .zero)
             selectionPointer = point
@@ -231,7 +240,7 @@ private final class CaptureOverlayView: NSView {
     override func mouseDragged(with event: NSEvent) {
         guard mode == .region, let dragStart else { return }
         let point = convert(event.locationInWindow, from: nil)
-        selectionRect = normalizedRect(from: dragStart, to: point).intersection(bounds)
+        selectionRect = selectionRect(from: dragStart, to: point, square: event.modifierFlags.contains(.shift)).intersection(bounds)
         selectionPointer = point
         needsDisplay = true
     }
@@ -239,7 +248,7 @@ private final class CaptureOverlayView: NSView {
     override func mouseUp(with event: NSEvent) {
         guard mode == .region, let dragStart else { return }
         let point = convert(event.locationInWindow, from: nil)
-        let rect = normalizedRect(from: dragStart, to: point).intersection(bounds).integral
+        let rect = selectionRect(from: dragStart, to: point, square: event.modifierFlags.contains(.shift)).intersection(bounds).integral
         self.dragStart = nil
         selectionPointer = nil
         guard rect.width >= 2, rect.height >= 2 else {
@@ -259,6 +268,10 @@ private final class CaptureOverlayView: NSView {
     override func keyDown(with event: NSEvent) {
         if event.keyCode == 53 {
             onCancel()
+        } else if mode == .region, event.keyCode == 48 {
+            windowSnapEnabled.toggle()
+            if !windowSnapEnabled { hoveredWindow = nil }
+            needsDisplay = true
         } else {
             super.keyDown(with: event)
         }
@@ -278,6 +291,14 @@ private final class CaptureOverlayView: NSView {
             width: abs(end.x - start.x),
             height: abs(end.y - start.y)
         )
+    }
+
+    private func selectionRect(from start: CGPoint, to end: CGPoint, square: Bool) -> CGRect {
+        guard square else { return normalizedRect(from: start, to: end) }
+        let side = min(max(abs(end.x - start.x), abs(end.y - start.y)), max(bounds.width, bounds.height))
+        return CGRect(x: end.x < start.x ? start.x - side : start.x,
+                      y: end.y < start.y ? start.y - side : start.y,
+                      width: side, height: side)
     }
 
     private func drawDimmedArea(excluding focusRect: CGRect?) {
@@ -303,7 +324,7 @@ private final class CaptureOverlayView: NSView {
     private func drawInstruction() {
         let text: String
         switch mode {
-        case .region: text = L10n.screenshotOverlayRegionHint
+        case .region: text = L10n.screenshotOverlayRegionHint + " · Tab: " + (windowSnapEnabled ? "Window snap on" : "Window snap off") + " · Shift: square"
         case .window: text = L10n.screenshotOverlayWindowHint
         case .display: text = L10n.screenshotOverlayDisplayHint
         }

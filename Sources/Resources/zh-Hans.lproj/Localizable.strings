@@ -484,6 +484,7 @@
 "screenshot.kind.edited" = "已编辑";
 "editor.title" = "截图编辑器";
 "editor.tool.crop" = "裁剪";
+"editor.tool.select" = "选择 / 移动";
 "editor.tool.rectangle" = "矩形";
 "editor.tool.ellipse" = "椭圆";
 "editor.tool.arrow" = "箭头";

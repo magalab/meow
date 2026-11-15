@@ -4,6 +4,7 @@ import MeowCapture
 extension CaptureEditorTool {
     var displayName: String {
         switch self {
+        case .select: L10n.editorToolSelect
         case .crop: L10n.editorToolCrop
         case .rectangle: L10n.editorToolRectangle
         case .ellipse: L10n.editorToolEllipse

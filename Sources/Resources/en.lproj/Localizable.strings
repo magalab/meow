@@ -484,6 +484,7 @@
 "screenshot.kind.edited" = "Edited";
 "editor.title" = "Screenshot Editor";
 "editor.tool.crop" = "Crop";
+"editor.tool.select" = "Select / Move";
 "editor.tool.rectangle" = "Rectangle";
 "editor.tool.ellipse" = "Ellipse";
 "editor.tool.arrow" = "Arrow";

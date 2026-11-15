@@ -310,6 +310,8 @@ private final class CaptureEditorCanvasNSView: NSView {
     private var dragStart: CGPoint?
     private var currentPoint: CGPoint?
     private var penPoints: [CGPoint] = []
+    private var selectedCommandIndex: Int?
+    private var moveOrigin: CGPoint?
 
     override var acceptsFirstResponder: Bool { true }
 
@@ -363,6 +365,12 @@ private final class CaptureEditorCanvasNSView: NSView {
         window?.makeFirstResponder(self)
 
         switch model.selectedTool {
+        case .select:
+            selectedCommandIndex = model.commands.indices.reversed().first {
+                commandBounds(model.commands[$0]).insetBy(dx: -10, dy: -10).contains(point)
+            }
+            moveOrigin = point
+            if selectedCommandIndex != nil { model.beginEditingCommands() }
         case .text:
             onTextRequested(point)
         case .number:
@@ -383,6 +391,14 @@ private final class CaptureEditorCanvasNSView: NSView {
     }
 
     override func mouseDragged(with event: NSEvent) {
+        if model.selectedTool == .select, let index = selectedCommandIndex,
+           let origin = moveOrigin, let point = sourcePoint(for: event),
+           model.commands.indices.contains(index) {
+            model.replace(at: index, with: translated(model.commands[index], dx: point.x - origin.x, dy: point.y - origin.y))
+            moveOrigin = point
+            needsDisplay = true
+            return
+        }
         guard dragStart != nil, let point = sourcePoint(for: event) else { return }
         currentPoint = point
         if model.selectedTool == .pen {
@@ -392,6 +408,11 @@ private final class CaptureEditorCanvasNSView: NSView {
     }
 
     override func mouseUp(with event: NSEvent) {
+        if model.selectedTool == .select {
+            selectedCommandIndex = nil
+            moveOrigin = nil
+            return
+        }
         guard let start = dragStart,
               let end = sourcePoint(for: event)
         else { return }
@@ -413,6 +434,12 @@ private final class CaptureEditorCanvasNSView: NSView {
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         if flags.contains(.command), event.charactersIgnoringModifiers == "z" {
             flags.contains(.shift) ? model.redo() : model.undo()
+            needsDisplay = true
+            return
+        }
+        if event.keyCode == 51, let selectedCommandIndex {
+            model.remove(at: selectedCommandIndex)
+            self.selectedCommandIndex = nil
             needsDisplay = true
             return
         }
@@ -449,6 +476,8 @@ private final class CaptureEditorCanvasNSView: NSView {
         let rect = normalizedRect(from: start, to: end)
 
         switch model.selectedTool {
+        case .select:
+            return nil
         case .rectangle:
             return .rectangle(rect: rect, color: color, width: width)
         case .ellipse:
@@ -463,6 +492,29 @@ private final class CaptureEditorCanvasNSView: NSView {
             return .mosaic(rect: rect)
         case .crop, .text, .number:
             return nil
+        }
+    }
+
+    private func commandBounds(_ command: CaptureEditorCommand) -> CGRect {
+        switch command {
+        case let .rectangle(rect, _, _), let .ellipse(rect, _, _), let .highlight(rect, _), let .mosaic(rect): rect
+        case let .arrow(start, end, _, _): CGRect(x: min(start.x, end.x), y: min(start.y, end.y), width: abs(end.x-start.x), height: abs(end.y-start.y))
+        case let .pen(points, _, _): points.reduce(into: CGRect.null) { $0 = $0.union(CGRect(origin: $1, size: .zero)) }
+        case let .text(origin, text, _, size): CGRect(x: origin.x, y: origin.y, width: CGFloat(text.count) * size, height: size * 1.5)
+        case let .number(center, _, _, radius): CGRect(x: center.x-radius, y: center.y-radius, width: radius*2, height: radius*2)
+        }
+    }
+
+    private func translated(_ command: CaptureEditorCommand, dx: CGFloat, dy: CGFloat) -> CaptureEditorCommand {
+        switch command {
+        case let .rectangle(rect, color, width): .rectangle(rect: rect.offsetBy(dx: dx, dy: dy), color: color, width: width)
+        case let .ellipse(rect, color, width): .ellipse(rect: rect.offsetBy(dx: dx, dy: dy), color: color, width: width)
+        case let .arrow(start, end, color, width): .arrow(start: CGPoint(x:start.x+dx,y:start.y+dy), end: CGPoint(x:end.x+dx,y:end.y+dy), color: color, width: width)
+        case let .pen(points, color, width): .pen(points: points.map { CGPoint(x:$0.x+dx,y:$0.y+dy) }, color: color, width: width)
+        case let .text(origin, text, color, size): .text(origin: CGPoint(x:origin.x+dx,y:origin.y+dy), text: text, color: color, fontSize: size)
+        case let .number(center, value, color, radius): .number(center: CGPoint(x:center.x+dx,y:center.y+dy), value: value, color: color, radius: radius)
+        case let .highlight(rect, color): .highlight(rect: rect.offsetBy(dx:dx,dy:dy), color: color)
+        case let .mosaic(rect): .mosaic(rect: rect.offsetBy(dx:dx,dy:dy))
         }
     }
 

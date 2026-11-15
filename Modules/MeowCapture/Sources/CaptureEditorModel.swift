@@ -15,6 +15,8 @@ public final class CaptureEditorModel: ObservableObject {
 
     public let sourceSize: CGSize
     private var redoCommands: [CaptureEditorCommand] = []
+    private var undoSnapshots: [[CaptureEditorCommand]] = []
+    private var redoSnapshots: [[CaptureEditorCommand]] = []
 
     public init(sourceSize: CGSize) {
         self.sourceSize = sourceSize
@@ -22,24 +24,52 @@ public final class CaptureEditorModel: ObservableObject {
         outputHeight = Int(sourceSize.height)
     }
 
-    public var canUndo: Bool { !commands.isEmpty }
-    public var canRedo: Bool { !redoCommands.isEmpty }
+    public var canUndo: Bool { !undoSnapshots.isEmpty || !commands.isEmpty }
+    public var canRedo: Bool { !redoSnapshots.isEmpty || !redoCommands.isEmpty }
+
+    public func beginEditingCommands() {
+        recordSnapshot()
+    }
 
     public func add(_ command: CaptureEditorCommand) {
+        recordSnapshot()
         commands.append(command)
-        redoCommands.removeAll()
         if case let .number(_, value, _, _) = command {
             nextNumber = max(nextNumber, value + 1)
         }
     }
 
+    public func replace(at index: Int, with command: CaptureEditorCommand) {
+        guard commands.indices.contains(index) else { return }
+        commands[index] = command
+    }
+
+    public func remove(at index: Int) {
+        guard commands.indices.contains(index) else { return }
+        recordSnapshot()
+        commands.remove(at: index)
+        recalculateNextNumber()
+    }
+
     public func undo() {
+        if let snapshot = undoSnapshots.popLast() {
+            redoSnapshots.append(commands)
+            commands = snapshot
+            recalculateNextNumber()
+            return
+        }
         guard let command = commands.popLast() else { return }
         redoCommands.append(command)
         recalculateNextNumber()
     }
 
     public func redo() {
+        if let snapshot = redoSnapshots.popLast() {
+            undoSnapshots.append(commands)
+            commands = snapshot
+            recalculateNextNumber()
+            return
+        }
         guard let command = redoCommands.popLast() else { return }
         commands.append(command)
         recalculateNextNumber()
@@ -48,6 +78,8 @@ public final class CaptureEditorModel: ObservableObject {
     public func clear() {
         commands.removeAll()
         redoCommands.removeAll()
+        undoSnapshots.removeAll()
+        redoSnapshots.removeAll()
         cropRect = nil
         nextNumber = 1
     }
@@ -87,5 +119,10 @@ public final class CaptureEditorModel: ObservableObject {
             }
             return nil
         }.max() ?? 0) + 1
+    }
+
+    private func recordSnapshot() {
+        undoSnapshots.append(commands)
+        redoSnapshots.removeAll()
     }
 }

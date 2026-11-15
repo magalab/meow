@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 
 public enum CaptureEditorTool: String, CaseIterable, Identifiable, Sendable {
+    case select
     case crop
     case rectangle
     case ellipse
@@ -16,6 +17,7 @@ public enum CaptureEditorTool: String, CaseIterable, Identifiable, Sendable {
 
     public var symbol: String {
         switch self {
+        case .select: "cursorarrow"
         case .crop: "crop"
         case .rectangle: "rectangle"
         case .ellipse: "circle"
