@@ -187,7 +187,8 @@ final class AppCaptureCoordinator {
                 guard !Task.isCancelled else { return }
                 guard let selection = await captureOverlayController.present(
                     session: session,
-                    mode: .region
+                    mode: .region,
+                    allowsWindowSnap: false
                 ) else { return }
                 guard !Task.isCancelled else { return }
                 guard case let .region(display, rect, scale) = selection,

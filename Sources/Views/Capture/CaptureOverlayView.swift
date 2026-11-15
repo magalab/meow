@@ -15,7 +15,11 @@ final class CaptureOverlayController {
     private var isFinishing = false
     private var appResignObserver: NSObjectProtocol?
 
-    func present(session: CaptureSession, mode: ScreenshotCaptureMode) async -> CaptureSelection? {
+    func present(
+        session: CaptureSession,
+        mode: ScreenshotCaptureMode,
+        allowsWindowSnap: Bool = true
+    ) async -> CaptureSelection? {
         cancel()
         isFinishing = false
 
@@ -29,7 +33,12 @@ final class CaptureOverlayController {
                 Task { @MainActor in self?.cancel() }
             }
             self.panels = session.displays.map { frozen in
-                makePanel(frozen: frozen, windows: session.windows, mode: mode)
+                makePanel(
+                    frozen: frozen,
+                    windows: session.windows,
+                    mode: mode,
+                    allowsWindowSnap: allowsWindowSnap
+                )
             }
 
             for panel in panels {
@@ -47,7 +56,8 @@ final class CaptureOverlayController {
     private func makePanel(
         frozen: FrozenDisplay,
         windows: [SCWindow],
-        mode: ScreenshotCaptureMode
+        mode: ScreenshotCaptureMode,
+        allowsWindowSnap: Bool
     ) -> CaptureOverlayPanel {
         let panel = CaptureOverlayPanel(
             contentRect: frozen.screen.frame,
@@ -80,6 +90,7 @@ final class CaptureOverlayController {
             frozen: frozen,
             candidates: candidates,
             mode: mode,
+            allowsWindowSnap: allowsWindowSnap,
             onSelect: { [weak self] selection in
                 self?.finish(with: selection)
             },
@@ -122,6 +133,7 @@ private final class CaptureOverlayView: NSView {
     private let frozen: FrozenDisplay
     private let candidates: [CaptureWindowCandidate]
     private let mode: ScreenshotCaptureMode
+    private let allowsWindowSnap: Bool
     private let onSelect: (CaptureSelection) -> Void
     private let onCancel: () -> Void
 
@@ -139,12 +151,15 @@ private final class CaptureOverlayView: NSView {
         frozen: FrozenDisplay,
         candidates: [CaptureWindowCandidate],
         mode: ScreenshotCaptureMode,
+        allowsWindowSnap: Bool,
         onSelect: @escaping (CaptureSelection) -> Void,
         onCancel: @escaping () -> Void
     ) {
         self.frozen = frozen
         self.candidates = candidates
         self.mode = mode
+        self.allowsWindowSnap = allowsWindowSnap
+        self.windowSnapEnabled = allowsWindowSnap
         self.onSelect = onSelect
         self.onCancel = onCancel
         super.init(frame: frame)
@@ -201,7 +216,7 @@ private final class CaptureOverlayView: NSView {
         } else {
             drawInstruction()
         }
-        if mode == .region, let hoveredWindow, windowSnapEnabled {
+        if mode == .region, allowsWindowSnap, let hoveredWindow, windowSnapEnabled {
             drawFocusBorder(hoveredWindow.rect)
             drawWindowLabel(for: hoveredWindow)
         }
@@ -211,7 +226,7 @@ private final class CaptureOverlayView: NSView {
     }
 
     override func mouseMoved(with event: NSEvent) {
-        guard mode == .window || (mode == .region && windowSnapEnabled) else { return }
+        guard mode == .window || (mode == .region && allowsWindowSnap && windowSnapEnabled) else { return }
         updateHoveredWindow(at: convert(event.locationInWindow, from: nil))
     }
 
@@ -219,7 +234,7 @@ private final class CaptureOverlayView: NSView {
         let point = convert(event.locationInWindow, from: nil)
         switch mode {
         case .region:
-            if windowSnapEnabled, let hoveredWindow {
+            if allowsWindowSnap, windowSnapEnabled, let hoveredWindow {
                 onSelect(.window(hoveredWindow.window, scale: frozen.scale))
                 return
             }
@@ -268,7 +283,7 @@ private final class CaptureOverlayView: NSView {
     override func keyDown(with event: NSEvent) {
         if event.keyCode == 53 {
             onCancel()
-        } else if mode == .region, event.keyCode == 48 {
+        } else if mode == .region, allowsWindowSnap, event.keyCode == 48 {
             windowSnapEnabled.toggle()
             if !windowSnapEnabled { hoveredWindow = nil }
             needsDisplay = true
@@ -324,7 +339,12 @@ private final class CaptureOverlayView: NSView {
     private func drawInstruction() {
         let text: String
         switch mode {
-        case .region: text = L10n.screenshotOverlayRegionHint + " · Tab: " + (windowSnapEnabled ? "Window snap on" : "Window snap off") + " · Shift: square"
+        case .region:
+            if allowsWindowSnap {
+                text = L10n.screenshotOverlayRegionHint + " · Tab: " + (windowSnapEnabled ? "Window snap on" : "Window snap off") + " · Shift: square"
+            } else {
+                text = L10n.screenshotOverlayRegionHint + " · Shift: square"
+            }
         case .window: text = L10n.screenshotOverlayWindowHint
         case .display: text = L10n.screenshotOverlayDisplayHint
         }
